@@ -1,0 +1,498 @@
+import type {
+  Player,
+  Gender,
+  Tournament,
+  TournamentMode,
+  TournamentFormat,
+  Round,
+  Match,
+  GameSet,
+} from "./types";
+
+// ---- Detect if running inside Tauri ----
+function isTauri(): boolean {
+  return !!(window as any).__TAURI_INTERNALS__;
+}
+
+// =============================================
+// Tauri SQLite Backend
+// =============================================
+let tauriDb: any = null;
+
+async function getTauriDb() {
+  if (!tauriDb) {
+    const { default: Database } = await import("@tauri-apps/plugin-sql");
+    const { invoke } = await import("@tauri-apps/api/core");
+    // DB-Pfad vom Rust-Backend holen (beruecksichtigt custom Speicherort)
+    const dbPath = await invoke<string>("get_db_path");
+    tauriDb = await Database.load(`sqlite:${dbPath}`);
+  }
+  return tauriDb;
+}
+
+// =============================================
+// LocalStorage Fallback Backend (for browser debugging)
+// =============================================
+interface LocalStore {
+  players: Player[];
+  tournaments: Tournament[];
+  tournamentPlayers: { tournament_id: number; player_id: number }[];
+  rounds: Round[];
+  matches: Match[];
+  sets: GameSet[];
+  nextId: { [table: string]: number };
+}
+
+function loadStore(): LocalStore {
+  const raw = localStorage.getItem("turnierplaner");
+  if (raw) return JSON.parse(raw);
+  return {
+    players: [],
+    tournaments: [],
+    tournamentPlayers: [],
+    rounds: [],
+    matches: [],
+    sets: [],
+    nextId: { players: 1, tournaments: 1, rounds: 1, matches: 1, sets: 1 },
+  };
+}
+
+function saveStore(store: LocalStore) {
+  localStorage.setItem("turnierplaner", JSON.stringify(store));
+}
+
+function nextId(store: LocalStore, table: string): number {
+  const id = store.nextId[table] || 1;
+  store.nextId[table] = id + 1;
+  return id;
+}
+
+// =============================================
+// Unified API
+// =============================================
+
+// --- Players ---
+
+export async function getPlayers(): Promise<Player[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    return d.select("SELECT * FROM players ORDER BY name");
+  }
+  const store = loadStore();
+  return [...store.players].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function createPlayer(name: string, gender: Gender): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("INSERT INTO players (name, gender) VALUES ($1, $2)", [name, gender]);
+    return;
+  }
+  const store = loadStore();
+  store.players.push({
+    id: nextId(store, "players"),
+    name,
+    gender,
+    created_at: new Date().toISOString(),
+  });
+  saveStore(store);
+}
+
+export async function updatePlayer(id: number, name: string, gender: Gender): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("UPDATE players SET name = $1, gender = $2 WHERE id = $3", [name, gender, id]);
+    return;
+  }
+  const store = loadStore();
+  const p = store.players.find((p) => p.id === id);
+  if (p) {
+    p.name = name;
+    p.gender = gender;
+  }
+  saveStore(store);
+}
+
+export async function deletePlayer(id: number): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("DELETE FROM players WHERE id = $1", [id]);
+    return;
+  }
+  const store = loadStore();
+  store.players = store.players.filter((p) => p.id !== id);
+  saveStore(store);
+}
+
+// --- Tournaments ---
+
+export async function getTournaments(): Promise<Tournament[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    return d.select("SELECT * FROM tournaments ORDER BY created_at DESC");
+  }
+  const store = loadStore();
+  return [...store.tournaments].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+}
+
+export async function getTournament(id: number): Promise<Tournament> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    const rows: Tournament[] = await d.select("SELECT * FROM tournaments WHERE id = $1", [id]);
+    return rows[0];
+  }
+  const store = loadStore();
+  return store.tournaments.find((t) => t.id === id)!;
+}
+
+export async function createTournament(
+  name: string,
+  mode: TournamentMode,
+  format: TournamentFormat,
+  setsToWin: number,
+  pointsPerSet: number,
+  courts: number = 1
+): Promise<number> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    const result = await d.execute(
+      "INSERT INTO tournaments (name, mode, format, sets_to_win, points_per_set, courts) VALUES ($1, $2, $3, $4, $5, $6)",
+      [name, mode, format, setsToWin, pointsPerSet, courts]
+    );
+    return result.lastInsertId!;
+  }
+  const store = loadStore();
+  const id = nextId(store, "tournaments");
+  store.tournaments.push({
+    id,
+    name,
+    mode,
+    format,
+    sets_to_win: setsToWin,
+    points_per_set: pointsPerSet,
+    courts,
+    created_at: new Date().toISOString(),
+    status: "draft",
+  });
+  saveStore(store);
+  return id;
+}
+
+export async function updateTournamentStatus(id: number, status: string): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("UPDATE tournaments SET status = $1 WHERE id = $2", [status, id]);
+    return;
+  }
+  const store = loadStore();
+  const t = store.tournaments.find((t) => t.id === id);
+  if (t) t.status = status as Tournament["status"];
+  saveStore(store);
+}
+
+export async function deleteTournament(id: number): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute(
+      "DELETE FROM sets WHERE match_id IN (SELECT m.id FROM matches m JOIN rounds r ON m.round_id = r.id WHERE r.tournament_id = $1)",
+      [id]
+    );
+    await d.execute(
+      "DELETE FROM matches WHERE round_id IN (SELECT id FROM rounds WHERE tournament_id = $1)",
+      [id]
+    );
+    await d.execute("DELETE FROM rounds WHERE tournament_id = $1", [id]);
+    await d.execute("DELETE FROM tournament_players WHERE tournament_id = $1", [id]);
+    await d.execute("DELETE FROM tournaments WHERE id = $1", [id]);
+    return;
+  }
+  const store = loadStore();
+  const roundIds = store.rounds.filter((r) => r.tournament_id === id).map((r) => r.id);
+  const matchIds = store.matches.filter((m) => roundIds.includes(m.round_id)).map((m) => m.id);
+  store.sets = store.sets.filter((s) => !matchIds.includes(s.match_id));
+  store.matches = store.matches.filter((m) => !roundIds.includes(m.round_id));
+  store.rounds = store.rounds.filter((r) => r.tournament_id !== id);
+  store.tournamentPlayers = store.tournamentPlayers.filter((tp) => tp.tournament_id !== id);
+  store.tournaments = store.tournaments.filter((t) => t.id !== id);
+  saveStore(store);
+}
+
+// --- Tournament Players ---
+
+export async function getTournamentPlayers(tournamentId: number): Promise<Player[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    return d.select(
+      "SELECT p.* FROM players p JOIN tournament_players tp ON p.id = tp.player_id WHERE tp.tournament_id = $1 ORDER BY p.name",
+      [tournamentId]
+    );
+  }
+  const store = loadStore();
+  const playerIds = store.tournamentPlayers
+    .filter((tp) => tp.tournament_id === tournamentId)
+    .map((tp) => tp.player_id);
+  return store.players
+    .filter((p) => playerIds.includes(p.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function addPlayerToTournament(tournamentId: number, playerId: number): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute(
+      "INSERT OR IGNORE INTO tournament_players (tournament_id, player_id) VALUES ($1, $2)",
+      [tournamentId, playerId]
+    );
+    return;
+  }
+  const store = loadStore();
+  const exists = store.tournamentPlayers.some(
+    (tp) => tp.tournament_id === tournamentId && tp.player_id === playerId
+  );
+  if (!exists) {
+    store.tournamentPlayers.push({ tournament_id: tournamentId, player_id: playerId });
+  }
+  saveStore(store);
+}
+
+export async function removePlayerFromTournament(
+  tournamentId: number,
+  playerId: number
+): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute(
+      "DELETE FROM tournament_players WHERE tournament_id = $1 AND player_id = $2",
+      [tournamentId, playerId]
+    );
+    return;
+  }
+  const store = loadStore();
+  store.tournamentPlayers = store.tournamentPlayers.filter(
+    (tp) => !(tp.tournament_id === tournamentId && tp.player_id === playerId)
+  );
+  saveStore(store);
+}
+
+// --- Rounds ---
+
+export async function getRounds(tournamentId: number): Promise<Round[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    return d.select(
+      "SELECT * FROM rounds WHERE tournament_id = $1 ORDER BY round_number",
+      [tournamentId]
+    );
+  }
+  const store = loadStore();
+  return store.rounds
+    .filter((r) => r.tournament_id === tournamentId)
+    .sort((a, b) => a.round_number - b.round_number);
+}
+
+export async function createRound(tournamentId: number, roundNumber: number): Promise<number> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    const result = await d.execute(
+      "INSERT INTO rounds (tournament_id, round_number) VALUES ($1, $2)",
+      [tournamentId, roundNumber]
+    );
+    return result.lastInsertId!;
+  }
+  const store = loadStore();
+  const id = nextId(store, "rounds");
+  store.rounds.push({ id, tournament_id: tournamentId, round_number: roundNumber });
+  saveStore(store);
+  return id;
+}
+
+// --- Matches ---
+
+export async function getMatchesByRound(roundId: number): Promise<Match[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    return d.select("SELECT * FROM matches WHERE round_id = $1 ORDER BY id", [roundId]);
+  }
+  const store = loadStore();
+  return store.matches.filter((m) => m.round_id === roundId).sort((a, b) => a.id - b.id);
+}
+
+export async function createMatch(
+  roundId: number,
+  team1P1: number,
+  team1P2: number | null,
+  team2P1: number,
+  team2P2: number | null,
+  court: number | null = null
+): Promise<number> {
+  const assignedAt = court ? new Date().toISOString() : null;
+  if (isTauri()) {
+    const d = await getTauriDb();
+    const result = await d.execute(
+      "INSERT INTO matches (round_id, team1_p1, team1_p2, team2_p1, team2_p2, court, court_assigned_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [roundId, team1P1, team1P2, team2P1, team2P2, court, assignedAt]
+    );
+    return result.lastInsertId!;
+  }
+  const store = loadStore();
+  const id = nextId(store, "matches");
+  store.matches.push({
+    id,
+    round_id: roundId,
+    court,
+    court_assigned_at: assignedAt,
+    team1_p1: team1P1,
+    team1_p2: team1P2,
+    team2_p1: team2P1,
+    team2_p2: team2P2,
+    winner_team: null,
+    status: "pending",
+  });
+  saveStore(store);
+  return id;
+}
+
+export async function updateMatchCourt(matchId: number, court: number | null): Promise<void> {
+  const assignedAt = court ? new Date().toISOString() : null;
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("UPDATE matches SET court = $1, court_assigned_at = $2 WHERE id = $3", [court, assignedAt, matchId]);
+    return;
+  }
+  const store = loadStore();
+  const m = store.matches.find((m) => m.id === matchId);
+  if (m) {
+    m.court = court;
+    m.court_assigned_at = assignedAt;
+  }
+  saveStore(store);
+}
+
+export async function updateMatchResult(matchId: number, winnerTeam: 1 | 2): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute(
+      "UPDATE matches SET winner_team = $1, status = 'completed' WHERE id = $2",
+      [winnerTeam, matchId]
+    );
+    return;
+  }
+  const store = loadStore();
+  const m = store.matches.find((m) => m.id === matchId);
+  if (m) {
+    m.winner_team = winnerTeam;
+    m.status = "completed";
+  }
+  saveStore(store);
+}
+
+export async function reopenMatch(matchId: number): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute(
+      "UPDATE matches SET winner_team = NULL, status = 'pending' WHERE id = $1",
+      [matchId]
+    );
+    return;
+  }
+  const store = loadStore();
+  const m = store.matches.find((m) => m.id === matchId);
+  if (m) {
+    m.winner_team = null;
+    m.status = "pending";
+  }
+  saveStore(store);
+}
+
+// --- Sets ---
+
+export async function getSetsByMatch(matchId: number): Promise<GameSet[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    return d.select("SELECT * FROM sets WHERE match_id = $1 ORDER BY set_number", [matchId]);
+  }
+  const store = loadStore();
+  return store.sets
+    .filter((s) => s.match_id === matchId)
+    .sort((a, b) => a.set_number - b.set_number);
+}
+
+export async function upsertSet(
+  matchId: number,
+  setNumber: number,
+  team1Score: number,
+  team2Score: number
+): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    const existing: GameSet[] = await d.select(
+      "SELECT * FROM sets WHERE match_id = $1 AND set_number = $2",
+      [matchId, setNumber]
+    );
+    if (existing.length > 0) {
+      await d.execute(
+        "UPDATE sets SET team1_score = $1, team2_score = $2 WHERE match_id = $3 AND set_number = $4",
+        [team1Score, team2Score, matchId, setNumber]
+      );
+    } else {
+      await d.execute(
+        "INSERT INTO sets (match_id, set_number, team1_score, team2_score) VALUES ($1, $2, $3, $4)",
+        [matchId, setNumber, team1Score, team2Score]
+      );
+    }
+    return;
+  }
+  const store = loadStore();
+  const existing = store.sets.find(
+    (s) => s.match_id === matchId && s.set_number === setNumber
+  );
+  if (existing) {
+    existing.team1_score = team1Score;
+    existing.team2_score = team2Score;
+  } else {
+    store.sets.push({
+      id: nextId(store, "sets"),
+      match_id: matchId,
+      set_number: setNumber,
+      team1_score: team1Score,
+      team2_score: team2Score,
+    });
+  }
+  saveStore(store);
+}
+
+// --- Wipe / Reset ---
+
+export async function wipeAllPlayers(): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("DELETE FROM tournament_players");
+    await d.execute("DELETE FROM players");
+    return;
+  }
+  const store = loadStore();
+  store.players = [];
+  store.tournamentPlayers = [];
+  saveStore(store);
+}
+
+export async function wipeAllTournaments(): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("DELETE FROM sets");
+    await d.execute("DELETE FROM matches");
+    await d.execute("DELETE FROM rounds");
+    await d.execute("DELETE FROM tournament_players");
+    await d.execute("DELETE FROM tournaments");
+    return;
+  }
+  const store = loadStore();
+  store.sets = [];
+  store.matches = [];
+  store.rounds = [];
+  store.tournamentPlayers = [];
+  store.tournaments = [];
+  saveStore(store);
+}
