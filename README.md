@@ -6,37 +6,53 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 
 ### Turnierverwaltung
 - **3 Modi**: Einzel, Doppel, Mixed
-- **3 Formate**: Jeder gegen Jeden (Round Robin), KO-System (Elimination), Wechselnde Partner (Random Doubles)
-- **Konfigurierbar**: Anzahl Saetze (Best of 1/3/5), Punkte pro Satz, Anzahl Spielfelder
-- **Setzliste/Seeding**: Optionales Seeding fuer KO-Turniere, damit die besten Spieler erst in spaeteren Runden aufeinandertreffen
-- **Archivierung**: Beendete Turniere koennen archiviert und wiederhergestellt werden
+- **5 Formate**: Jeder gegen Jeden, KO-System, Wechselnde Partner, Gruppenphase + KO, Feste Doppel
+- **Gruppenphase + KO**: Konfigurierbare Gruppenanzahl (2-8), Qualifikanten pro Gruppe (Top 1-4), dann KO-Runde
+  - Einzel: Individuelle Spieler qualifizieren sich
+  - Doppel/Mixed: Feste Teams bleiben durch Gruppenphase und KO bestehen
+- **Konfigurierbar**: Saetze (Best of 1/3/5), Punkte pro Satz, Spielfelder (1-8)
+- **Setzliste/Seeding**: Optionales Seeding fuer KO-Turniere per Drag & Drop oder Pfeiltasten
+- **Archivierung**: Beendete Turniere archivieren und wiederherstellen
+- **Turnier loeschen**: Mit Sicherheitsabfrage (Eingabe "LOESCHEN")
+- **Auto-Benennung**: Turniername wird automatisch generiert (Datum - Modus - Format), editierbar
 
 ### Spielerverwaltung
 - Spieler anlegen, bearbeiten, loeschen
-- **Excel-Import** mit Spaltenmapping (Name, Geschlecht)
+- **Excel-Import** mit Spaltenmapping (Name, Geschlecht) und Duplikaterkennung
 - **Excel-Export** mit nativem Speichern-Dialog
-- Duplikaterkennung beim Import
 - Geschlechter-Filter und Suchfunktion bei der Spielerauswahl
+- Spieler waehrend des Turniers hinzufuegen/entfernen
 
 ### Spielbetrieb
-- **Feldzuweisung**: Spiele per Drag & Drop oder Dropdown auf Felder verteilen
-- **Timer**: Startet automatisch bei Feldzuweisung, zeigt Spieldauer pro Feld
+- **Feldzuweisung**: Spiele per Drag & Drop auf Spielfelder ziehen
+  - Belegte Felder werden erkannt und blockiert
+  - Timer startet automatisch bei Zuweisung, zeigt Spieldauer
+  - Ergebniseingabe erst nach Feldzuweisung moeglich
 - **Ergebniserfassung**: Satz-Ergebnisse eintragen mit Auto-Vervollstaendigung
 - **Badminton-Regelkonform**: Rallypoint-System bis 21, Verlaengerung bei 20:20, Deckelung bei 30
 - **Score-Validierung**: Ungueltige Ergebnisse werden erkannt und markiert
-- **Spieler waehrend des Turniers hinzufuegen/entfernen**: Nachzuegler oder fruehe Abgaenger handeln
+- **Turnier kann nicht beendet werden** solange Spiele offen sind
 
 ### Rangliste & Auswertung
 - **Live-Rangliste**: Sortiert nach Siegen, Satzverhaeltnis, Punkteverhaeltnis
-- **Medaillen**: Gold, Silber, Bronze fuer die Top 3
-- **Turnierbericht**: Druckbarer Bericht mit Highlights (knappstes Spiel, hoechster Sieg, meiste Punkte etc.)
+- **Gruppen-Tabellen**: Bei Gruppenphase separate Tabelle pro Gruppe mit Qualifikanten-Markierung (Q)
+- **Team-Standings**: Bei Doppel-Gruppenphase werden Teams (nicht Einzelspieler) gewertet
+- **Medaillen**: 🥇🥈🥉 fuer die Top 3
+- **Turnierbericht**: Druckbarer Bericht mit Highlights (knappstes Spiel, hoechster Sieg, meiste Punkte)
 - **Druckansicht**: Spielplan, aktuelle Runde, Rangliste oder kompletter Bericht
+
+### Einstellungen
+- **Voreinstellungen**: Standard-Spielfelder fuer neue Turniere
+- **Datenbank**: Speicherort anzeigen/aendern, Backup & Wiederherstellung
+- **Gefahrenzone**: Spieler oder Turniere komplett loeschen (mit Sicherheitsabfrage)
+- Aufklappbare Sektionen fuer uebersichtliche Struktur
 
 ### Technisch
 - **Offline-faehig**: Laeuft komplett lokal, kein Internet noetig
 - **SQLite-Datenbank**: Robuste, persistente Datenspeicherung
 - **Backup & Restore**: Datenbank sichern und wiederherstellen mit nativem Dialog
-- **Konfigurierbarer Speicherort**: Datenbank kann an beliebigen Ort verschoben werden (z.B. USB-Stick)
+- **Konfigurierbarer Speicherort**: Datenbank an beliebigem Ort (z.B. USB-Stick)
+- **Modernes Design**: Sportliches Emerald-Theme mit Badminton-Charme
 
 ## Tech Stack
 
@@ -98,8 +114,8 @@ src/
 │   └── print/         # Druckansicht, Turnierbericht
 ├── lib/
 │   ├── db.ts          # SQLite-Wrapper
-│   ├── draw.ts        # Auslosungsalgorithmen
-│   ├── scoring.ts     # Punkteberechnung & Validierung
+│   ├── draw.ts        # Auslosungsalgorithmen (Round Robin, KO, Gruppen, Random Doubles, Mixed)
+│   ├── scoring.ts     # Punkteberechnung, Validierung, Team-Standings
 │   ├── highlights.ts  # Turnier-Highlights
 │   └── types.ts       # TypeScript-Interfaces
 ├── pages/
@@ -112,7 +128,7 @@ src/
 └── App.tsx
 
 src-tauri/
-├── src/lib.rs         # Rust-Backend (DB-Migrations, Befehle)
+├── src/lib.rs         # Rust-Backend (DB-Migrations, Backup, Speicherort)
 ├── Cargo.toml
 └── tauri.conf.json
 ```

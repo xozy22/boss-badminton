@@ -267,6 +267,27 @@ function generateSeedOrder(size: number): number[] {
   return round;
 }
 
+// --- Elimination (KO) for fixed doubles teams ---
+export function generateEliminationBracketDoubles(
+  teams: [number, number][]
+): { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number }[] {
+  const size = nextPowerOf2(teams.length);
+  const shuffled = shuffle(teams);
+  const ordered: ([number, number] | null)[] = [...shuffled];
+  while (ordered.length < size) ordered.push(null);
+
+  const matches: { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number }[] = [];
+  for (let i = 0; i < size; i += 2) {
+    const t1 = ordered[i];
+    const t2 = ordered[i + 1];
+    if (t1 && t2) {
+      matches.push({ team1_p1: t1[0], team1_p2: t1[1], team2_p1: t2[0], team2_p2: t2[1] });
+    }
+    // Byes (nur ein Team) werden uebersprungen - Team kommt automatisch weiter
+  }
+  return matches;
+}
+
 // --- Mixed Doubles (random, gender-balanced) ---
 export function generateMixedDoublesRound(
   players: Player[],
@@ -323,6 +344,66 @@ export function getPreviousPairings(matches: Match[]): Set<string> {
     if (m.team2_p2) pairings.add(pairingKey(m.team2_p1, m.team2_p2));
   }
   return pairings;
+}
+
+// --- Fixed Team Formation ---
+// Forms random doubles teams from players
+export function formFixedDoubleTeams(
+  players: Player[]
+): [number, number][] {
+  const shuffled = shuffle(players);
+  const teams: [number, number][] = [];
+  for (let i = 0; i < shuffled.length - 1; i += 2) {
+    teams.push([shuffled[i].id, shuffled[i + 1].id]);
+  }
+  return teams;
+}
+
+// Forms mixed doubles teams (1m + 1f each)
+export function formFixedMixedTeams(
+  players: Player[]
+): [number, number][] {
+  const males = shuffle(players.filter((p) => p.gender === "m"));
+  const females = shuffle(players.filter((p) => p.gender === "f"));
+  const count = Math.min(males.length, females.length);
+  const teams: [number, number][] = [];
+  for (let i = 0; i < count; i++) {
+    teams.push([males[i].id, females[i].id]);
+  }
+  return teams;
+}
+
+// Splits teams into numGroups groups (evenly distributed)
+export function splitTeamsIntoGroups(
+  teams: [number, number][],
+  numGroups: number
+): [number, number][][] {
+  const groups: [number, number][][] = Array.from({ length: numGroups }, () => []);
+  for (let i = 0; i < teams.length; i++) {
+    groups[i % numGroups].push(teams[i]);
+  }
+  return groups;
+}
+
+// --- Group Phase ---
+// Splits players into numGroups groups (shuffled, evenly distributed)
+export function splitIntoGroups(
+  players: Player[],
+  numGroups: number
+): Player[][] {
+  const shuffled = shuffle(players);
+  const groups: Player[][] = Array.from({ length: numGroups }, () => []);
+  for (let i = 0; i < shuffled.length; i++) {
+    groups[i % numGroups].push(shuffled[i]);
+  }
+  return groups;
+}
+
+// Generates round-robin matches for a single group (singles)
+export function generateGroupRoundRobinSingles(
+  groupPlayers: Player[]
+): { team1_p1: number; team2_p1: number }[][] {
+  return generateRoundRobinSingles(groupPlayers);
 }
 
 function nextPowerOf2(n: number): number {

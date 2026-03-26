@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import PrintDialog from "../components/print/PrintDialog";
 import CourtOverview from "../components/courts/CourtOverview";
@@ -17,18 +17,26 @@ import {
   updateMatchCourt,
   reopenMatch,
   updateTournamentStatus,
+  updateTournamentPhase,
   addPlayerToTournament,
   removePlayerFromTournament,
 } from "../lib/db";
 import {
   generateRoundRobinSingles,
+  generateRoundRobinDoubles,
   generateRandomDoublesRound,
   generateMixedDoublesRound,
   generateEliminationBracket,
+  generateEliminationBracketDoubles,
+  splitIntoGroups,
+  formFixedDoubleTeams,
+  formFixedMixedTeams,
+  splitTeamsIntoGroups,
   getPreviousPairings,
 } from "../lib/draw";
 import {
   calculateStandings,
+  calculateTeamStandings,
   determineMatchWinner,
   isScoreValid,
   getMaxScore,
@@ -143,6 +151,47 @@ export default function TournamentView() {
           await createMatch(roundId, m.team1_p1, null, m.team2_p1, null, court);
         }
       }
+    } else if (tournament.format === "group_ko") {
+      // Gruppenphase starten
+      await updateTournamentPhase(tournamentId, "group");
+      const groups = splitIntoGroups(players, tournament.num_groups || 2);
+      let roundCounter = 1;
+
+      if (tournament.mode === "singles") {
+        // Einzel: Round-Robin innerhalb jeder Gruppe
+        for (let g = 0; g < groups.length; g++) {
+          const groupPlayers = groups[g];
+          if (groupPlayers.length < 2) continue;
+          const groupRounds = generateRoundRobinSingles(groupPlayers);
+          for (let r = 0; r < groupRounds.length; r++) {
+            const roundId = await createRound(tournamentId, roundCounter++, "group", g + 1);
+            for (const m of groupRounds[r]) {
+              const court = autoAssign ? 1 : null;
+              await createMatch(roundId, m.team1_p1, null, m.team2_p1, null, court);
+            }
+          }
+        }
+      } else {
+        // Doppel/Mixed: Feste Teams, Round-Robin innerhalb jeder Gruppe
+        // Erst Teams bilden, dann in Gruppen aufteilen
+        const allTeams = tournament.mode === "mixed"
+          ? formFixedMixedTeams(players)
+          : formFixedDoubleTeams(players);
+        const teamGroups = splitTeamsIntoGroups(allTeams, tournament.num_groups || 2);
+
+        for (let g = 0; g < teamGroups.length; g++) {
+          const groupTeams = teamGroups[g];
+          if (groupTeams.length < 2) continue;
+          const groupRounds = generateRoundRobinDoubles(groupTeams);
+          for (let r = 0; r < groupRounds.length; r++) {
+            const roundId = await createRound(tournamentId, roundCounter++, "group", g + 1);
+            for (const m of groupRounds[r]) {
+              const court = autoAssign ? 1 : null;
+              await createMatch(roundId, m.team1_p1, m.team1_p2, m.team2_p1, m.team2_p2, court);
+            }
+          }
+        }
+      }
     } else if (tournament.format === "random_doubles" || tournament.format === "round_robin" && tournament.mode !== "singles") {
       await generateNextRound();
     }
@@ -185,6 +234,84 @@ export default function TournamentView() {
     }
 
     setActiveRound(roundId);
+    loadAll();
+  };
+
+  // Helper: collect matches/sets for a group
+  const getGroupData = (groupNum: number) => {
+    const gRounds = rounds.filter((r) => r.phase === "group" && r.group_number === groupNum);
+    const gMatches: Match[] = [];
+    const gSets = new Map<number, GameSet[]>();
+    for (const r of gRounds) {
+      const ms = matchesByRound.get(r.id) || [];
+      gMatches.push(...ms);
+      for (const m of ms) gSets.set(m.id, setsByMatch.get(m.id) || []);
+    }
+    const pIds = new Set<number>();
+    for (const m of gMatches) {
+      pIds.add(m.team1_p1); if (m.team1_p2) pIds.add(m.team1_p2);
+      pIds.add(m.team2_p1); if (m.team2_p2) pIds.add(m.team2_p2);
+    }
+    return { gMatches, gSets, pIds };
+  };
+
+  // Start KO phase after group phase is complete
+  const startKoPhase = async () => {
+    if (!tournament || tournament.format !== "group_ko") return;
+
+    const qualifyPerGroup = tournament.qualify_per_group || 2;
+    const numGroups = tournament.num_groups || 2;
+    const isDoubles = tournament.mode !== "singles";
+
+    await updateTournamentPhase(tournamentId, "ko");
+
+    const numCourts = tournament.courts || 1;
+    const autoAssign = numCourts === 1;
+    const koRoundId = await createRound(tournamentId, rounds.length + 1, "ko", null);
+
+    if (isDoubles) {
+      // Doppel/Mixed: Qualifizierte TEAMS sammeln
+      const qualifiedTeams: [number, number][] = [];
+      for (let g = 1; g <= numGroups; g++) {
+        const { gMatches, gSets, pIds } = getGroupData(g);
+        const gPlayers = players.filter((p) => pIds.has(p.id));
+        const teamStandings = calculateTeamStandings(gPlayers, gMatches, gSets);
+        for (let i = 0; i < Math.min(qualifyPerGroup, teamStandings.length); i++) {
+          const ts = teamStandings[i];
+          qualifiedTeams.push([ts.player1.id, ts.player2.id]);
+        }
+      }
+      if (qualifiedTeams.length < 2) return;
+      const koMatches = generateEliminationBracketDoubles(qualifiedTeams);
+      for (const m of koMatches) {
+        const court = autoAssign ? 1 : null;
+        await createMatch(koRoundId, m.team1_p1, m.team1_p2, m.team2_p1, m.team2_p2, court);
+      }
+    } else {
+      // Einzel: Qualifizierte SPIELER sammeln
+      const qualified: number[] = [];
+      for (let g = 1; g <= numGroups; g++) {
+        const { gMatches, gSets, pIds } = getGroupData(g);
+        const gPlayers = players.filter((p) => pIds.has(p.id));
+        const gStandings = calculateStandings(gPlayers, gMatches, gSets);
+        for (let i = 0; i < Math.min(qualifyPerGroup, gStandings.length); i++) {
+          qualified.push(gStandings[i].player.id);
+        }
+      }
+      if (qualified.length < 2) return;
+      const qualifiedPlayers = qualified
+        .map((id) => players.find((p) => p.id === id))
+        .filter((p): p is NonNullable<typeof p> => !!p);
+      const koMatches = generateEliminationBracket(qualifiedPlayers);
+      for (const m of koMatches) {
+        if (m.team2_p1 !== -1) {
+          const court = autoAssign ? 1 : null;
+          await createMatch(koRoundId, m.team1_p1, null, m.team2_p1, null, court);
+        }
+      }
+    }
+
+    setActiveRound(koRoundId);
     loadAll();
   };
 
@@ -311,10 +438,23 @@ export default function TournamentView() {
 
   const canGenerateNextRound =
     tournament?.status === "active" &&
+    tournament.format !== "group_ko" &&
     (tournament.format === "random_doubles" ||
       (tournament.format === "round_robin" && tournament.mode !== "singles")) &&
     rounds.length > 0 &&
     allRoundMatchesCompleted(rounds[rounds.length - 1].id);
+
+  // Group-KO: Check if group phase is complete and KO can start
+  const isGroupKo = tournament?.format === "group_ko";
+  const groupRounds = rounds.filter((r) => r.phase === "group");
+  const koRounds = rounds.filter((r) => r.phase === "ko");
+  const groupPhaseComplete = isGroupKo && groupRounds.length > 0 &&
+    groupRounds.every((r) => allRoundMatchesCompleted(r.id));
+  const canStartKo = isGroupKo &&
+    tournament?.status === "active" &&
+    tournament?.current_phase === "group" &&
+    groupPhaseComplete &&
+    koRounds.length === 0;
 
   // Pruefe ob noch offene Spiele existieren (ueber alle Runden)
   const hasOpenMatches = (() => {
@@ -373,6 +513,15 @@ export default function TournamentView() {
                 {tournament.courts} Felder
               </span>
             )}
+            {isGroupKo && (
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                tournament.current_phase === "ko"
+                  ? "bg-violet-100 text-violet-700"
+                  : "bg-emerald-100 text-emerald-700"
+              }`}>
+                {tournament.current_phase === "ko" ? "KO-Phase" : `${tournament.num_groups} Gruppen`}
+              </span>
+            )}
             <span
               className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusStyle}`}
             >
@@ -395,6 +544,14 @@ export default function TournamentView() {
               className="bg-amber-500 text-white px-5 py-2.5 rounded-xl hover:bg-amber-600 shadow-sm hover:shadow-md transition-all text-sm font-medium"
             >
               🎲 Naechste Runde
+            </button>
+          )}
+          {canStartKo && (
+            <button
+              onClick={startKoPhase}
+              className="bg-violet-600 text-white px-5 py-2.5 rounded-xl hover:bg-violet-700 shadow-sm hover:shadow-md transition-all text-sm font-medium"
+            >
+              🏆 KO-Phase starten
             </button>
           )}
           {tournament.status === "active" && (
@@ -459,29 +616,67 @@ export default function TournamentView() {
 
       {rounds.length > 0 && (
         <div className="flex gap-2 mb-4 flex-wrap">
-          {rounds.map((r) => (
-            <button
-              key={r.id}
-              onClick={() => setActiveRound(r.id)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                activeRound === r.id
-                  ? "bg-emerald-600 text-white shadow-md"
-                  : "bg-white text-gray-600 hover:bg-emerald-50 border border-gray-100 hover:border-emerald-200"
-              }`}
-            >
-              Runde {r.round_number}
-              {allRoundMatchesCompleted(r.id) && (
-                <span className="ml-1.5">✓</span>
-              )}
-            </button>
-          ))}
+          {isGroupKo && groupRounds.length > 0 && (
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wide self-center mr-1">
+              Gruppen:
+            </span>
+          )}
+          {rounds.map((r) => {
+            let label: string;
+            let colorClass: string;
+            if (r.phase === "group" && r.group_number) {
+              // Count which round this is within the same group
+              const sameGroupRounds = rounds.filter(
+                (rr) => rr.phase === "group" && rr.group_number === r.group_number
+              );
+              const inGroupIdx = sameGroupRounds.indexOf(r) + 1;
+              label = sameGroupRounds.length > 1
+                ? `G${r.group_number}.${inGroupIdx}`
+                : `G${r.group_number}`;
+              colorClass = activeRound === r.id
+                ? "bg-emerald-600 text-white shadow-md"
+                : "bg-white text-gray-600 hover:bg-emerald-50 border border-gray-100 hover:border-emerald-200";
+            } else if (r.phase === "ko") {
+              label = `KO R${r.round_number}`;
+              colorClass = activeRound === r.id
+                ? "bg-violet-600 text-white shadow-md"
+                : "bg-white text-violet-600 hover:bg-violet-50 border border-violet-100 hover:border-violet-200";
+            } else {
+              label = `Runde ${r.round_number}`;
+              colorClass = activeRound === r.id
+                ? "bg-emerald-600 text-white shadow-md"
+                : "bg-white text-gray-600 hover:bg-emerald-50 border border-gray-100 hover:border-emerald-200";
+            }
+            // Insert "KO:" separator before first KO round
+            const isFirstKo = r.phase === "ko" && rounds.indexOf(r) > 0 &&
+              rounds[rounds.indexOf(r) - 1]?.phase !== "ko";
+
+            return (
+              <React.Fragment key={r.id}>
+                {isFirstKo && (
+                  <span className="text-xs font-bold text-violet-400 uppercase tracking-wide self-center mx-1">
+                    KO:
+                  </span>
+                )}
+                <button
+                  onClick={() => setActiveRound(r.id)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${colorClass}`}
+                >
+                  {label}
+                  {allRoundMatchesCompleted(r.id) && (
+                    <span className="ml-1.5">✓</span>
+                  )}
+                </button>
+              </React.Fragment>
+            );
+          })}
         </div>
       )}
 
-      {/* Court Overview - below rounds, above matches */}
-      {rounds.length > 0 && tournament.courts > 1 && activeRound && (
+      {/* Court Overview - always shown when tournament has courts configured */}
+      {rounds.length > 0 && activeRound && tournament.status === "active" && (
         <CourtOverview
-          courts={tournament.courts}
+          courts={Math.max(tournament.courts || 1, 1)}
           matches={matchesByRound.get(activeRound) || []}
           playerName={playerName}
           onDrop={(matchId, court) => handleCourtChange(matchId, court)}
@@ -527,64 +722,207 @@ export default function TournamentView() {
         {/* Sidebar: Standings + Players */}
         <div className="space-y-4">
           {/* Standings */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-transparent">
-              <span className="font-semibold text-sm text-emerald-800">
-                📊 Rangliste
-              </span>
-            </div>
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="px-3 py-2.5 text-left text-gray-500 font-medium">#</th>
-                  <th className="px-3 py-2.5 text-left text-gray-500 font-medium">Spieler</th>
-                  <th className="px-3 py-2.5 text-center text-gray-500 font-medium">S</th>
-                  <th className="px-3 py-2.5 text-center text-gray-500 font-medium">N</th>
-                  <th className="px-3 py-2.5 text-center text-gray-500 font-medium">Saetze</th>
-                  <th className="px-3 py-2.5 text-center text-gray-500 font-medium">Punkte</th>
-                </tr>
-              </thead>
-              <tbody>
-                {standings.map((s, i) => (
-                  <tr
-                    key={s.player.id}
-                    className={`border-b border-gray-50 last:border-0 ${
-                      i < 3 && s.wins > 0 ? "bg-amber-50/50" : ""
-                    }`}
-                  >
-                    <td className="px-3 py-2.5 text-center text-sm">
-                      {rankMedal(i)}
-                    </td>
-                    <td className="px-3 py-2.5 font-medium text-gray-900">
-                      {s.player.name}
-                    </td>
-                    <td className="px-3 py-2.5 text-center font-bold text-emerald-600">
-                      {s.wins}
-                    </td>
-                    <td className="px-3 py-2.5 text-center text-rose-400">
-                      {s.losses}
-                    </td>
-                    <td className="px-3 py-2.5 text-center font-mono text-gray-600">
-                      {s.setsWon}:{s.setsLost}
-                    </td>
-                    <td className="px-3 py-2.5 text-center font-mono text-gray-600">
-                      {s.pointsWon}:{s.pointsLost}
-                    </td>
+          {isGroupKo && groupRounds.length > 0 ? (
+            /* Group Standings */
+            <>
+              {Array.from({ length: tournament.num_groups || 2 }, (_, g) => g + 1).map((groupNum) => {
+                const { gMatches, gSets, pIds } = getGroupData(groupNum);
+                const gPlayers = players.filter((p) => pIds.has(p.id));
+                const qualifyCount = tournament.qualify_per_group || 2;
+                const isDoublesGroup = tournament.mode !== "singles";
+
+                if (isDoublesGroup) {
+                  // Team standings
+                  const teamStandings = calculateTeamStandings(gPlayers, gMatches, gSets);
+                  return (
+                    <div key={groupNum} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                      <div className="px-5 py-2.5 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-transparent">
+                        <span className="font-semibold text-sm text-emerald-800">
+                          Gruppe {groupNum}
+                        </span>
+                        <span className="text-xs text-gray-400 ml-2">
+                          ({teamStandings.length} Teams, Top {qualifyCount})
+                        </span>
+                      </div>
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-gray-100">
+                            <th className="px-3 py-2 text-left text-gray-500 font-medium">#</th>
+                            <th className="px-3 py-2 text-left text-gray-500 font-medium">Team</th>
+                            <th className="px-3 py-2 text-center text-gray-500 font-medium">S</th>
+                            <th className="px-3 py-2 text-center text-gray-500 font-medium">N</th>
+                            <th className="px-3 py-2 text-center text-gray-500 font-medium">Pkt</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {teamStandings.map((ts, i) => (
+                            <tr
+                              key={ts.teamKey}
+                              className={`border-b border-gray-50 last:border-0 ${
+                                i < qualifyCount ? "bg-emerald-50/40" : ""
+                              }`}
+                            >
+                              <td className="px-3 py-2 text-gray-400 font-mono">{i + 1}</td>
+                              <td className="px-3 py-2 font-medium text-gray-900">
+                                {ts.player1.name} / {ts.player2.name}
+                                {i < qualifyCount && (
+                                  <span className="ml-1 text-[9px] text-emerald-500 font-bold">Q</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-center font-bold text-emerald-600">{ts.wins}</td>
+                              <td className="px-3 py-2 text-center text-rose-400">{ts.losses}</td>
+                              <td className="px-3 py-2 text-center font-mono text-gray-600">
+                                {ts.pointsWon}:{ts.pointsLost}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                }
+
+                // Einzel standings
+                const gStandings = calculateStandings(gPlayers, gMatches, gSets);
+                return (
+                  <div key={groupNum} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="px-5 py-2.5 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-transparent">
+                      <span className="font-semibold text-sm text-emerald-800">
+                        Gruppe {groupNum}
+                      </span>
+                      <span className="text-xs text-gray-400 ml-2">
+                        ({gPlayers.length} Spieler, Top {qualifyCount})
+                      </span>
+                    </div>
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="px-3 py-2 text-left text-gray-500 font-medium">#</th>
+                          <th className="px-3 py-2 text-left text-gray-500 font-medium">Spieler</th>
+                          <th className="px-3 py-2 text-center text-gray-500 font-medium">S</th>
+                          <th className="px-3 py-2 text-center text-gray-500 font-medium">N</th>
+                          <th className="px-3 py-2 text-center text-gray-500 font-medium">Pkt</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {gStandings.map((s, i) => (
+                          <tr
+                            key={s.player.id}
+                            className={`border-b border-gray-50 last:border-0 ${
+                              i < qualifyCount ? "bg-emerald-50/40" : ""
+                            }`}
+                          >
+                            <td className="px-3 py-2 text-gray-400 font-mono">{i + 1}</td>
+                            <td className="px-3 py-2 font-medium text-gray-900">
+                              {s.player.name}
+                              {i < qualifyCount && (
+                                <span className="ml-1 text-[9px] text-emerald-500 font-bold">Q</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-center font-bold text-emerald-600">{s.wins}</td>
+                            <td className="px-3 py-2 text-center text-rose-400">{s.losses}</td>
+                            <td className="px-3 py-2 text-center font-mono text-gray-600">
+                              {s.pointsWon}:{s.pointsLost}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })}
+              {/* Overall KO Standings */}
+              {koRounds.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-violet-100 overflow-hidden">
+                  <div className="px-5 py-3 border-b border-violet-100 bg-gradient-to-r from-violet-50 to-transparent">
+                    <span className="font-semibold text-sm text-violet-800">
+                      🏆 KO-Phase
+                    </span>
+                  </div>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-100">
+                        <th className="px-3 py-2.5 text-left text-gray-500 font-medium">#</th>
+                        <th className="px-3 py-2.5 text-left text-gray-500 font-medium">Spieler</th>
+                        <th className="px-3 py-2.5 text-center text-gray-500 font-medium">S</th>
+                        <th className="px-3 py-2.5 text-center text-gray-500 font-medium">N</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {standings.map((s, i) => (
+                        <tr key={s.player.id} className="border-b border-gray-50 last:border-0">
+                          <td className="px-3 py-2.5 text-center text-sm">{rankMedal(i)}</td>
+                          <td className="px-3 py-2.5 font-medium text-gray-900">{s.player.name}</td>
+                          <td className="px-3 py-2.5 text-center font-bold text-emerald-600">{s.wins}</td>
+                          <td className="px-3 py-2.5 text-center text-rose-400">{s.losses}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          ) : (
+            /* Normal Standings */
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-transparent">
+                <span className="font-semibold text-sm text-emerald-800">
+                  📊 Rangliste
+                </span>
+              </div>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="px-3 py-2.5 text-left text-gray-500 font-medium">#</th>
+                    <th className="px-3 py-2.5 text-left text-gray-500 font-medium">Spieler</th>
+                    <th className="px-3 py-2.5 text-center text-gray-500 font-medium">S</th>
+                    <th className="px-3 py-2.5 text-center text-gray-500 font-medium">N</th>
+                    <th className="px-3 py-2.5 text-center text-gray-500 font-medium">Saetze</th>
+                    <th className="px-3 py-2.5 text-center text-gray-500 font-medium">Punkte</th>
                   </tr>
-                ))}
-                {standings.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="px-3 py-6 text-center text-gray-400"
+                </thead>
+                <tbody>
+                  {standings.map((s, i) => (
+                    <tr
+                      key={s.player.id}
+                      className={`border-b border-gray-50 last:border-0 ${
+                        i < 3 && s.wins > 0 ? "bg-amber-50/50" : ""
+                      }`}
                     >
-                      Noch keine Ergebnisse
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                      <td className="px-3 py-2.5 text-center text-sm">
+                        {rankMedal(i)}
+                      </td>
+                      <td className="px-3 py-2.5 font-medium text-gray-900">
+                        {s.player.name}
+                      </td>
+                      <td className="px-3 py-2.5 text-center font-bold text-emerald-600">
+                        {s.wins}
+                      </td>
+                      <td className="px-3 py-2.5 text-center text-rose-400">
+                        {s.losses}
+                      </td>
+                      <td className="px-3 py-2.5 text-center font-mono text-gray-600">
+                        {s.setsWon}:{s.setsLost}
+                      </td>
+                      <td className="px-3 py-2.5 text-center font-mono text-gray-600">
+                        {s.pointsWon}:{s.pointsLost}
+                      </td>
+                    </tr>
+                  ))}
+                  {standings.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-3 py-6 text-center text-gray-400"
+                      >
+                        Noch keine Ergebnisse
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* Participants */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

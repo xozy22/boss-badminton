@@ -1,6 +1,6 @@
 export type Gender = "m" | "f";
 export type TournamentMode = "singles" | "doubles" | "mixed";
-export type TournamentFormat = "round_robin" | "elimination" | "random_doubles";
+export type TournamentFormat = "round_robin" | "elimination" | "random_doubles" | "group_ko";
 export type TournamentStatus = "draft" | "active" | "completed" | "archived";
 export type MatchStatus = "pending" | "active" | "completed";
 
@@ -11,6 +11,8 @@ export interface Player {
   created_at: string;
 }
 
+export type TournamentPhase = "group" | "ko" | null;
+
 export interface Tournament {
   id: number;
   name: string;
@@ -19,6 +21,9 @@ export interface Tournament {
   sets_to_win: number;
   points_per_set: number;
   courts: number;
+  num_groups: number;
+  qualify_per_group: number;
+  current_phase: TournamentPhase;
   created_at: string;
   status: TournamentStatus;
 }
@@ -32,6 +37,8 @@ export interface Round {
   id: number;
   tournament_id: number;
   round_number: number;
+  phase: TournamentPhase;
+  group_number: number | null;
 }
 
 export interface Match {
@@ -65,6 +72,18 @@ export interface StandingEntry {
   pointsLost: number;
 }
 
+export interface TeamStandingEntry {
+  teamKey: string; // "id1-id2" sorted
+  player1: Player;
+  player2: Player;
+  wins: number;
+  losses: number;
+  setsWon: number;
+  setsLost: number;
+  pointsWon: number;
+  pointsLost: number;
+}
+
 export const MODE_LABELS: Record<TournamentMode, string> = {
   singles: "Einzel",
   doubles: "Doppel",
@@ -75,6 +94,7 @@ export const FORMAT_LABELS: Record<TournamentFormat, string> = {
   round_robin: "Jeder gegen Jeden",
   elimination: "KO-System",
   random_doubles: "Wechselnde Partner",
+  group_ko: "Gruppenphase + KO",
 };
 
 export const STATUS_LABELS: Record<TournamentStatus, string> = {

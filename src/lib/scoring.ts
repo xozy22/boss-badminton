@@ -1,4 +1,4 @@
-import type { Player, Match, GameSet, StandingEntry } from "./types";
+import type { Player, Match, GameSet, StandingEntry, TeamStandingEntry } from "./types";
 
 /**
  * Badminton Rallypoint-System:
@@ -293,6 +293,89 @@ export function calculateStandings(
     const bPointRatio =
       b.pointsLost === 0 ? b.pointsWon : b.pointsWon / b.pointsLost;
     return bPointRatio - aPointRatio;
+  });
+
+  return result;
+}
+
+function teamKey(p1: number, p2: number): string {
+  return `${Math.min(p1, p2)}-${Math.max(p1, p2)}`;
+}
+
+export function calculateTeamStandings(
+  players: Player[],
+  matches: Match[],
+  sets: Map<number, GameSet[]>
+): TeamStandingEntry[] {
+  const entries = new Map<string, TeamStandingEntry>();
+  const playerMap = new Map(players.map((p) => [p.id, p]));
+
+  // Discover teams from matches
+  for (const m of matches) {
+    if (m.team1_p2) {
+      const key = teamKey(m.team1_p1, m.team1_p2);
+      if (!entries.has(key)) {
+        entries.set(key, {
+          teamKey: key,
+          player1: playerMap.get(Math.min(m.team1_p1, m.team1_p2))!,
+          player2: playerMap.get(Math.max(m.team1_p1, m.team1_p2))!,
+          wins: 0, losses: 0, setsWon: 0, setsLost: 0, pointsWon: 0, pointsLost: 0,
+        });
+      }
+    }
+    if (m.team2_p2) {
+      const key = teamKey(m.team2_p1, m.team2_p2);
+      if (!entries.has(key)) {
+        entries.set(key, {
+          teamKey: key,
+          player1: playerMap.get(Math.min(m.team2_p1, m.team2_p2))!,
+          player2: playerMap.get(Math.max(m.team2_p1, m.team2_p2))!,
+          wins: 0, losses: 0, setsWon: 0, setsLost: 0, pointsWon: 0, pointsLost: 0,
+        });
+      }
+    }
+  }
+
+  for (const m of matches) {
+    if (m.status !== "completed" || !m.winner_team) continue;
+    const matchSets = sets.get(m.id) || [];
+
+    const t1key = m.team1_p2 ? teamKey(m.team1_p1, m.team1_p2) : null;
+    const t2key = m.team2_p2 ? teamKey(m.team2_p1, m.team2_p2) : null;
+
+    const winKey = m.winner_team === 1 ? t1key : t2key;
+    const loseKey = m.winner_team === 1 ? t2key : t1key;
+
+    if (winKey) { const e = entries.get(winKey); if (e) e.wins++; }
+    if (loseKey) { const e = entries.get(loseKey); if (e) e.losses++; }
+
+    let t1SetsWon = 0, t2SetsWon = 0;
+    for (const s of matchSets) {
+      if (s.team1_score > s.team2_score) t1SetsWon++;
+      else if (s.team2_score > s.team1_score) t2SetsWon++;
+
+      if (t1key) {
+        const e = entries.get(t1key);
+        if (e) { e.pointsWon += s.team1_score; e.pointsLost += s.team2_score; }
+      }
+      if (t2key) {
+        const e = entries.get(t2key);
+        if (e) { e.pointsWon += s.team2_score; e.pointsLost += s.team1_score; }
+      }
+    }
+    if (t1key) { const e = entries.get(t1key); if (e) { e.setsWon += t1SetsWon; e.setsLost += t2SetsWon; } }
+    if (t2key) { const e = entries.get(t2key); if (e) { e.setsWon += t2SetsWon; e.setsLost += t1SetsWon; } }
+  }
+
+  const result = Array.from(entries.values());
+  result.sort((a, b) => {
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    const aR = a.setsLost === 0 ? a.setsWon : a.setsWon / a.setsLost;
+    const bR = b.setsLost === 0 ? b.setsWon : b.setsWon / b.setsLost;
+    if (bR !== aR) return bR - aR;
+    const aPR = a.pointsLost === 0 ? a.pointsWon : a.pointsWon / a.pointsLost;
+    const bPR = b.pointsLost === 0 ? b.pointsWon : b.pointsWon / b.pointsLost;
+    return bPR - aPR;
   });
 
   return result;

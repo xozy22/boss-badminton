@@ -253,6 +253,18 @@ pub fn run() {
             ",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "add group_ko support: groups on tournaments, phase/group on rounds",
+            sql: "
+                ALTER TABLE tournaments ADD COLUMN num_groups INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE tournaments ADD COLUMN qualify_per_group INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE tournaments ADD COLUMN current_phase TEXT;
+                ALTER TABLE rounds ADD COLUMN phase TEXT;
+                ALTER TABLE rounds ADD COLUMN group_number INTEGER;
+            ",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

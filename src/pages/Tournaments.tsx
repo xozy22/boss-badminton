@@ -7,6 +7,8 @@ import { MODE_LABELS, FORMAT_LABELS, STATUS_LABELS } from "../lib/types";
 export default function Tournaments() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [showArchive, setShowArchive] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Tournament | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   const load = () => getTournaments().then(setTournaments);
 
@@ -14,8 +16,11 @@ export default function Tournaments() {
     load();
   }, []);
 
-  const handleDelete = async (id: number) => {
-    await deleteTournament(id);
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget || deleteConfirmText !== "LOESCHEN") return;
+    await deleteTournament(deleteTarget.id);
+    setDeleteTarget(null);
+    setDeleteConfirmText("");
     load();
   };
 
@@ -87,14 +92,13 @@ export default function Tournaments() {
             ↩ Wiederherstellen
           </button>
         )}
-        {t.status === "draft" && (
-          <button
-            onClick={() => handleDelete(t.id)}
-            className="text-gray-400 hover:text-rose-600 text-sm transition-colors"
-          >
-            Loeschen
-          </button>
-        )}
+        <button
+          onClick={() => { setDeleteTarget(t); setDeleteConfirmText(""); }}
+          className="text-gray-400 hover:text-rose-600 text-sm transition-colors"
+          title="Turnier loeschen"
+        >
+          🗑
+        </button>
       </div>
     </div>
   );
@@ -155,6 +159,52 @@ export default function Tournaments() {
           </h2>
           <div className="space-y-3">
             {archivedTournaments.map((t) => renderTournamentCard(t, true))}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-100">
+            <div className="text-center mb-5">
+              <div className="text-4xl mb-3">⚠️</div>
+              <h3 className="text-lg font-bold text-gray-900">
+                Turnier loeschen?
+              </h3>
+              <p className="text-sm text-gray-500 mt-2">
+                <span className="font-semibold text-gray-800">"{deleteTarget.name}"</span> wird
+                mit allen Runden, Spielen und Ergebnissen unwiderruflich geloescht.
+              </p>
+            </div>
+            <div className="mb-5">
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+                Tippe <span className="font-bold text-rose-600">LOESCHEN</span> zur Bestaetigung:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none transition-all text-center font-mono tracking-widest"
+                placeholder="LOESCHEN"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setDeleteTarget(null); setDeleteConfirmText(""); }}
+                className="flex-1 bg-white border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-all text-sm font-medium"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleteConfirmText !== "LOESCHEN"}
+                className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-all text-sm font-medium disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+              >
+                Endgueltig loeschen
+              </button>
+            </div>
           </div>
         </div>
       )}

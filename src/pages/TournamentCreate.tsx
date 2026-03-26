@@ -7,11 +7,12 @@ import {
 } from "../lib/db";
 import type { Player, TournamentMode, TournamentFormat } from "../lib/types";
 import { MODE_LABELS, FORMAT_LABELS } from "../lib/types";
+import { loadSettings } from "./Settings";
 
 const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
-  singles: ["round_robin", "elimination"],
-  doubles: ["round_robin", "elimination", "random_doubles"],
-  mixed: ["round_robin", "elimination", "random_doubles"],
+  singles: ["round_robin", "elimination", "group_ko"],
+  doubles: ["round_robin", "elimination", "random_doubles", "group_ko"],
+  mixed: ["round_robin", "elimination", "random_doubles", "group_ko"],
 };
 
 type GenderFilter = "all" | "m" | "f";
@@ -23,14 +24,26 @@ export default function TournamentCreate() {
     new Set()
   );
 
-  const [name, setName] = useState("");
+  const generateName = (m: TournamentMode, f: TournamentFormat) => {
+    const now = new Date();
+    const d = `${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}.${now.getFullYear()}`;
+    return `${d} - ${MODE_LABELS[m]} - ${FORMAT_LABELS[f]}`;
+  };
+
   const [mode, setMode] = useState<TournamentMode>("doubles");
   const [format, setFormat] = useState<TournamentFormat>("random_doubles");
+  const [name, setName] = useState(() => generateName("doubles", "random_doubles"));
+  const [nameManuallyEdited, setNameManuallyEdited] = useState(false);
   const [setsToWin, setSetsToWin] = useState(2);
   const [pointsPerSet, setPointsPerSet] = useState(21);
-  const [courts, setCourts] = useState(1);
+  const [courts, setCourts] = useState(() => loadSettings().defaultCourts);
+  const [numGroups, setNumGroups] = useState(2);
+  const [qualifyPerGroup, setQualifyPerGroup] = useState(2);
   const [useSeeding, setUseSeeding] = useState(false);
   const [seedOrder, setSeedOrder] = useState<number[]>([]); // player IDs in seed order
+
+  const [dragSeedIdx, setDragSeedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   // Filter state
   const [search, setSearch] = useState("");
@@ -56,18 +69,16 @@ export default function TournamentCreate() {
   }, [players, search, genderFilter]);
 
   const selectAllFiltered = () => {
-    const newIds: number[] = [];
     setSelectedPlayerIds((prev) => {
       const next = new Set(prev);
-      for (const p of filteredPlayers) {
-        if (!next.has(p.id)) newIds.push(p.id);
-        next.add(p.id);
-      }
+      for (const p of filteredPlayers) next.add(p.id);
       return next;
     });
-    if (newIds.length > 0) {
-      setSeedOrder((s) => [...s, ...newIds]);
-    }
+    setSeedOrder((s) => {
+      const existing = new Set(s);
+      const toAdd = filteredPlayers.filter((p) => !existing.has(p.id)).map((p) => p.id);
+      return [...s, ...toAdd];
+    });
   };
 
   const selectNoneFiltered = () => {
@@ -86,15 +97,19 @@ export default function TournamentCreate() {
   ).length;
 
   const handleCreate = async () => {
-    if (!name.trim() || selectedPlayerIds.size < 2) return;
+    if (selectedPlayerIds.size < minPlayers) return;
+
+    const finalName = name.trim() || generateName(mode, format);
 
     const id = await createTournament(
-      name.trim(),
+      finalName,
       mode,
       format,
       setsToWin,
       pointsPerSet,
-      courts
+      courts,
+      format === "group_ko" ? numGroups : 0,
+      format === "group_ko" ? qualifyPerGroup : 0
     );
 
     for (const pid of selectedPlayerIds) {
@@ -116,10 +131,18 @@ export default function TournamentCreate() {
 
     const newFiltered = [...filtered];
     [newFiltered[idx], newFiltered[newIdx]] = [newFiltered[newIdx], newFiltered[idx]];
+    setSeedOrder(newFiltered);
+  };
 
-    // Rebuild full seedOrder: keep unselected in place, replace selected
-    const result = [...newFiltered];
-    setSeedOrder(result);
+  const handleSeedDrop = (dropIdx: number) => {
+    if (dragSeedIdx === null || dragSeedIdx === dropIdx) return;
+    const filtered = seedOrder.filter((pid) => selectedPlayerIds.has(pid));
+    const newArr = [...filtered];
+    const [moved] = newArr.splice(dragSeedIdx, 1);
+    newArr.splice(dropIdx, 0, moved);
+    setSeedOrder(newArr);
+    setDragSeedIdx(null);
+    setDragOverIdx(null);
   };
 
   // Keep seedOrder in sync when players are added/removed
@@ -128,12 +151,10 @@ export default function TournamentCreate() {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
-        // Remove from seed order
         setSeedOrder((s) => s.filter((pid) => pid !== id));
       } else {
         next.add(id);
-        // Add to end of seed order
-        setSeedOrder((s) => [...s, id]);
+        setSeedOrder((s) => s.includes(id) ? s : [...s, id]);
       }
       return next;
     });
@@ -163,13 +184,24 @@ export default function TournamentCreate() {
               <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
                 Turniername
               </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
-                placeholder="z.B. Vereinsturnier Fruehling 2026"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); setNameManuallyEdited(true); }}
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                  placeholder="Turniername"
+                />
+                {nameManuallyEdited && (
+                  <button
+                    onClick={() => { setName(generateName(mode, format)); setNameManuallyEdited(false); }}
+                    className="text-gray-400 hover:text-emerald-600 px-3 py-2.5 rounded-xl border border-gray-200 hover:border-emerald-300 transition-all text-sm"
+                    title="Vorschlag wiederherstellen"
+                  >
+                    ↻
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -179,9 +211,14 @@ export default function TournamentCreate() {
                 </label>
                 <select
                   value={mode}
-                  onChange={(e) =>
-                    setMode(e.target.value as TournamentMode)
-                  }
+                  onChange={(e) => {
+                    const newMode = e.target.value as TournamentMode;
+                    setMode(newMode);
+                    if (!nameManuallyEdited) {
+                      const newFormat = VALID_FORMATS[newMode].includes(format) ? format : VALID_FORMATS[newMode][0];
+                      setName(generateName(newMode, newFormat));
+                    }
+                  }}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
                 >
                   {Object.entries(MODE_LABELS).map(([k, v]) => (
@@ -197,9 +234,11 @@ export default function TournamentCreate() {
                 </label>
                 <select
                   value={format}
-                  onChange={(e) =>
-                    setFormat(e.target.value as TournamentFormat)
-                  }
+                  onChange={(e) => {
+                    const newFormat = e.target.value as TournamentFormat;
+                    setFormat(newFormat);
+                    if (!nameManuallyEdited) setName(generateName(mode, newFormat));
+                  }}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
                 >
                   {VALID_FORMATS[mode].map((f) => (
@@ -255,6 +294,47 @@ export default function TournamentCreate() {
                 </select>
               </div>
             </div>
+
+            {/* Group settings - only for group_ko */}
+            {format === "group_ko" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                    Anzahl Gruppen
+                  </label>
+                  <select
+                    value={numGroups}
+                    onChange={(e) => setNumGroups(Number(e.target.value))}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                  >
+                    {[2, 3, 4, 5, 6, 7, 8].map((n) => (
+                      <option key={n} value={n}>
+                        {n} Gruppen
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                    Qualifikanten pro Gruppe
+                  </label>
+                  <select
+                    value={qualifyPerGroup}
+                    onChange={(e) => setQualifyPerGroup(Number(e.target.value))}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                  >
+                    {[1, 2, 3, 4].map((n) => (
+                      <option key={n} value={n}>
+                        Top {n}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="text-xs text-gray-400 mt-1">
+                    → {numGroups * qualifyPerGroup} Spieler im KO
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -396,13 +476,14 @@ export default function TournamentCreate() {
                   checked={useSeeding}
                   onChange={(e) => {
                     setUseSeeding(e.target.checked);
-                    if (e.target.checked && seedOrder.length === 0) {
-                      // Initialize seed order with selected players
-                      setSeedOrder(
-                        players
-                          .filter((p) => selectedPlayerIds.has(p.id))
-                          .map((p) => p.id)
-                      );
+                    if (e.target.checked) {
+                      // Build clean seed order: keep existing order, add missing selected players
+                      const existing = seedOrder.filter((pid) => selectedPlayerIds.has(pid));
+                      const existingSet = new Set(existing);
+                      const missing = players
+                        .filter((p) => selectedPlayerIds.has(p.id) && !existingSet.has(p.id))
+                        .map((p) => p.id);
+                      setSeedOrder([...existing, ...missing]);
                     }
                   }}
                   className="rounded accent-emerald-600"
@@ -414,8 +495,8 @@ export default function TournamentCreate() {
             {useSeeding && (
               <>
                 <p className="text-xs text-gray-400 mb-3">
-                  Ordne die Spieler nach Staerke (Platz 1 = staerkster Spieler).
-                  Die besten Spieler treffen erst in spaeteren Runden aufeinander.
+                  Ordne die Spieler nach Staerke per Drag &amp; Drop oder mit den Pfeilen
+                  (Platz 1 = staerkster Spieler).
                 </p>
                 <div className="rounded-xl border border-gray-100 overflow-hidden">
                   {seedOrder
@@ -423,14 +504,29 @@ export default function TournamentCreate() {
                     .map((pid, idx) => {
                       const p = players.find((pl) => pl.id === pid);
                       if (!p) return null;
+                      const isDragging = dragSeedIdx === idx;
+                      const isOver = dragOverIdx === idx;
                       return (
                         <div
                           key={p.id}
-                          className={`flex items-center gap-3 px-4 py-2.5 text-sm ${
+                          draggable
+                          onDragStart={(e) => {
+                            setDragSeedIdx(idx);
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", String(idx));
+                          }}
+                          onDragEnd={() => { setDragSeedIdx(null); setDragOverIdx(null); }}
+                          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverIdx(idx); }}
+                          onDragLeave={() => { if (dragOverIdx === idx) setDragOverIdx(null); }}
+                          onDrop={(e) => { e.preventDefault(); handleSeedDrop(idx); }}
+                          className={`flex items-center gap-3 px-4 py-2.5 text-sm cursor-grab active:cursor-grabbing select-none transition-all ${
                             idx > 0 ? "border-t border-gray-50" : ""
+                          } ${isDragging ? "opacity-40 bg-gray-50" : ""} ${
+                            isOver && !isDragging ? "border-t-2 border-t-emerald-400" : ""
                           }`}
                         >
-                          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                          <span className="text-gray-300 text-xs cursor-grab" draggable={false}>⠿</span>
+                          <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                             idx === 0
                               ? "bg-amber-100 text-amber-700"
                               : idx === 1
@@ -453,8 +549,9 @@ export default function TournamentCreate() {
                           >
                             {p.gender === "m" ? "H" : "D"}
                           </span>
-                          <div className="flex flex-col gap-0.5">
+                          <div className="flex flex-col gap-0.5" draggable={false}>
                             <button
+                              draggable={false}
                               onClick={() => moveSeed(idx, -1)}
                               disabled={idx === 0}
                               className="text-gray-400 hover:text-emerald-600 disabled:opacity-20 disabled:cursor-default text-xs leading-none"
@@ -463,6 +560,7 @@ export default function TournamentCreate() {
                               ▲
                             </button>
                             <button
+                              draggable={false}
                               onClick={() => moveSeed(idx, 1)}
                               disabled={idx === seedOrder.filter((id) => selectedPlayerIds.has(id)).length - 1}
                               className="text-gray-400 hover:text-emerald-600 disabled:opacity-20 disabled:cursor-default text-xs leading-none"
@@ -482,7 +580,7 @@ export default function TournamentCreate() {
 
         <button
           onClick={handleCreate}
-          disabled={!name.trim() || selectedPlayerIds.size < minPlayers}
+          disabled={selectedPlayerIds.size < minPlayers}
           className="w-full bg-emerald-600 text-white px-5 py-3.5 rounded-2xl hover:bg-emerald-700 shadow-sm hover:shadow-lg transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none font-semibold text-base"
         >
           🏆 Turnier erstellen

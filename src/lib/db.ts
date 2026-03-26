@@ -153,13 +153,15 @@ export async function createTournament(
   format: TournamentFormat,
   setsToWin: number,
   pointsPerSet: number,
-  courts: number = 1
+  courts: number = 1,
+  numGroups: number = 0,
+  qualifyPerGroup: number = 0
 ): Promise<number> {
   if (isTauri()) {
     const d = await getTauriDb();
     const result = await d.execute(
-      "INSERT INTO tournaments (name, mode, format, sets_to_win, points_per_set, courts) VALUES ($1, $2, $3, $4, $5, $6)",
-      [name, mode, format, setsToWin, pointsPerSet, courts]
+      "INSERT INTO tournaments (name, mode, format, sets_to_win, points_per_set, courts, num_groups, qualify_per_group) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      [name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup]
     );
     return result.lastInsertId!;
   }
@@ -173,11 +175,26 @@ export async function createTournament(
     sets_to_win: setsToWin,
     points_per_set: pointsPerSet,
     courts,
+    num_groups: numGroups,
+    qualify_per_group: qualifyPerGroup,
+    current_phase: null,
     created_at: new Date().toISOString(),
     status: "draft",
   });
   saveStore(store);
   return id;
+}
+
+export async function updateTournamentPhase(id: number, phase: string | null): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("UPDATE tournaments SET current_phase = $1 WHERE id = $2", [phase, id]);
+    return;
+  }
+  const store = loadStore();
+  const t = store.tournaments.find((t) => t.id === id);
+  if (t) t.current_phase = phase as any;
+  saveStore(store);
 }
 
 export async function updateTournamentStatus(id: number, status: string): Promise<void> {
@@ -292,18 +309,29 @@ export async function getRounds(tournamentId: number): Promise<Round[]> {
     .sort((a, b) => a.round_number - b.round_number);
 }
 
-export async function createRound(tournamentId: number, roundNumber: number): Promise<number> {
+export async function createRound(
+  tournamentId: number,
+  roundNumber: number,
+  phase: string | null = null,
+  groupNumber: number | null = null
+): Promise<number> {
   if (isTauri()) {
     const d = await getTauriDb();
     const result = await d.execute(
-      "INSERT INTO rounds (tournament_id, round_number) VALUES ($1, $2)",
-      [tournamentId, roundNumber]
+      "INSERT INTO rounds (tournament_id, round_number, phase, group_number) VALUES ($1, $2, $3, $4)",
+      [tournamentId, roundNumber, phase, groupNumber]
     );
     return result.lastInsertId!;
   }
   const store = loadStore();
   const id = nextId(store, "rounds");
-  store.rounds.push({ id, tournament_id: tournamentId, round_number: roundNumber });
+  store.rounds.push({
+    id,
+    tournament_id: tournamentId,
+    round_number: roundNumber,
+    phase: phase as any,
+    group_number: groupNumber,
+  });
   saveStore(store);
   return id;
 }
