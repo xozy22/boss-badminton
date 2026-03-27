@@ -18,6 +18,7 @@ import {
   upsertSet,
   updateMatchResult,
   updateMatchCourt,
+  clearMatchCourt,
   reopenMatch,
   updateTournamentStatus,
   updateTournamentPhase,
@@ -82,6 +83,10 @@ export default function TournamentView() {
   const [activeRound, setActiveRound] = useState<number | null>(null);
   const [showPrint, setShowPrint] = useState(false);
   const [retireTarget, setRetireTarget] = useState<{ player: Player; partnerNote: string } | null>(null);
+  const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
+  const [editingMatchIds, setEditingMatchIds] = useState<Set<number>>(new Set());
+  const recentlyCompletedRef = React.useRef(recentlyCompleted)
+  recentlyCompletedRef.current = recentlyCompleted;
 
   const tournamentId = Number(id);
 
@@ -417,6 +422,24 @@ export default function TournamentView() {
     );
     if (winner) {
       await updateMatchResult(matchId, winner);
+      const wasEditing = editingMatchIds.has(matchId);
+      // Remove from editing set
+      setEditingMatchIds((prev) => {
+        const next = new Set(prev);
+        next.delete(matchId);
+        return next;
+      });
+      // 3s delay only for fresh completions, not for re-edited matches
+      if (!wasEditing) {
+        setRecentlyCompleted((prev) => new Set(prev).add(matchId));
+        setTimeout(() => {
+          setRecentlyCompleted((prev) => {
+            const next = new Set(prev);
+            next.delete(matchId);
+            return next;
+          });
+        }, 3000);
+      }
     }
 
     loadAll();
@@ -436,6 +459,9 @@ export default function TournamentView() {
   };
 
   const handleReopenMatch = async (matchId: number) => {
+    setEditingMatchIds((prev) => new Set(prev).add(matchId));
+    // Clear court (but keep court_assigned_at) so it doesn't show on a field
+    await clearMatchCourt(matchId);
     await reopenMatch(matchId);
     loadAll();
   };
@@ -760,8 +786,9 @@ export default function TournamentView() {
                       title: `TV-Modus: ${tournament.name}`,
                       width: 1920,
                       height: 1080,
-                      fullscreen: true,
-                      decorations: false,
+                      fullscreen: false,
+                      maximized: true,
+                      decorations: true,
                       dragDropEnabled: false,
                     });
                     tvWin.once("tauri://error", (e) => {
@@ -932,6 +959,19 @@ export default function TournamentView() {
           activeRoundMatches={activeRound ? matchesByRound.get(activeRound) : undefined}
           playerName={playerName}
           onDrop={(matchId, court) => handleCourtChange(matchId, court)}
+          onMatchClick={(matchId) => {
+            const el = document.querySelector(`[data-match-id="${matchId}"]`);
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+              el.classList.add("ring-2", "ring-amber-400");
+              setTimeout(() => el.classList.remove("ring-2", "ring-amber-400"), 2000);
+              // Focus first enabled score input
+              setTimeout(() => {
+                const input = el.querySelector('input[type="number"]:not(:disabled)') as HTMLInputElement | null;
+                if (input) input.focus();
+              }, 400);
+            }
+          }}
         />
       )}
 
@@ -940,27 +980,69 @@ export default function TournamentView() {
         <div className="lg:col-span-2">
           {rounds.length > 0 && (
             <div>
-              {/* Matches */}
+              {/* Matches - sorted: on court → open → completed */}
               {activeRound &&
-                (matchesByRound.get(activeRound) || []).map((match) => (
-                    <MatchCard
-                      key={match.id}
-                      match={match}
-                      sets={setsByMatch.get(match.id) || []}
-                      setsToWin={tournament.sets_to_win}
-                      pointsPerSet={tournament.points_per_set}
-                      courts={tournament.courts || 1}
-                      occupiedCourts={globalOccupiedCourts}
-                      playerName={playerName}
-                      onScoreChange={handleScoreChange}
-                      onScoreBlur={handleScoreBlur}
-                      onCourtChange={handleCourtChange}
-                      onAnnounce={handleAnnounce}
-                      onReset={handleReopenMatch}
-                      isActive={tournament.status === "active"}
-                      theme={theme}
-                    />
-                ))}
+                (() => {
+                  const raw = matchesByRound.get(activeRound) || [];
+                  // Recently completed matches stay in their original section for 3s
+                  const isRecent = (m: Match) => recentlyCompleted.has(m.id);
+                  const isEditing = (m: Match) => editingMatchIds.has(m.id);
+                  const onCourt = raw.filter((m) =>
+                    ((m.court && m.status !== "completed") || (isRecent(m) && m.court)) && !isEditing(m)
+                  );
+                  const completed = raw.filter((m) =>
+                    (m.status === "completed" && !isRecent(m)) || isEditing(m)
+                  );
+                  return (
+                    <>
+                      {onCourt.length > 0 && (
+                        <div className={`text-xs font-bold ${theme.textMuted} uppercase tracking-wider mb-2`}>
+                          Auf dem Feld ({onCourt.length})
+                        </div>
+                      )}
+                      {onCourt.map((match) => (
+                        <MatchCard
+                          key={match.id}
+                          match={match}
+                          sets={setsByMatch.get(match.id) || []}
+                          setsToWin={tournament.sets_to_win}
+                          pointsPerSet={tournament.points_per_set}
+                          courts={tournament.courts || 1}
+                          occupiedCourts={globalOccupiedCourts}
+                          playerName={playerName}
+                          onScoreChange={handleScoreChange}
+                          onScoreBlur={handleScoreBlur}
+                          onCourtChange={handleCourtChange}
+                          onAnnounce={handleAnnounce}
+                          onReset={handleReopenMatch}
+                          isActive={tournament.status === "active"}
+                          theme={theme}
+                        />
+                      ))}
+
+                      {completed.length > 0 && (
+                        <CompletedMatchesSection
+                          matches={completed}
+                          setsByMatch={setsByMatch}
+                          setsToWin={tournament.sets_to_win}
+                          pointsPerSet={tournament.points_per_set}
+                          courts={tournament.courts || 1}
+                          occupiedCourts={globalOccupiedCourts}
+                          playerName={playerName}
+                          onScoreChange={handleScoreChange}
+                          onScoreBlur={handleScoreBlur}
+                          onCourtChange={handleCourtChange}
+                          onAnnounce={handleAnnounce}
+                          onReset={handleReopenMatch}
+                          isActive={tournament.status === "active"}
+                          theme={theme}
+                          hasOtherMatches={onCourt.length > 0}
+                          editingMatchIds={editingMatchIds}
+                        />
+                      )}
+                    </>
+                  );
+                })()}
             </div>
           )}
         </div>
@@ -1305,6 +1387,171 @@ export default function TournamentView() {
   );
 }
 
+function CompletedMatchesSection({
+  matches,
+  setsByMatch,
+  setsToWin,
+  pointsPerSet,
+  courts,
+  occupiedCourts,
+  playerName,
+  onScoreChange,
+  onScoreBlur,
+  onCourtChange,
+  onAnnounce,
+  onReset,
+  isActive,
+  theme,
+  hasOtherMatches,
+  editingMatchIds,
+}: {
+  matches: Match[];
+  setsByMatch: Map<number, GameSet[]>;
+  setsToWin: number;
+  pointsPerSet: number;
+  courts: number;
+  occupiedCourts: Set<number>;
+  playerName: (id: number | null) => string;
+  onScoreChange: (matchId: number, setNumber: number, team: 1 | 2, value: number) => void;
+  onScoreBlur: (matchId: number, setNumber: number, team: 1 | 2) => void;
+  onCourtChange: (matchId: number, court: number | null) => void;
+  onAnnounce: (court: number, team1: string, team2: string) => void;
+  onReset: (matchId: number) => void;
+  isActive: boolean;
+  theme: any;
+  hasOtherMatches: boolean;
+  editingMatchIds: Set<number>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const teamLabel = (m: Match) => {
+    const t1 = m.team1_p2
+      ? `${playerName(m.team1_p1)} / ${playerName(m.team1_p2)}`
+      : playerName(m.team1_p1);
+    const t2 = m.team2_p2
+      ? `${playerName(m.team2_p1)} / ${playerName(m.team2_p2)}`
+      : playerName(m.team2_p1);
+    return { t1, t2 };
+  };
+
+  return (
+    <div className={hasOtherMatches ? "mt-4" : ""}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className={`text-xs font-bold ${theme.textMuted} uppercase tracking-wider mb-2 flex items-center gap-2 hover:opacity-80 transition-opacity`}
+      >
+        <span className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}>
+          ▾
+        </span>
+        Beendet ({matches.length})
+      </button>
+
+      {/* Editing matches: always show as full MatchCard */}
+      {matches.filter((m) => editingMatchIds.has(m.id)).map((match) => (
+        <MatchCard
+          key={match.id}
+          match={match}
+          sets={setsByMatch.get(match.id) || []}
+          setsToWin={setsToWin}
+          pointsPerSet={pointsPerSet}
+          courts={courts}
+          occupiedCourts={occupiedCourts}
+          playerName={playerName}
+          onScoreChange={onScoreChange}
+          onScoreBlur={onScoreBlur}
+          onCourtChange={onCourtChange}
+          onAnnounce={onAnnounce}
+          onReset={onReset}
+          isActive={isActive}
+          theme={theme}
+        />
+      ))}
+
+      {/* Non-editing matches */}
+      {(() => {
+        const nonEditing = matches.filter((m) => !editingMatchIds.has(m.id));
+        if (nonEditing.length === 0) return null;
+
+        return !expanded ? (
+          /* Compact view: one line per match */
+          <div className={`${theme.cardBg} rounded-2xl border ${theme.cardBorder} overflow-hidden`}>
+            {nonEditing.map((m, i) => {
+              const { t1, t2 } = teamLabel(m);
+              const sets = setsByMatch.get(m.id) || [];
+              let s1 = 0, s2 = 0;
+              for (const s of sets) {
+                if (isSetComplete(s, pointsPerSet)) {
+                  if (s.team1_score > s.team2_score) s1++;
+                  else s2++;
+                }
+              }
+              return (
+                <div
+                  key={m.id}
+                  className={`flex items-center justify-between px-4 py-2 text-sm ${
+                    i > 0 ? `border-t ${theme.cardBorder}` : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className={`font-medium truncate ${
+                      m.winner_team === 1 ? theme.activeBadgeText : theme.textSecondary
+                    }`}>
+                      {t1}
+                    </span>
+                    <span className={`${theme.textMuted} text-xs shrink-0`}>vs</span>
+                    <span className={`font-medium truncate ${
+                      m.winner_team === 2 ? theme.activeBadgeText : theme.textSecondary
+                    }`}>
+                      {t2}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-3">
+                    <span className={`font-mono font-bold text-sm ${theme.textPrimary}`}>
+                      {s1}:{s2}
+                    </span>
+                    <span className={`font-mono text-xs ${theme.textMuted}`}>
+                      ({sets.filter(s => s.team1_score > 0 || s.team2_score > 0).map(s => `${s.team1_score}:${s.team2_score}`).join(", ")})
+                    </span>
+                    {isActive && (
+                      <button
+                        onClick={() => onReset(m.id)}
+                        className="text-xs text-amber-500 hover:text-amber-700 transition-colors"
+                      >
+                        Bearbeiten
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Expanded view: full MatchCards */
+          nonEditing.map((match) => (
+            <MatchCard
+              key={match.id}
+              match={match}
+              sets={setsByMatch.get(match.id) || []}
+              setsToWin={setsToWin}
+              pointsPerSet={pointsPerSet}
+              courts={courts}
+              occupiedCourts={occupiedCourts}
+              playerName={playerName}
+              onScoreChange={onScoreChange}
+              onScoreBlur={onScoreBlur}
+              onCourtChange={onCourtChange}
+              onAnnounce={onAnnounce}
+              onReset={onReset}
+              isActive={isActive}
+              theme={theme}
+            />
+          ))
+        );
+      })()}
+    </div>
+  );
+}
+
 function MatchCard({
   match,
   sets,
@@ -1372,11 +1619,14 @@ function MatchCard({
       : "border-l-gray-200";
 
   const isDraggable = isActive && !match.court && match.status !== "completed" && courts > 1;
-  const notStarted = courts > 1 && !match.court;
+  // notStarted: only if match was NEVER assigned to a court (no court_assigned_at history)
+  // Matches being edited (reopened) had a court before, so they should remain editable
+  const notStarted = courts > 1 && !match.court && !match.court_assigned_at;
   const inputsDisabled = !isActive || match.status === "completed" || notStarted;
 
   return (
     <div
+      data-match-id={match.id}
       draggable={isDraggable}
       onDragStart={(e) => {
         if (isDraggable) {

@@ -433,6 +433,18 @@ export async function updateMatchCourt(matchId: number, court: number | null): P
   saveStore(store);
 }
 
+export async function clearMatchCourt(matchId: number): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("UPDATE matches SET court = NULL WHERE id = $1", [matchId]);
+    return;
+  }
+  const store = loadStore();
+  const m = store.matches.find((m) => m.id === matchId);
+  if (m) m.court = null;
+  saveStore(store);
+}
+
 export async function updateMatchResult(matchId: number, winnerTeam: 1 | 2): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();

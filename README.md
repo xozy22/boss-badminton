@@ -29,10 +29,17 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
   - Alle offenen Spiele werden als Freilos fuer den Gegner gewertet
 
 ### Spielbetrieb
-- **Feldzuweisung**: Spiele per Drag & Drop auf Spielfelder ziehen
+- **Feldzuweisung**: Spiele per Drag & Drop oder Doppelklick auf Spielfelder ziehen
   - Belegte Felder werden erkannt und blockiert (runden-uebergreifend konsistent)
+  - Doppelklick auf wartendes Spiel: Feld-Auswahl per Popup (bei 1 freien Feld: direkte Zuweisung)
+  - Doppelklick auf belegtes Feld: Scrollt zum Spiel und fokussiert das erste Eingabefeld
   - Timer startet automatisch bei Zuweisung, zeigt Spieldauer in Akzentfarbe
   - Ergebniseingabe erst nach Feldzuweisung moeglich
+- **Smarte Match-Ansicht**: Automatische Sortierung nach Status
+  - "Auf dem Feld": Laufende Spiele mit voller Ergebniseingabe
+  - "Beendet": Kompakte Einzeiler mit Satzstand + Einzelpunkten (z.B. 2:0 (21:15, 21:18)), aufklappbar
+  - 3-Sekunden-Delay: Frisch beendete Spiele bleiben kurz sichtbar bevor sie nach unten rutschen
+  - Bearbeitete Spiele bleiben in der Beendet-Sektion (kein Hochrutschen)
 - **Ergebniserfassung**: Satz-Ergebnisse eintragen mit Auto-Vervollstaendigung
 - **Badminton-Regelkonform**: Rallypoint-System bis 21, Verlaengerung bei 20:20, Deckelung bei 30
 - **Score-Validierung**: Ungueltige Ergebnisse werden erkannt und markiert
@@ -41,9 +48,11 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 
 ### TV-/Beamer-Modus
 - **Separates Fenster** optimiert fuer Querformat und Lesbarkeit aus der Ferne
+- Oeffnet maximiert (verschiebbar auf zweiten Monitor), nicht im Vollbild
+- **F11** = Vollbild-Toggle, **Escape** = Fenster schliessen
 - Aktuelle Felderbelegung mit Live-Timer
 - Warteschlange: Naechste Spiele in der Reihenfolge
-- Letzte Ergebnisse mit Gewinner-Hervorhebung
+- Letzte Ergebnisse mit Gewinner-Hervorhebung und Einzelpunkten
 - Spieleraufruf-Banner mit Animation (📢 "Bitte zum Feld!")
 - Passt sich an das gewaehlte Farbdesign an
 

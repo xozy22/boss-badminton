@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Match } from "../../lib/types";
 import { CourtTimer } from "./CourtTimer";
 import { useTheme } from "../../lib/ThemeContext";
@@ -9,9 +9,10 @@ interface Props {
   activeRoundMatches?: Match[];  // Matches of the currently viewed round (for unassigned queue)
   playerName: (id: number | null) => string;
   onDrop?: (matchId: number, court: number) => void;
+  onMatchClick?: (matchId: number) => void;
 }
 
-export default function CourtOverview({ courts, matches, activeRoundMatches, playerName, onDrop }: Props) {
+export default function CourtOverview({ courts, matches, activeRoundMatches, playerName, onDrop, onMatchClick }: Props) {
   const { theme } = useTheme();
   // Finde fuer jedes Feld das aktive (nicht abgeschlossene) Match - aus ALLEN Runden
   const courtAssignments = useMemo(() => {
@@ -61,6 +62,32 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
     }
   };
 
+  // Double-click to assign court via popup
+  const [courtPickerMatchId, setCourtPickerMatchId] = useState<number | null>(null);
+  const freeCourts = useMemo(() => {
+    const free: number[] = [];
+    for (let i = 1; i <= courts; i++) {
+      if (!courtAssignments.has(i)) free.push(i);
+    }
+    return free;
+  }, [courts, courtAssignments]);
+
+  const handleDoubleClick = (matchId: number) => {
+    if (freeCourts.length === 1 && onDrop) {
+      // Only one free court: assign directly
+      onDrop(matchId, freeCourts[0]);
+    } else if (freeCourts.length > 1) {
+      setCourtPickerMatchId(matchId);
+    }
+  };
+
+  const handlePickCourt = (court: number) => {
+    if (courtPickerMatchId && onDrop) {
+      onDrop(courtPickerMatchId, court);
+    }
+    setCourtPickerMatchId(null);
+  };
+
   return (
     <div className="mb-5">
       {/* Court Grid */}
@@ -76,11 +103,13 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
               key={courtNum}
               onDragOver={(e) => handleDragOver(e, courtNum)}
               onDrop={(e) => handleDrop(e, courtNum)}
+              onDoubleClick={() => match && onMatchClick?.(match.id)}
               className={`rounded-2xl border-2 border-dashed p-4 transition-all duration-200 min-h-[100px] ${
                 isFree
                   ? `${theme.cardBorder} ${theme.cardBg} opacity-70 hover:opacity-100`
-                  : `${theme.courtBorder} ${theme.cardBg} shadow-sm`
+                  : `${theme.courtBorder} ${theme.cardBg} shadow-sm cursor-pointer`
               }`}
+              title={match ? "Doppelklick: Zum Spiel springen" : undefined}
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">
@@ -125,11 +154,37 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
                   key={m.id}
                   draggable
                   onDragStart={(e) => handleDragStart(e, m.id)}
-                  className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl px-3 py-2 text-xs cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-sm transition-all select-none`}
+                  onDoubleClick={() => handleDoubleClick(m.id)}
+                  className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl px-3 py-2 text-xs cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-sm transition-all select-none relative`}
+                  title="Drag auf ein Feld oder Doppelklick zum Zuweisen"
                 >
                   <span className={`font-medium ${theme.textPrimary}`}>{t1}</span>
                   <span className={`${theme.textMuted} mx-1`}>vs</span>
                   <span className={`font-medium ${theme.textPrimary}`}>{t2}</span>
+
+                  {/* Court picker popup */}
+                  {courtPickerMatchId === m.id && (
+                    <div className={`absolute top-full left-0 mt-1 ${theme.cardBg} border ${theme.cardBorder} rounded-xl shadow-xl z-50 overflow-hidden`}>
+                      <div className={`px-3 py-1.5 text-[10px] font-bold ${theme.textMuted} uppercase tracking-wide border-b ${theme.cardBorder}`}>
+                        Feld waehlen
+                      </div>
+                      {freeCourts.map((c) => (
+                        <button
+                          key={c}
+                          onClick={(e) => { e.stopPropagation(); handlePickCourt(c); }}
+                          className={`w-full px-4 py-2 text-left text-xs font-medium ${theme.textPrimary} hover:${theme.selectedBg} transition-colors`}
+                        >
+                          Feld {c}
+                        </button>
+                      ))}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setCourtPickerMatchId(null); }}
+                        className={`w-full px-4 py-1.5 text-left text-[10px] ${theme.textMuted} border-t ${theme.cardBorder} hover:opacity-80`}
+                      >
+                        Abbrechen
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
