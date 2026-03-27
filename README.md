@@ -23,6 +23,7 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 - **Excel-Export** mit nativem Speichern-Dialog
 - Geschlechter-Filter und Suchfunktion bei der Spielerauswahl
 - **Verletzung/Aufgabe**: Spieler als verletzt markieren - scheidet fuer restliches Turnier aus
+  - Gestylter Modal-Dialog (kein Browser-Popup) mit Warnung bei Team-Auswirkungen
   - Bei festen Teams: Partner scheidet automatisch mit aus
   - Bei Wechselnden Partnern: Nur verletzter Spieler scheidet aus
   - Alle offenen Spiele werden als Freilos fuer den Gegner gewertet

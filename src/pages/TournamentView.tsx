@@ -81,6 +81,7 @@ export default function TournamentView() {
   const [retiredPlayerIds, setRetiredPlayerIds] = useState<Set<number>>(new Set());
   const [activeRound, setActiveRound] = useState<number | null>(null);
   const [showPrint, setShowPrint] = useState(false);
+  const [retireTarget, setRetireTarget] = useState<{ player: Player; partnerNote: string } | null>(null);
 
   const tournamentId = Number(id);
 
@@ -796,6 +797,50 @@ export default function TournamentView() {
         />
       )}
 
+      {/* Retire/Injured Modal */}
+      {retireTarget && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
+            <div className="text-center mb-5">
+              <div className="text-4xl mb-3">🏥</div>
+              <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
+                Verletzt / Aufgabe
+              </h3>
+              <p className={`text-sm ${theme.textSecondary} mt-2`}>
+                <span className={`font-semibold ${theme.textPrimary}`}>{retireTarget.player.name}</span> als
+                verletzt oder aufgegeben markieren?
+              </p>
+              <p className={`text-xs ${theme.textMuted} mt-2`}>
+                Der Spieler scheidet fuer das gesamte restliche Turnier aus.
+                Alle offenen Spiele werden als Freilos fuer den Gegner gewertet.
+              </p>
+              {retireTarget.partnerNote && (
+                <p className="text-xs text-amber-500 mt-2 font-medium">
+                  ⚠️ {retireTarget.partnerNote}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRetireTarget(null)}
+                className={`flex-1 ${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={() => {
+                  handlePlayerRetire(retireTarget.player.id);
+                  setRetireTarget(null);
+                }}
+                className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-all text-sm font-medium"
+              >
+                🏥 Als verletzt markieren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Round Tabs - above everything */}
       {rounds.length === 0 && tournament.status === "draft" && (
         <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-12 text-center mb-6`}>
@@ -1221,29 +1266,26 @@ export default function TournamentView() {
                             const isFixedTeam = tournament.format !== "random_doubles" && tournament.mode !== "singles";
                             let partnerNote = "";
                             if (isFixedTeam) {
-                              // Find partner name
                               for (const m of allMatches) {
                                 if (m.team1_p1 === p.id && m.team1_p2) {
-                                  partnerNote = `\n\nDa dies ein festes Team ist, scheidet auch ${playerName(m.team1_p2)} aus.`;
+                                  partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team1_p2)} aus.`;
                                   break;
                                 }
                                 if (m.team1_p2 === p.id) {
-                                  partnerNote = `\n\nDa dies ein festes Team ist, scheidet auch ${playerName(m.team1_p1)} aus.`;
+                                  partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team1_p1)} aus.`;
                                   break;
                                 }
                                 if (m.team2_p1 === p.id && m.team2_p2) {
-                                  partnerNote = `\n\nDa dies ein festes Team ist, scheidet auch ${playerName(m.team2_p2)} aus.`;
+                                  partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team2_p2)} aus.`;
                                   break;
                                 }
                                 if (m.team2_p2 === p.id) {
-                                  partnerNote = `\n\nDa dies ein festes Team ist, scheidet auch ${playerName(m.team2_p1)} aus.`;
+                                  partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team2_p1)} aus.`;
                                   break;
                                 }
                               }
                             }
-                            if (confirm(`${p.name} als Verletzt/Aufgabe markieren?\n\nDer Spieler scheidet fuer das gesamte restliche Turnier aus. Alle offenen Spiele werden als Niederlage gewertet.${partnerNote}`)) {
-                              handlePlayerRetire(p.id);
-                            }
+                            setRetireTarget({ player: p, partnerNote });
                           }}
                           title="Verletzt / Aufgabe - Spieler scheidet fuer restliches Turnier aus"
                           className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-amber-500 hover:text-amber-700"

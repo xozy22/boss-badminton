@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { createPlayer, getPlayers } from "../../lib/db";
 import type { Gender, Player } from "../../lib/types";
+import { useTheme } from "../../lib/ThemeContext";
 
 interface ExcelImportProps {
   onImportDone: () => void;
@@ -47,6 +48,7 @@ function parseGender(val: unknown): Gender | null {
 }
 
 export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps) {
+  const { theme } = useTheme();
   const fileRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<Step>("upload");
   const [sheets, setSheets] = useState<string[]>([]);
@@ -180,38 +182,38 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border border-gray-100">
+      <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col border ${theme.cardBorder} overflow-hidden`}>
         {/* Header */}
         <div className="px-5 py-4 border-b flex justify-between items-center">
-          <h2 className="font-semibold text-lg">Spieler aus Excel importieren</h2>
+          <h2 className={`font-semibold text-lg ${theme.textPrimary}`}>Spieler aus Excel importieren</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            className={`${theme.textMuted} hover:opacity-80 text-xl leading-none`}
           >
             ×
           </button>
         </div>
 
         {/* Steps indicator */}
-        <div className="px-5 py-3 border-b bg-gray-50 flex gap-4 text-xs">
+        <div className={`px-5 py-3 border-b ${theme.cardBorder} ${theme.headerGradient} flex gap-4 text-xs`}>
           {(["upload", "mapping", "preview", "done"] as Step[]).map((s, i) => (
             <div
               key={s}
               className={`flex items-center gap-1.5 ${
                 step === s
-                  ? "text-emerald-600 font-semibold"
+                  ? `${theme.activeBadgeText} font-semibold`
                   : previewRows.length > 0 || i < ["upload", "mapping", "preview", "done"].indexOf(step)
-                  ? "text-gray-500"
-                  : "text-gray-300"
+                  ? theme.textSecondary
+                  : theme.textMuted
               }`}
             >
               <span
                 className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
                   step === s
-                    ? "bg-emerald-600 text-white"
+                    ? `${theme.primaryBg} text-white`
                     : i < ["upload", "mapping", "preview", "done"].indexOf(step)
-                    ? "bg-gray-400 text-white"
-                    : "bg-gray-200 text-gray-400"
+                    ? "bg-gray-500 text-white"
+                    : `bg-gray-500/30 ${theme.textMuted}`
                 }`}
               >
                 {i + 1}
@@ -232,7 +234,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
           {/* Step 1: Upload */}
           {step === "upload" && (
             <div className="text-center py-8">
-              <div className="mb-4 text-gray-500">
+              <div className={`mb-4 ${theme.textSecondary}`}>
                 Excel-Datei (.xlsx, .xls) oder CSV auswaehlen
               </div>
               <input
@@ -244,7 +246,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
               />
               <button
                 onClick={() => fileRef.current?.click()}
-                className="bg-emerald-600 text-white px-6 py-3 rounded hover:bg-emerald-700 transition-colors"
+                className={`${theme.primaryBg} text-white px-6 py-3 rounded ${theme.primaryHoverBg} transition-colors`}
               >
                 Datei auswaehlen
               </button>
@@ -256,7 +258,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
             <div className="space-y-4">
               {sheets.length > 1 && (
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">
+                  <label className={`block text-sm ${theme.textSecondary} mb-1`}>
                     Tabellenblatt
                   </label>
                   <select
@@ -273,12 +275,12 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                 </div>
               )}
 
-              <div className="bg-emerald-50 border border-emerald-200 rounded p-3 text-sm text-emerald-700">
+              <div className={`${theme.activeBadgeBg} border ${theme.cardBorder} rounded p-3 text-sm ${theme.activeBadgeText}`}>
                 {rawData.length} Zeilen gefunden. Bitte ordne die Spalten zu.
               </div>
 
               <div>
-                <label className="block text-sm text-gray-600 mb-1">
+                <label className={`block text-sm ${theme.textSecondary} mb-1`}>
                   Spalte fuer <strong>Name</strong> *
                 </label>
                 <select
@@ -296,7 +298,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
               </div>
 
               <div>
-                <label className="block text-sm text-gray-600 mb-1">
+                <label className={`block text-sm ${theme.textSecondary} mb-1`}>
                   Spalte fuer <strong>Geschlecht</strong> (optional)
                 </label>
                 <select
@@ -315,7 +317,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
               {!genderCol && (
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">
+                  <label className={`block text-sm ${theme.textSecondary} mb-1`}>
                     Standard-Geschlecht (wenn keine Spalte)
                   </label>
                   <select
@@ -332,7 +334,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
               {/* Live preview of first rows */}
               {nameCol && rawData.length > 0 && (
                 <div>
-                  <div className="text-sm text-gray-500 mb-2">
+                  <div className={`text-sm ${theme.textSecondary} mb-2`}>
                     Vorschau (erste 5 Zeilen):
                   </div>
                   <table className="w-full text-xs border">
@@ -373,7 +375,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
           {/* Step 3: Preview */}
           {step === "preview" && (
             <div>
-              <div className="mb-3 text-sm text-gray-600">
+              <div className={`mb-3 text-sm ${theme.textSecondary}`}>
                 {previewRows.filter((r) => r.valid && !r.duplicate).length} von{" "}
                 {previewRows.length} Spieler werden importiert.
                 {previewRows.some((r) => !r.valid) && (
@@ -389,7 +391,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
               </div>
               <div className="max-h-60 overflow-auto border rounded">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 sticky top-0">
+                  <thead className={`${theme.headerGradient} sticky top-0`}>
                     <tr>
                       <th className="px-3 py-2 text-left text-xs">#</th>
                       <th className="px-3 py-2 text-left text-xs">Name</th>
@@ -451,7 +453,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t bg-gray-50 flex justify-between">
+        <div className={`px-5 py-3 border-t ${theme.cardBorder} ${theme.headerGradient} flex justify-between`}>
           <button
             onClick={
               step === "done"
@@ -466,7 +468,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                   }
                 : onClose
             }
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+            className={`px-4 py-2 text-sm ${theme.textSecondary} hover:opacity-80`}
           >
             {step === "done" ? "Schliessen" : "Zurueck"}
           </button>
@@ -475,7 +477,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
             <button
               onClick={handlePreview}
               disabled={!nameCol}
-              className="bg-emerald-600 text-white px-4 py-2 rounded text-sm hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className={`${theme.primaryBg} text-white px-4 py-2 rounded text-sm ${theme.primaryHoverBg} disabled:bg-gray-300 disabled:cursor-not-allowed`}
             >
               Weiter zur Vorschau
             </button>
@@ -492,7 +494,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
           {step === "done" && (
             <button
               onClick={onClose}
-              className="bg-emerald-600 text-white px-4 py-2 rounded text-sm hover:bg-emerald-700"
+              className={`${theme.primaryBg} text-white px-4 py-2 rounded text-sm ${theme.primaryHoverBg}`}
             >
               Fertig
             </button>
