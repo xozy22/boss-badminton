@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+:root {
+  --scrollbar-thumb: #a7f3d0;
+  --scrollbar-thumb-hover: #6ee7b7;
+}
+
 body {
   margin: 0;
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -22,12 +27,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #a7f3d0;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #6ee7b7;
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Score inputs - no spinner arrows */
@@ -38,4 +43,11 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 input[type="number"] {
   -moz-appearance: textfield;
+}
+
+/* Dark mode global overrides */
+.dark-mode select,
+.dark-mode input[type="text"],
+.dark-mode input[type="number"] {
+  color-scheme: dark;
 }

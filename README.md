@@ -10,6 +10,7 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 - **Gruppenphase + KO**: Konfigurierbare Gruppenanzahl (2-8), Qualifikanten pro Gruppe (Top 1-4), dann KO-Runde
   - Einzel: Individuelle Spieler qualifizieren sich
   - Doppel/Mixed: Feste Teams bleiben durch Gruppenphase und KO bestehen
+- **KO-Bracket-Ansicht**: Visueller Turnierbaum mit Verbindungslinien, moegliche Teilnehmer in Grau, bestaetigte Gewinner sofort sichtbar
 - **Konfigurierbar**: Saetze (Best of 1/3/5), Punkte pro Satz, Spielfelder (1-8)
 - **Setzliste/Seeding**: Optionales Seeding fuer KO-Turniere per Drag & Drop oder Pfeiltasten
 - **Archivierung**: Beendete Turniere archivieren und wiederherstellen
@@ -21,17 +22,29 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 - **Excel-Import** mit Spaltenmapping (Name, Geschlecht) und Duplikaterkennung
 - **Excel-Export** mit nativem Speichern-Dialog
 - Geschlechter-Filter und Suchfunktion bei der Spielerauswahl
-- Spieler waehrend des Turniers hinzufuegen/entfernen
+- **Verletzung/Aufgabe**: Spieler als verletzt markieren - scheidet fuer restliches Turnier aus
+  - Bei festen Teams: Partner scheidet automatisch mit aus
+  - Bei Wechselnden Partnern: Nur verletzter Spieler scheidet aus
+  - Alle offenen Spiele werden als Freilos fuer den Gegner gewertet
 
 ### Spielbetrieb
 - **Feldzuweisung**: Spiele per Drag & Drop auf Spielfelder ziehen
-  - Belegte Felder werden erkannt und blockiert
-  - Timer startet automatisch bei Zuweisung, zeigt Spieldauer
+  - Belegte Felder werden erkannt und blockiert (runden-uebergreifend konsistent)
+  - Timer startet automatisch bei Zuweisung, zeigt Spieldauer in Akzentfarbe
   - Ergebniseingabe erst nach Feldzuweisung moeglich
 - **Ergebniserfassung**: Satz-Ergebnisse eintragen mit Auto-Vervollstaendigung
 - **Badminton-Regelkonform**: Rallypoint-System bis 21, Verlaengerung bei 20:20, Deckelung bei 30
 - **Score-Validierung**: Ungueltige Ergebnisse werden erkannt und markiert
+- **Faire Auslosung**: Bei ungerader Spielerzahl setzt der Spieler mit den meisten Spielen aus; bei Wechselnden Partnern werden bisherige Partnerschaften gewichtet vermieden
 - **Turnier kann nicht beendet werden** solange Spiele offen sind
+
+### TV-/Beamer-Modus
+- **Separates Fenster** optimiert fuer Querformat und Lesbarkeit aus der Ferne
+- Aktuelle Felderbelegung mit Live-Timer
+- Warteschlange: Naechste Spiele in der Reihenfolge
+- Letzte Ergebnisse mit Gewinner-Hervorhebung
+- Spieleraufruf-Banner mit Animation (📢 "Bitte zum Feld!")
+- Passt sich an das gewaehlte Farbdesign an
 
 ### Rangliste & Auswertung
 - **Live-Rangliste**: Sortiert nach Siegen, Satzverhaeltnis, Punkteverhaeltnis
@@ -41,18 +54,23 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 - **Turnierbericht**: Druckbarer Bericht mit Highlights (knappstes Spiel, hoechster Sieg, meiste Punkte)
 - **Druckansicht**: Spielplan, aktuelle Runde, Rangliste oder kompletter Bericht
 
+### Design & Themes
+- **4 Farbdesigns**: Smaragd (Gruen), Saphir (Blau), Bernstein (Orange), Dunkel (Dark Mode)
+- Theme-Wechsel ueber Einstellungen → Design, wird sofort angewendet
+- Vollstaendiger Dark Mode: Alle Seiten, Modals, Inputs, Tabellen, Bracket-Ansicht
+- Theme wird persistent gespeichert
+
 ### Einstellungen
+- **Design**: 4 Farbschemas (aufklappbar, Standard offen)
 - **Voreinstellungen**: Standard-Spielfelder fuer neue Turniere
 - **Datenbank**: Speicherort anzeigen/aendern, Backup & Wiederherstellung
 - **Gefahrenzone**: Spieler oder Turniere komplett loeschen (mit Sicherheitsabfrage)
-- Aufklappbare Sektionen fuer uebersichtliche Struktur
 
 ### Technisch
 - **Offline-faehig**: Laeuft komplett lokal, kein Internet noetig
 - **SQLite-Datenbank**: Robuste, persistente Datenspeicherung
 - **Backup & Restore**: Datenbank sichern und wiederherstellen mit nativem Dialog
 - **Konfigurierbarer Speicherort**: Datenbank an beliebigem Ort (z.B. USB-Stick)
-- **Modernes Design**: Sportliches Emerald-Theme mit Badminton-Charme
 
 ## Tech Stack
 
@@ -64,6 +82,7 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 | Datenbank | SQLite (via tauri-plugin-sql) |
 | Build-Tool | Vite |
 | Excel | SheetJS (xlsx) |
+| Font | Inter (Google Fonts) |
 
 ## Voraussetzungen
 
@@ -109,22 +128,28 @@ src-tauri/target/release/bundle/
 src/
 ├── components/
 │   ├── layout/        # Sidebar, Layout
+│   ├── bracket/       # KO-Bracket-Visualisierung
 │   ├── courts/        # Felduebersicht, Timer
 │   ├── players/       # Excel-Import
 │   └── print/         # Druckansicht, Turnierbericht
+├── hooks/
+│   └── useTimer.ts    # Court-Timer Hook
 ├── lib/
-│   ├── db.ts          # SQLite-Wrapper
-│   ├── draw.ts        # Auslosungsalgorithmen (Round Robin, KO, Gruppen, Random Doubles, Mixed)
-│   ├── scoring.ts     # Punkteberechnung, Validierung, Team-Standings
-│   ├── highlights.ts  # Turnier-Highlights
+│   ├── db.ts          # SQLite-Wrapper + LocalStorage-Fallback
+│   ├── draw.ts        # Auslosungsalgorithmen (Round Robin, KO, Gruppen, Random Doubles, Mixed, Seeding)
+│   ├── scoring.ts     # Punkteberechnung, Validierung, Auto-Fill, Team-Standings
+│   ├── highlights.ts  # Turnier-Highlights (knappstes Spiel, etc.)
+│   ├── theme.ts       # Theme-Definitionen (4 Farbschemas)
+│   ├── ThemeContext.tsx # React Context fuer Theme-System
 │   └── types.ts       # TypeScript-Interfaces
 ├── pages/
-│   ├── Home.tsx
-│   ├── Players.tsx
-│   ├── Tournaments.tsx
-│   ├── TournamentCreate.tsx
-│   ├── TournamentView.tsx
-│   └── Settings.tsx
+│   ├── Home.tsx        # Dashboard
+│   ├── Players.tsx     # Spielerverwaltung
+│   ├── Tournaments.tsx # Turnierliste + Archiv
+│   ├── TournamentCreate.tsx # Turniererstellung
+│   ├── TournamentView.tsx   # Turnieransicht (Matches, Courts, Rangliste)
+│   ├── TvMode.tsx      # TV-/Beamer-Modus
+│   └── Settings.tsx    # Einstellungen (Design, DB, Voreinstellungen)
 └── App.tsx
 
 src-tauri/

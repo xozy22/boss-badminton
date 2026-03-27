@@ -265,6 +265,14 @@ pub fn run() {
             ",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "add retired flag to tournament_players",
+            sql: "
+                ALTER TABLE tournament_players ADD COLUMN retired INTEGER NOT NULL DEFAULT 0;
+            ",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

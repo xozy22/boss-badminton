@@ -3,8 +3,10 @@ import { getPlayers, createPlayer, updatePlayer, deletePlayer } from "../lib/db"
 import * as XLSX from "xlsx";
 import type { Player, Gender } from "../lib/types";
 import ExcelImport from "../components/players/ExcelImport";
+import { useTheme } from "../lib/ThemeContext";
 
 export default function Players() {
+  const { theme } = useTheme();
   const [players, setPlayers] = useState<Player[]>([]);
   const [name, setName] = useState("");
   const [gender, setGender] = useState<Gender>("m");
@@ -90,10 +92,10 @@ export default function Players() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+          <h1 className={`text-2xl font-extrabold ${theme.textPrimary} tracking-tight`}>
             Spielerverwaltung
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className={`text-sm ${theme.textSecondary} mt-0.5`}>
             {players.length} Spieler registriert
           </p>
         </div>
@@ -101,13 +103,13 @@ export default function Players() {
           <button
             onClick={handleExport}
             disabled={players.length === 0}
-            className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl hover:border-emerald-300 hover:shadow-sm transition-all text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2 rounded-xl ${theme.cardHoverBorder} hover:shadow-sm transition-all text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             📤 Export
           </button>
           <button
             onClick={() => setShowImport(true)}
-            className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl hover:border-emerald-300 hover:shadow-sm transition-all text-sm font-medium"
+            className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2 rounded-xl ${theme.cardHoverBorder} hover:shadow-sm transition-all text-sm font-medium`}
           >
             📥 Import
           </button>
@@ -122,11 +124,11 @@ export default function Players() {
       )}
 
       {/* Add Player */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
-        <h2 className="font-semibold text-gray-800 mb-3">Neuer Spieler</h2>
+      <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-5 mb-6`}>
+        <h2 className={`font-semibold ${theme.textPrimary} mb-3`}>Neuer Spieler</h2>
         <div className="flex gap-3 items-end">
           <div className="flex-1">
-            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+            <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
               Name
             </label>
             <input
@@ -134,18 +136,18 @@ export default function Players() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+              className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
               placeholder="Name eingeben..."
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+            <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
               Geschlecht
             </label>
             <select
               value={gender}
               onChange={(e) => setGender(e.target.value as Gender)}
-              className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+              className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
             >
               <option value="m">Herr</option>
               <option value="f">Dame</option>
@@ -153,7 +155,7 @@ export default function Players() {
           </div>
           <button
             onClick={handleAdd}
-            className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl hover:bg-emerald-700 shadow-sm hover:shadow-md transition-all text-sm font-medium"
+            className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium`}
           >
             Hinzufuegen
           </button>
@@ -161,20 +163,20 @@ export default function Players() {
       </div>
 
       {/* Player Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-100 bg-gradient-to-r from-emerald-50 to-transparent">
-              <th className="text-left px-5 py-3 font-semibold text-emerald-800 text-xs uppercase tracking-wide">
+            <tr className={`border-b ${theme.cardBorder} ${theme.headerGradient}`}>
+              <th className={`text-left px-5 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
                 #
               </th>
-              <th className="text-left px-5 py-3 font-semibold text-emerald-800 text-xs uppercase tracking-wide">
+              <th className={`text-left px-5 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
                 Name
               </th>
-              <th className="text-left px-5 py-3 font-semibold text-emerald-800 text-xs uppercase tracking-wide">
+              <th className={`text-left px-5 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
                 Geschlecht
               </th>
-              <th className="text-right px-5 py-3 font-semibold text-emerald-800 text-xs uppercase tracking-wide">
+              <th className={`text-right px-5 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
                 Aktionen
               </th>
             </tr>
@@ -188,14 +190,14 @@ export default function Players() {
                 <td className="px-5 py-3 text-gray-400 font-mono text-xs">
                   {i + 1}
                 </td>
-                <td className="px-5 py-3 font-medium text-gray-900">
+                <td className={`px-5 py-3 font-medium ${theme.textPrimary}`}>
                   {editingId === p.id ? (
                     <input
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSave()}
-                      className="border border-emerald-300 rounded-lg px-3 py-1.5 text-sm w-full focus:ring-2 focus:ring-emerald-100 outline-none"
+                      className={`border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm w-full focus:ring-2 ${theme.focusRing} outline-none`}
                       autoFocus
                     />
                   ) : (
@@ -209,7 +211,7 @@ export default function Players() {
                       onChange={(e) =>
                         setEditGender(e.target.value as Gender)
                       }
-                      className="border border-emerald-300 rounded-lg px-3 py-1.5 text-sm"
+                      className={`border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm`}
                     >
                       <option value="m">Herr</option>
                       <option value="f">Dame</option>
@@ -231,7 +233,7 @@ export default function Players() {
                     <div className="flex gap-2 justify-end">
                       <button
                         onClick={handleSave}
-                        className="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
+                        className={`${theme.activeBadgeText} text-sm font-medium`}
                       >
                         Speichern
                       </button>

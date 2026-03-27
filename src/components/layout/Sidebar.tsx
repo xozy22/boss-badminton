@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { useTheme } from "../../lib/ThemeContext";
 
 const links = [
   { to: "/", label: "Start", icon: "🏠" },
@@ -7,17 +8,19 @@ const links = [
 ];
 
 export default function Sidebar() {
+  const { theme } = useTheme();
+
   return (
-    <aside className="w-60 bg-gradient-to-b from-emerald-950 via-emerald-950 to-gray-950 text-white min-h-screen flex flex-col shrink-0">
+    <aside className={`w-60 ${theme.sidebarBg} text-white min-h-screen flex flex-col shrink-0`}>
       {/* Branding */}
-      <div className="p-5 border-b border-emerald-800/50">
+      <div className={`p-5 border-b ${theme.sidebarBorder}`}>
         <div className="flex items-center gap-3">
           <div className="text-3xl">🏸</div>
           <div>
             <div className="text-base font-bold tracking-tight text-white">
               Badminton
             </div>
-            <div className="text-xs font-medium text-emerald-400 tracking-wide uppercase">
+            <div className={`text-xs font-medium ${theme.sidebarAccent} tracking-wide uppercase`}>
               Turnierplaner
             </div>
           </div>
@@ -33,8 +36,8 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                 isActive
-                  ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/30"
-                  : "text-emerald-200/70 hover:bg-emerald-900/50 hover:text-white"
+                  ? `${theme.sidebarActiveBg} text-white shadow-lg ${theme.sidebarActiveShadow}`
+                  : `${theme.sidebarText} ${theme.sidebarHoverBg} hover:text-white`
               }`
             }
           >
@@ -45,14 +48,14 @@ export default function Sidebar() {
       </nav>
 
       {/* Settings - bottom */}
-      <div className="p-3 border-t border-emerald-800/50">
+      <div className={`p-3 border-t ${theme.sidebarBorder}`}>
         <NavLink
           to="/settings"
           className={({ isActive }) =>
             `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
               isActive
-                ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/30"
-                : "text-emerald-200/70 hover:bg-emerald-900/50 hover:text-white"
+                ? `${theme.sidebarActiveBg} text-white shadow-lg ${theme.sidebarActiveShadow}`
+                : `${theme.sidebarText} ${theme.sidebarHoverBg} hover:text-white`
             }`
           }
         >

@@ -3,8 +3,10 @@ import { Link } from "react-router-dom";
 import { getTournaments, deleteTournament, updateTournamentStatus } from "../lib/db";
 import type { Tournament } from "../lib/types";
 import { MODE_LABELS, FORMAT_LABELS, STATUS_LABELS } from "../lib/types";
+import { useTheme } from "../lib/ThemeContext";
 
 export default function Tournaments() {
+  const { theme } = useTheme();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [showArchive, setShowArchive] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Tournament | null>(null);
@@ -44,9 +46,9 @@ export default function Tournaments() {
   const statusStyle = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-emerald-100 text-emerald-700";
+        return `${theme.activeBadgeBg} ${theme.activeBadgeText}`;
       case "completed":
-        return "bg-gray-100 text-gray-500";
+        return `${theme.cardBg} ${theme.textMuted} border ${theme.cardBorder}`;
       case "archived":
         return "bg-violet-100 text-violet-600";
       default:
@@ -57,13 +59,13 @@ export default function Tournaments() {
   const renderTournamentCard = (t: Tournament, isArchived: boolean) => (
     <div
       key={t.id}
-      className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex justify-between items-center hover:shadow-md transition-all duration-200 ${
-        isArchived ? "opacity-70 hover:opacity-100" : "hover:border-emerald-200"
+      className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-5 flex justify-between items-center hover:shadow-md transition-all duration-200 ${
+        isArchived ? "opacity-70 hover:opacity-100" : theme.cardHoverBorder
       }`}
     >
       <Link to={`/tournaments/${t.id}`} className="flex-1">
-        <div className="font-semibold text-gray-900">{t.name}</div>
-        <div className="text-sm text-gray-500 mt-0.5">
+        <div className={`font-semibold ${theme.textPrimary}`}>{t.name}</div>
+        <div className={`text-sm ${theme.textSecondary} mt-0.5`}>
           {MODE_LABELS[t.mode]} &middot; {FORMAT_LABELS[t.format]} &middot;
           Best of {t.sets_to_win * 2 - 1} (bis {t.points_per_set})
         </div>
@@ -107,10 +109,10 @@ export default function Tournaments() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+          <h1 className={`text-2xl font-extrabold ${theme.textPrimary} tracking-tight`}>
             Turniere
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className={`text-sm ${theme.textSecondary} mt-0.5`}>
             {activeTournaments.length} aktiv
             {archivedTournaments.length > 0 && (
               <span> &middot; {archivedTournaments.length} archiviert</span>
@@ -124,7 +126,7 @@ export default function Tournaments() {
               className={`border px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 showArchive
                   ? "bg-violet-50 border-violet-200 text-violet-700"
-                  : "bg-white border-gray-200 text-gray-600 hover:border-violet-200"
+                  : `${theme.cardBg} ${theme.cardBorder} ${theme.textSecondary} hover:border-violet-200`
               }`}
             >
               📦 Archiv ({archivedTournaments.length})
@@ -132,7 +134,7 @@ export default function Tournaments() {
           )}
           <Link
             to="/tournaments/new"
-            className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl hover:bg-emerald-700 shadow-sm hover:shadow-md transition-all text-sm font-medium"
+            className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium`}
           >
             🏆 Neues Turnier
           </Link>
@@ -141,7 +143,7 @@ export default function Tournaments() {
 
       {/* Active Tournaments */}
       {activeTournaments.length === 0 && !showArchive ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+        <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-12 text-center`}>
           <div className="text-4xl mb-3">🏸</div>
           <div className="text-gray-400">Noch keine Turniere vorhanden.</div>
         </div>
@@ -154,7 +156,7 @@ export default function Tournaments() {
       {/* Archive Section */}
       {showArchive && archivedTournaments.length > 0 && (
         <div className="mt-8">
-          <h2 className="text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
+          <h2 className={`text-lg font-bold ${theme.textPrimary} mb-3 flex items-center gap-2`}>
             📦 Archiv
           </h2>
           <div className="space-y-3">
@@ -166,26 +168,26 @@ export default function Tournaments() {
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-100">
+          <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
             <div className="text-center mb-5">
               <div className="text-4xl mb-3">⚠️</div>
-              <h3 className="text-lg font-bold text-gray-900">
+              <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
                 Turnier loeschen?
               </h3>
-              <p className="text-sm text-gray-500 mt-2">
-                <span className="font-semibold text-gray-800">"{deleteTarget.name}"</span> wird
+              <p className={`text-sm ${theme.textSecondary} mt-2`}>
+                <span className={`font-semibold ${theme.textPrimary}`}>"{deleteTarget.name}"</span> wird
                 mit allen Runden, Spielen und Ergebnissen unwiderruflich geloescht.
               </p>
             </div>
             <div className="mb-5">
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+              <label className={`block text-xs font-medium ${theme.textSecondary} mb-1.5`}>
                 Tippe <span className="font-bold text-rose-600">LOESCHEN</span> zur Bestaetigung:
               </label>
               <input
                 type="text"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none transition-all text-center font-mono tracking-widest"
+                className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none transition-all text-center font-mono tracking-widest`}
                 placeholder="LOESCHEN"
                 autoFocus
               />
@@ -193,7 +195,7 @@ export default function Tournaments() {
             <div className="flex gap-3">
               <button
                 onClick={() => { setDeleteTarget(null); setDeleteConfirmText(""); }}
-                className="flex-1 bg-white border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-all text-sm font-medium"
+                className={`flex-1 ${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
               >
                 Abbrechen
               </button>

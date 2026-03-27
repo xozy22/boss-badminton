@@ -5,12 +5,16 @@ import Players from "./pages/Players";
 import Tournaments from "./pages/Tournaments";
 import TournamentCreate from "./pages/TournamentCreate";
 import TournamentView from "./pages/TournamentView";
+import TvMode from "./pages/TvMode";
 import Settings from "./pages/Settings";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* TV-Modus: Fullscreen ohne Sidebar */}
+        <Route path="/tv/:id" element={<TvMode />} />
+        {/* Normales Layout */}
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/players" element={<Players />} />

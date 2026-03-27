@@ -8,6 +8,7 @@ import {
 import type { Player, TournamentMode, TournamentFormat } from "../lib/types";
 import { MODE_LABELS, FORMAT_LABELS } from "../lib/types";
 import { loadSettings } from "./Settings";
+import { useTheme } from "../lib/ThemeContext";
 
 const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
   singles: ["round_robin", "elimination", "group_ko"],
@@ -18,6 +19,7 @@ const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
 type GenderFilter = "all" | "m" | "f";
 
 export default function TournamentCreate() {
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(
@@ -165,23 +167,23 @@ export default function TournamentCreate() {
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+        <h1 className={`text-2xl font-extrabold ${theme.textPrimary} tracking-tight`}>
           Neues Turnier erstellen
         </h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <p className={`text-sm ${theme.textSecondary} mt-0.5`}>
           Konfiguriere dein Turnier und waehle die Teilnehmer.
         </p>
       </div>
 
       <div className="space-y-5">
         {/* Settings */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-          <h2 className="font-semibold text-gray-800 mb-4">
+        <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-5`}>
+          <h2 className={`font-semibold ${theme.textPrimary} mb-4`}>
             Grundeinstellungen
           </h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+              <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
                 Turniername
               </label>
               <div className="flex gap-2">
@@ -189,13 +191,13 @@ export default function TournamentCreate() {
                   type="text"
                   value={name}
                   onChange={(e) => { setName(e.target.value); setNameManuallyEdited(true); }}
-                  className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                  className={`flex-1 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                   placeholder="Turniername"
                 />
                 {nameManuallyEdited && (
                   <button
                     onClick={() => { setName(generateName(mode, format)); setNameManuallyEdited(false); }}
-                    className="text-gray-400 hover:text-emerald-600 px-3 py-2.5 rounded-xl border border-gray-200 hover:border-emerald-300 transition-all text-sm"
+                    className={`${theme.textMuted} hover:text-emerald-600 px-3 py-2.5 rounded-xl border ${theme.inputBorder} ${theme.cardHoverBorder} transition-all text-sm`}
                     title="Vorschlag wiederherstellen"
                   >
                     ↻
@@ -206,7 +208,7 @@ export default function TournamentCreate() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
                   Modus
                 </label>
                 <select
@@ -219,7 +221,7 @@ export default function TournamentCreate() {
                       setName(generateName(newMode, newFormat));
                     }
                   }}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                  className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                 >
                   {Object.entries(MODE_LABELS).map(([k, v]) => (
                     <option key={k} value={k}>
@@ -229,7 +231,7 @@ export default function TournamentCreate() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
                   Format
                 </label>
                 <select
@@ -239,7 +241,7 @@ export default function TournamentCreate() {
                     setFormat(newFormat);
                     if (!nameManuallyEdited) setName(generateName(mode, newFormat));
                   }}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                  className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                 >
                   {VALID_FORMATS[mode].map((f) => (
                     <option key={f} value={f}>
@@ -252,13 +254,13 @@ export default function TournamentCreate() {
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
                   Gewinnsaetze (Best of {setsToWin * 2 - 1})
                 </label>
                 <select
                   value={setsToWin}
                   onChange={(e) => setSetsToWin(Number(e.target.value))}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                  className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                 >
                   <option value={1}>1 Satz (Best of 1)</option>
                   <option value={2}>2 Saetze (Best of 3)</option>
@@ -266,25 +268,25 @@ export default function TournamentCreate() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
                   Punkte pro Satz
                 </label>
                 <input
                   type="number"
                   value={pointsPerSet}
                   onChange={(e) => setPointsPerSet(Number(e.target.value))}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                  className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                   min={1}
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
                   Spielfelder
                 </label>
                 <select
                   value={courts}
                   onChange={(e) => setCourts(Number(e.target.value))}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                  className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
                     <option key={n} value={n}>
@@ -299,13 +301,13 @@ export default function TournamentCreate() {
             {format === "group_ko" && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                  <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
                     Anzahl Gruppen
                   </label>
                   <select
                     value={numGroups}
                     onChange={(e) => setNumGroups(Number(e.target.value))}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                    className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                   >
                     {[2, 3, 4, 5, 6, 7, 8].map((n) => (
                       <option key={n} value={n}>
@@ -315,13 +317,13 @@ export default function TournamentCreate() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1 uppercase tracking-wide">
+                  <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
                     Qualifikanten pro Gruppe
                   </label>
                   <select
                     value={qualifyPerGroup}
                     onChange={(e) => setQualifyPerGroup(Number(e.target.value))}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                    className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                   >
                     {[1, 2, 3, 4].map((n) => (
                       <option key={n} value={n}>
@@ -339,19 +341,19 @@ export default function TournamentCreate() {
         </div>
 
         {/* Player Selection */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+        <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-5`}>
           {/* Header */}
           <div className="flex justify-between items-center mb-3">
-            <h2 className="font-semibold text-gray-800">
+            <h2 className={`font-semibold ${theme.textPrimary}`}>
               Spieler auswaehlen{" "}
-              <span className="text-emerald-600 font-normal">
+              <span className={`${theme.activeBadgeText} font-normal`}>
                 ({selectedCount} ausgewaehlt)
               </span>
             </h2>
             <div className="flex gap-2">
               <button
                 onClick={selectAllFiltered}
-                className="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
+                className={`${theme.activeBadgeText} text-sm font-medium`}
               >
                 {genderFilter !== "all" || search ? "Gefilterte" : "Alle"}
               </button>
@@ -372,7 +374,7 @@ export default function TournamentCreate() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Spieler suchen..."
-                className="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl pl-9 pr-4 py-2 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
               />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
                 🔍
@@ -386,7 +388,7 @@ export default function TournamentCreate() {
                 </button>
               )}
             </div>
-            <div className="flex rounded-xl border border-gray-200 overflow-hidden text-sm">
+            <div className={`flex rounded-xl border ${theme.inputBorder} overflow-hidden text-sm`}>
               {([
                 { value: "all", label: "Alle" },
                 { value: "m", label: "Herren" },
@@ -397,8 +399,8 @@ export default function TournamentCreate() {
                   onClick={() => setGenderFilter(opt.value)}
                   className={`px-3 py-2 transition-colors font-medium ${
                     genderFilter === opt.value
-                      ? "bg-emerald-600 text-white"
-                      : "text-gray-500 hover:bg-gray-50"
+                      ? `${theme.primaryBg} text-white`
+                      : `${theme.textSecondary} hover:opacity-80`
                   }`}
                 >
                   {opt.label}
@@ -412,7 +414,7 @@ export default function TournamentCreate() {
             <div className="text-xs text-gray-400 mb-2">
               {filteredPlayers.length} von {players.length} Spielern angezeigt
               {filteredSelectedCount > 0 && (
-                <span className="text-emerald-600 ml-1">
+                <span className={`${theme.activeBadgeText} ml-1`}>
                   ({filteredSelectedCount} davon ausgewaehlt)
                 </span>
               )}
@@ -429,16 +431,16 @@ export default function TournamentCreate() {
               Keine Spieler fuer diesen Filter gefunden.
             </p>
           ) : (
-            <div className="max-h-72 overflow-y-auto rounded-xl border border-gray-100">
+            <div className={`max-h-72 overflow-y-auto rounded-xl border ${theme.cardBorder}`}>
               {filteredPlayers.map((p, i) => (
                 <label
                   key={p.id}
                   className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer text-sm transition-all duration-150 ${
-                    i > 0 ? "border-t border-gray-50" : ""
+                    i > 0 ? `border-t ${theme.cardBorder}` : ""
                   } ${
                     selectedPlayerIds.has(p.id)
-                      ? "bg-emerald-50/70"
-                      : "hover:bg-gray-50"
+                      ? theme.selectedBg
+                      : "hover:opacity-80 hover:bg-white/5"
                   }`}
                 >
                   <input
@@ -447,7 +449,7 @@ export default function TournamentCreate() {
                     onChange={() => togglePlayer(p.id)}
                     className="rounded accent-emerald-600 shrink-0"
                   />
-                  <span className="font-medium text-gray-900 flex-1">{p.name}</span>
+                  <span className={`font-medium ${theme.textPrimary} flex-1`}>{p.name}</span>
                   <span
                     className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
                       p.gender === "m"
@@ -465,9 +467,9 @@ export default function TournamentCreate() {
 
         {/* Seeding Section - only for elimination */}
         {format === "elimination" && selectedPlayerIds.size >= 2 && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+          <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-5`}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-gray-800">
+              <h2 className={`font-semibold ${theme.textPrimary}`}>
                 🎯 Setzliste (optional)
               </h2>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -488,7 +490,7 @@ export default function TournamentCreate() {
                   }}
                   className="rounded accent-emerald-600"
                 />
-                <span className="text-sm text-gray-600">Seeding aktivieren</span>
+                <span className={`text-sm ${theme.textSecondary}`}>Seeding aktivieren</span>
               </label>
             </div>
 
@@ -498,7 +500,7 @@ export default function TournamentCreate() {
                   Ordne die Spieler nach Staerke per Drag &amp; Drop oder mit den Pfeilen
                   (Platz 1 = staerkster Spieler).
                 </p>
-                <div className="rounded-xl border border-gray-100 overflow-hidden">
+                <div className={`rounded-xl border ${theme.cardBorder} overflow-hidden`}>
                   {seedOrder
                     .filter((pid) => selectedPlayerIds.has(pid))
                     .map((pid, idx) => {
@@ -537,7 +539,7 @@ export default function TournamentCreate() {
                           }`}>
                             {idx + 1}
                           </span>
-                          <span className="font-medium text-gray-900 flex-1">
+                          <span className={`font-medium ${theme.textPrimary} flex-1`}>
                             {p.name}
                           </span>
                           <span
@@ -581,7 +583,7 @@ export default function TournamentCreate() {
         <button
           onClick={handleCreate}
           disabled={selectedPlayerIds.size < minPlayers}
-          className="w-full bg-emerald-600 text-white px-5 py-3.5 rounded-2xl hover:bg-emerald-700 shadow-sm hover:shadow-lg transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none font-semibold text-base"
+          className={`w-full ${theme.primaryBg} text-white px-5 py-3.5 rounded-2xl ${theme.primaryHoverBg} shadow-sm hover:shadow-lg transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none font-semibold text-base`}
         >
           🏆 Turnier erstellen
           {selectedPlayerIds.size < minPlayers && (

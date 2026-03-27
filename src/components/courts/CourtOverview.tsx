@@ -1,16 +1,19 @@
 import { useMemo } from "react";
 import type { Match } from "../../lib/types";
 import { CourtTimer } from "./CourtTimer";
+import { useTheme } from "../../lib/ThemeContext";
 
 interface Props {
   courts: number;
-  matches: Match[];
+  matches: Match[];          // ALL matches across ALL rounds (for court assignments)
+  activeRoundMatches?: Match[];  // Matches of the currently viewed round (for unassigned queue)
   playerName: (id: number | null) => string;
   onDrop?: (matchId: number, court: number) => void;
 }
 
-export default function CourtOverview({ courts, matches, playerName, onDrop }: Props) {
-  // Finde fuer jedes Feld das aktive (nicht abgeschlossene) Match
+export default function CourtOverview({ courts, matches, activeRoundMatches, playerName, onDrop }: Props) {
+  const { theme } = useTheme();
+  // Finde fuer jedes Feld das aktive (nicht abgeschlossene) Match - aus ALLEN Runden
   const courtAssignments = useMemo(() => {
     const map = new Map<number, Match>();
     for (const m of matches) {
@@ -21,10 +24,11 @@ export default function CourtOverview({ courts, matches, playerName, onDrop }: P
     return map;
   }, [matches]);
 
-  // Spiele ohne Feldzuweisung (zum Drag starten)
+  // Spiele ohne Feldzuweisung - nur aus der aktiven Runde (falls angegeben), sonst alle
+  const sourceForUnassigned = activeRoundMatches ?? matches;
   const unassigned = useMemo(
-    () => matches.filter((m) => !m.court && m.status !== "completed"),
-    [matches]
+    () => sourceForUnassigned.filter((m) => !m.court && m.status !== "completed"),
+    [sourceForUnassigned]
   );
 
   const teamLabel = (m: Match) => {
@@ -60,7 +64,7 @@ export default function CourtOverview({ courts, matches, playerName, onDrop }: P
   return (
     <div className="mb-5">
       {/* Court Grid */}
-      <div className={`grid gap-3 ${courts <= 4 ? `grid-cols-${courts}` : "grid-cols-4"}`}
+      <div className="grid gap-3"
         style={{ gridTemplateColumns: `repeat(${Math.min(courts, 4)}, 1fr)` }}
       >
         {Array.from({ length: courts }, (_, i) => i + 1).map((courtNum) => {
@@ -74,8 +78,8 @@ export default function CourtOverview({ courts, matches, playerName, onDrop }: P
               onDrop={(e) => handleDrop(e, courtNum)}
               className={`rounded-2xl border-2 border-dashed p-4 transition-all duration-200 min-h-[100px] ${
                 isFree
-                  ? "border-gray-200 bg-gray-50/50 hover:border-emerald-300 hover:bg-emerald-50/30"
-                  : "border-emerald-300 bg-white shadow-sm"
+                  ? `${theme.cardBorder} ${theme.cardBg} opacity-70 hover:opacity-100`
+                  : `${theme.courtBorder} ${theme.cardBg} shadow-sm`
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -89,16 +93,16 @@ export default function CourtOverview({ courts, matches, playerName, onDrop }: P
 
               {match ? (
                 <div className="text-xs">
-                  <div className="font-semibold text-gray-900 truncate">
+                  <div className={`font-semibold ${theme.textPrimary} truncate`}>
                     {teamLabel(match).t1}
                   </div>
-                  <div className="text-gray-400 text-[10px] my-0.5">vs</div>
-                  <div className="font-semibold text-gray-900 truncate">
+                  <div className={`${theme.textMuted} text-[10px] my-0.5`}>vs</div>
+                  <div className={`font-semibold ${theme.textPrimary} truncate`}>
                     {teamLabel(match).t2}
                   </div>
                 </div>
               ) : (
-                <div className="text-xs text-gray-400 text-center mt-3">
+                <div className={`text-xs ${theme.textMuted} text-center mt-3`}>
                   Frei – Spiel hierher ziehen
                 </div>
               )}
@@ -121,11 +125,11 @@ export default function CourtOverview({ courts, matches, playerName, onDrop }: P
                   key={m.id}
                   draggable
                   onDragStart={(e) => handleDragStart(e, m.id)}
-                  className="bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-sm transition-all select-none"
+                  className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl px-3 py-2 text-xs cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-sm transition-all select-none`}
                 >
-                  <span className="font-medium">{t1}</span>
-                  <span className="text-gray-400 mx-1">vs</span>
-                  <span className="font-medium">{t2}</span>
+                  <span className={`font-medium ${theme.textPrimary}`}>{t1}</span>
+                  <span className={`${theme.textMuted} mx-1`}>vs</span>
+                  <span className={`font-medium ${theme.textPrimary}`}>{t2}</span>
                 </div>
               );
             })}

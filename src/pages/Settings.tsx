@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { wipeAllPlayers, wipeAllTournaments } from "../lib/db";
+import { useTheme } from "../lib/ThemeContext";
+import { THEMES, type ThemeId } from "../lib/theme";
 
 function isTauri(): boolean {
   return !!(window as any).__TAURI_INTERNALS__;
@@ -31,7 +33,7 @@ function Section({
   icon,
   children,
   defaultOpen = false,
-  borderColor = "border-gray-100",
+  borderColor,
 }: {
   title: string;
   icon: string;
@@ -39,30 +41,33 @@ function Section({
   defaultOpen?: boolean;
   borderColor?: string;
 }) {
+  const { theme } = useTheme();
   const [open, setOpen] = useState(defaultOpen);
+  const border = borderColor || theme.cardBorder;
   return (
-    <div className={`bg-white rounded-2xl shadow-sm border ${borderColor} overflow-hidden mb-4`}>
+    <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${border} overflow-hidden mb-4`}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50/50 transition-colors"
+        className={`w-full px-6 py-4 flex items-center justify-between text-left hover:opacity-80 transition-colors`}
       >
-        <span className="font-semibold text-gray-800">
+        <span className={`font-semibold ${theme.textPrimary}`}>
           {icon} {title}
         </span>
         <span
-          className={`text-gray-400 transition-transform duration-200 ${
+          className={`${theme.textMuted} transition-transform duration-200 ${
             open ? "rotate-180" : ""
           }`}
         >
           ▾
         </span>
       </button>
-      {open && <div className="px-6 pb-5 border-t border-gray-100 pt-4">{children}</div>}
+      {open && <div className={`px-6 pb-5 border-t ${theme.cardBorder} pt-4`}>{children}</div>}
     </div>
   );
 }
 
 export default function Settings() {
+  const { theme } = useTheme();
   const [dbPath, setDbPath] = useState("");
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState(false);
@@ -231,26 +236,31 @@ export default function Settings() {
   return (
     <div className="max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">
+        <h1 className={`text-2xl font-extrabold ${theme.textPrimary} tracking-tight`}>
           Einstellungen
         </h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <p className={`text-sm ${theme.textSecondary} mt-0.5`}>
           App-Konfiguration und Datenverwaltung.
         </p>
       </div>
 
+      {/* ===== Design ===== */}
+      <Section title="Design" icon="🎨" defaultOpen={true}>
+        <ThemeSelector />
+      </Section>
+
       {/* ===== Voreinstellungen ===== */}
-      <Section title="Voreinstellungen" icon="🎯" defaultOpen={true}>
+      <Section title="Voreinstellungen" icon="🎯" defaultOpen={false}>
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">
+            <label className={`block text-xs font-medium ${theme.textSecondary} mb-1.5 uppercase tracking-wide`}>
               Standard-Spielfelder
             </label>
             <div className="flex items-center gap-3">
               <select
                 value={settings.defaultCourts}
                 onChange={(e) => updateSetting("defaultCourts", Number(e.target.value))}
-                className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none transition-all"
+                className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
               >
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
                   <option key={n} value={n}>
@@ -270,19 +280,19 @@ export default function Settings() {
       <Section title="Datenbank" icon="💾">
         {/* Speicherort */}
         <div className="mb-5">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Speicherort</h3>
+          <h3 className={`text-sm font-medium ${theme.textPrimary} mb-2`}>Speicherort</h3>
           <div className="flex gap-2 mb-3">
             <input
               type="text"
               value={dbPath}
               readOnly
-              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 text-gray-600 font-mono select-all outline-none"
+              className={`flex-1 border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.inputBg} ${theme.textSecondary} font-mono select-all outline-none`}
               onClick={(e) => (e.target as HTMLInputElement).select()}
             />
             {isTauri() && (
               <button
                 onClick={handleOpenFolder}
-                className="bg-white border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl hover:border-emerald-300 hover:shadow-sm transition-all text-sm font-medium whitespace-nowrap"
+                className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl ${theme.cardHoverBorder} hover:shadow-sm transition-all text-sm font-medium whitespace-nowrap`}
               >
                 📂 Oeffnen
               </button>
@@ -299,7 +309,7 @@ export default function Settings() {
               </button>
               <button
                 onClick={handleResetToDefault}
-                className="text-gray-400 hover:text-gray-600 px-4 py-2 rounded-xl text-sm transition-colors"
+                className={`${theme.textMuted} hover:opacity-80 px-4 py-2 rounded-xl text-sm transition-colors`}
               >
                 Standard wiederherstellen
               </button>
@@ -309,8 +319,8 @@ export default function Settings() {
 
         {/* Backup & Restore */}
         {isTauri() && (
-          <div className="mb-5 pt-4 border-t border-gray-100">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">
+          <div className={`mb-5 pt-4 border-t ${theme.cardBorder}`}>
+            <h3 className={`text-sm font-medium ${theme.textPrimary} mb-2`}>
               Backup & Wiederherstellung
             </h3>
             <div className="flex gap-3 mb-2">
@@ -322,44 +332,44 @@ export default function Settings() {
               </button>
               <button
                 onClick={handleRestore}
-                className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-xl hover:border-amber-300 hover:text-amber-700 transition-all text-sm font-medium"
+                className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2 rounded-xl hover:border-amber-300 hover:text-amber-700 transition-all text-sm font-medium`}
               >
                 📥 Wiederherstellen
               </button>
             </div>
             <div className="text-xs text-gray-400 leading-relaxed">
               Das Backup speichert eine Kopie der gesamten Datenbank.
-              <strong className="text-gray-500"> Nach der Wiederherstellung muss die App neu gestartet werden.</strong>
+              <strong className={theme.textSecondary}> Nach der Wiederherstellung muss die App neu gestartet werden.</strong>
             </div>
           </div>
         )}
 
         {/* Danger Zone */}
-        <div className="pt-4 border-t border-gray-100">
+        <div className={`pt-4 border-t ${theme.cardBorder}`}>
           <h3 className="text-sm font-medium text-rose-600 mb-3">
             Gefahrenzone
           </h3>
           <div className="space-y-2">
-            <div className="flex items-center justify-between bg-rose-50/50 rounded-xl p-3 border border-rose-100">
+            <div className={`flex items-center justify-between bg-rose-500/10 rounded-xl p-3 border border-rose-500/20`}>
               <div>
-                <div className="text-sm font-medium text-gray-800">Alle Spieler loeschen</div>
+                <div className={`text-sm font-medium ${theme.textPrimary}`}>Alle Spieler loeschen</div>
                 <div className="text-xs text-gray-400">Entfernt alle Spieler unwiderruflich.</div>
               </div>
               <button
                 onClick={() => { setConfirmTarget("players"); setConfirmText(""); setMessage(null); }}
-                className="bg-white border border-rose-200 text-rose-600 px-3 py-1.5 rounded-lg hover:bg-rose-50 transition-all text-xs font-medium whitespace-nowrap ml-3"
+                className={`${theme.cardBg} border border-rose-500/30 text-rose-500 px-3 py-1.5 rounded-lg hover:bg-rose-500/10 transition-all text-xs font-medium whitespace-nowrap ml-3`}
               >
                 Loeschen
               </button>
             </div>
-            <div className="flex items-center justify-between bg-rose-50/50 rounded-xl p-3 border border-rose-100">
+            <div className={`flex items-center justify-between bg-rose-500/10 rounded-xl p-3 border border-rose-500/20`}>
               <div>
-                <div className="text-sm font-medium text-gray-800">Alle Turniere loeschen</div>
+                <div className={`text-sm font-medium ${theme.textPrimary}`}>Alle Turniere loeschen</div>
                 <div className="text-xs text-gray-400">Entfernt Turniere, Runden, Spiele und Ergebnisse.</div>
               </div>
               <button
                 onClick={() => { setConfirmTarget("tournaments"); setConfirmText(""); setMessage(null); }}
-                className="bg-white border border-rose-200 text-rose-600 px-3 py-1.5 rounded-lg hover:bg-rose-50 transition-all text-xs font-medium whitespace-nowrap ml-3"
+                className={`${theme.cardBg} border border-rose-500/30 text-rose-500 px-3 py-1.5 rounded-lg hover:bg-rose-500/10 transition-all text-xs font-medium whitespace-nowrap ml-3`}
               >
                 Loeschen
               </button>
@@ -384,25 +394,25 @@ export default function Settings() {
       {/* Confirmation Modal */}
       {confirmTarget && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 border border-gray-100">
+          <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
             <div className="text-center mb-5">
               <div className="text-4xl mb-3">⚠️</div>
-              <h3 className="text-lg font-bold text-gray-900">Bist du sicher?</h3>
-              <p className="text-sm text-gray-500 mt-2">
+              <h3 className={`text-lg font-bold ${theme.textPrimary}`}>Bist du sicher?</h3>
+              <p className={`text-sm ${theme.textSecondary} mt-2`}>
                 {confirmTarget === "players"
                   ? "Alle Spieler werden unwiderruflich geloescht."
                   : "Alle Turniere, Runden, Spiele und Ergebnisse werden unwiderruflich geloescht."}
               </p>
             </div>
             <div className="mb-5">
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+              <label className={`block text-xs font-medium ${theme.textSecondary} mb-1.5`}>
                 Tippe <span className="font-bold text-rose-600">{CONFIRM_WORD}</span> zur Bestaetigung:
               </label>
               <input
                 type="text"
                 value={confirmText}
                 onChange={(e) => setConfirmText(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none transition-all text-center font-mono tracking-widest"
+                className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none transition-all text-center font-mono tracking-widest`}
                 placeholder={CONFIRM_WORD}
                 autoFocus
               />
@@ -410,7 +420,7 @@ export default function Settings() {
             <div className="flex gap-3">
               <button
                 onClick={() => { setConfirmTarget(null); setConfirmText(""); }}
-                className="flex-1 bg-white border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-all text-sm font-medium"
+                className={`flex-1 ${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
               >
                 Abbrechen
               </button>
@@ -425,6 +435,59 @@ export default function Settings() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function ThemeSelector() {
+  const { themeId, theme, setThemeId } = useTheme();
+
+  return (
+    <div>
+      <label className={`block text-xs font-medium ${theme.textSecondary} mb-3 uppercase tracking-wide`}>
+        Farbschema
+      </label>
+      <div className="grid grid-cols-2 gap-3">
+        {(Object.entries(THEMES) as [ThemeId, typeof THEMES[ThemeId]][]).map(
+          ([id, { label, preview }]) => {
+            const isActive = themeId === id;
+            const isDarkTheme = id === "dark";
+            return (
+              <button
+                key={id}
+                onClick={() => setThemeId(id)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all duration-200 ${
+                  isActive
+                    ? "shadow-lg"
+                    : `${theme.inputBorder} hover:opacity-80 hover:shadow-sm`
+                }`}
+                style={isActive ? { borderColor: id === "dark" ? "#10b981" : preview, boxShadow: `0 0 0 3px ${id === "dark" ? "#10b981" : preview}40, 0 0 12px ${id === "dark" ? "#10b981" : preview}20` } : {}}
+              >
+                {/* Color swatch */}
+                <div
+                  className="w-10 h-10 rounded-xl shrink-0 shadow-inner flex items-center justify-center"
+                  style={{ background: isDarkTheme ? `linear-gradient(135deg, #111827, #1f2937)` : `linear-gradient(135deg, ${preview}, ${preview}dd)` }}
+                >
+                  {isDarkTheme && <span className="text-lg">🌙</span>}
+                </div>
+                <div>
+                  <div className={`text-sm font-semibold ${theme.textPrimary}`}>
+                    {label}
+                  </div>
+                  <div className={`text-[10px] ${theme.textMuted} uppercase tracking-wide mt-0.5`}>
+                    {id === "green" ? "Smaragd" : id === "blue" ? "Saphir" : id === "orange" ? "Bernstein" : "Nachtmodus"}
+                  </div>
+                </div>
+                {isActive && (
+                  <span className="ml-auto text-sm font-bold" style={{ color: id === "dark" ? "#10b981" : preview }}>
+                    ✓
+                  </span>
+                )}
+              </button>
+            );
+          }
+        )}
+      </div>
     </div>
   );
 }

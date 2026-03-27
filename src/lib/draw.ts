@@ -79,17 +79,33 @@ export function generateRoundRobinDoubles(
 // --- Random Doubles (new partners each round) ---
 // Returns matches for ONE round with random partner assignment.
 // previousPairings: Set of "id1-id2" strings to avoid repeating partnerships.
+// matchCounts: Map of playerId -> number of matches played so far (for fair bye rotation)
+// pairingCounts: Map of "id1-id2" -> count of times paired (for weighted pairing avoidance)
 export function generateRandomDoublesRound(
   players: Player[],
-  previousPairings: Set<string>
+  previousPairings: Set<string>,
+  matchCounts?: Map<number, number>,
+  pairingCounts?: Map<string, number>
 ): { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number; bye?: number }[] {
   const ids = shuffle(players.map((p) => p.id));
   let byePlayer: number | undefined;
 
-  // If odd number, one sits out
+  // If odd number, one sits out - pick the player with the MOST matches
+  // so everyone gets roughly equal play time
   const active = [...ids];
   if (active.length % 2 !== 0) {
-    byePlayer = active.pop();
+    if (matchCounts && matchCounts.size > 0) {
+      // Sort by match count descending, then shuffle among ties
+      active.sort((a, b) => {
+        const ca = matchCounts.get(a) ?? 0;
+        const cb = matchCounts.get(b) ?? 0;
+        if (cb !== ca) return cb - ca; // most matches first
+        return Math.random() - 0.5; // random among ties
+      });
+      byePlayer = active.shift(); // remove the one with most matches
+    } else {
+      byePlayer = active.pop();
+    }
   }
 
   // Need groups of 4 for doubles matches
@@ -97,8 +113,8 @@ export function generateRandomDoublesRound(
   // Strategy: pair up into teams of 2, then match teams against each other
   if (active.length < 4) return [];
 
-  // Try to find pairings that haven't been used before
-  const bestPairing = findBestPairing(active, previousPairings);
+  // Try to find pairings that haven't been used before (or least repeated)
+  const bestPairing = findBestPairing(active, previousPairings, pairingCounts);
 
   // Group into matches (pairs of teams)
   const matches: { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number; bye?: number }[] = [];
@@ -129,37 +145,49 @@ function pairingKey(a: number, b: number): string {
 
 function findBestPairing(
   players: number[],
-  previousPairings: Set<string>
+  previousPairings: Set<string>,
+  pairingCountsInput?: Map<string, number>
 ): [number, number][] {
-  // Greedy approach: try to avoid previous pairings
   const available = [...players];
-  const pairs: [number, number][] = [];
 
-  // Try multiple random shuffles and pick the one with fewest repeats
+  // Use provided counts, or fall back to Set (each entry = 1)
+  const pairingCounts = pairingCountsInput ?? new Map<string, number>();
+  if (!pairingCountsInput) {
+    for (const key of previousPairings) {
+      pairingCounts.set(key, 1);
+    }
+  }
+
   let bestPairs: [number, number][] = [];
-  let bestRepeats = Infinity;
+  let bestScore = Infinity; // lower is better
 
-  for (let attempt = 0; attempt < 50; attempt++) {
+  // More attempts for better results
+  const maxAttempts = Math.min(300, Math.max(100, available.length * 20));
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const shuffled = shuffle(available);
     const currentPairs: [number, number][] = [];
-    let repeats = 0;
+    let score = 0;
 
     for (let i = 0; i < shuffled.length - 1; i += 2) {
       const pair: [number, number] = [shuffled[i], shuffled[i + 1]];
       currentPairs.push(pair);
-      if (previousPairings.has(pairingKey(pair[0], pair[1]))) {
-        repeats++;
+      const key = pairingKey(pair[0], pair[1]);
+      // Each repeat adds to the score - more repeats = worse
+      const count = pairingCounts.get(key) ?? 0;
+      if (count > 0) {
+        score += count * count; // Quadratic penalty: 2x repeat is 4x as bad as 1x
       }
     }
 
-    if (repeats < bestRepeats) {
-      bestRepeats = repeats;
+    if (score < bestScore) {
+      bestScore = score;
       bestPairs = currentPairs;
-      if (repeats === 0) break;
+      if (score === 0) break; // Perfect: no repeats at all
     }
   }
 
-  return bestPairs.length > 0 ? bestPairs : pairs;
+  return bestPairs;
 }
 
 // --- Elimination (KO) ---
@@ -346,6 +374,22 @@ export function getPreviousPairings(matches: Match[]): Set<string> {
   return pairings;
 }
 
+/** Returns a Map counting how often each partner pairing has occurred */
+export function getPreviousPairingCounts(matches: Match[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const m of matches) {
+    if (m.team1_p2) {
+      const key = pairingKey(m.team1_p1, m.team1_p2);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    if (m.team2_p2) {
+      const key = pairingKey(m.team2_p1, m.team2_p2);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
 // --- Fixed Team Formation ---
 // Forms random doubles teams from players
 export function formFixedDoubleTeams(
@@ -397,13 +441,6 @@ export function splitIntoGroups(
     groups[i % numGroups].push(shuffled[i]);
   }
   return groups;
-}
-
-// Generates round-robin matches for a single group (singles)
-export function generateGroupRoundRobinSingles(
-  groupPlayers: Player[]
-): { team1_p1: number; team2_p1: number }[][] {
-  return generateRoundRobinSingles(groupPlayers);
 }
 
 function nextPowerOf2(n: number): number {

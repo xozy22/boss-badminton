@@ -293,6 +293,41 @@ export async function removePlayerFromTournament(
   saveStore(store);
 }
 
+export async function retirePlayerFromTournament(
+  tournamentId: number,
+  playerId: number
+): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute(
+      "UPDATE tournament_players SET retired = 1 WHERE tournament_id = $1 AND player_id = $2",
+      [tournamentId, playerId]
+    );
+    return;
+  }
+  const store = loadStore();
+  const tp = store.tournamentPlayers.find(
+    (tp) => tp.tournament_id === tournamentId && tp.player_id === playerId
+  );
+  if (tp) (tp as any).retired = 1;
+  saveStore(store);
+}
+
+export async function getRetiredPlayerIds(tournamentId: number): Promise<number[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    const rows: { player_id: number }[] = await d.select(
+      "SELECT player_id FROM tournament_players WHERE tournament_id = $1 AND retired = 1",
+      [tournamentId]
+    );
+    return rows.map((r) => r.player_id);
+  }
+  const store = loadStore();
+  return store.tournamentPlayers
+    .filter((tp) => tp.tournament_id === tournamentId && (tp as any).retired === 1)
+    .map((tp) => tp.player_id);
+}
+
 // --- Rounds ---
 
 export async function getRounds(tournamentId: number): Promise<Round[]> {
