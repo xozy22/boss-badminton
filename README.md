@@ -70,13 +70,24 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 - Vollstaendiger Dark Mode: Alle Seiten, Modals, Inputs, Tabellen, Bracket-Ansicht
 - Theme wird persistent gespeichert
 
+### Sidebar
+- **Einklappbar**: Sidebar auf Icons reduzierbar fuer mehr Platz (persistent gespeichert)
+- Toggle-Button unten, Tooltip bei eingeklapptem Zustand
+
 ### Einstellungen
-- **Design**: 4 Farbschemas (aufklappbar, Standard offen)
-- **Voreinstellungen**: Standard-Spielfelder fuer neue Turniere
+- **Updates**: Manueller Update-Check ueber GitHub Releases mit Fortschrittsanzeige und Auto-Restart
+- **Design**: 4 Farbschemas (aufklappbar)
+- **Voreinstellungen**: Standard-Spielfelder, Timer-Schwellenwerte (Warnung gelb, Kritisch rot)
 - **Datenbank**: Speicherort anzeigen/aendern, Backup & Wiederherstellung
 - **Gefahrenzone**: Spieler oder Turniere komplett loeschen (mit Sicherheitsabfrage)
 
+### Tastatur-Navigation
+- **Enter/Tab**: Springt zum naechsten Score-Feld (Team1→Team2→naechster Satz→naechstes Match)
+- **Auto-Select**: Bei Fokus wird der Feldinhalt markiert (sofort ueberschreibbar)
+- Komplette Ergebniseingabe ohne Maus moeglich
+
 ### Technisch
+- **Auto-Update**: Manueller Check ueber Einstellungen, signierte Updates von GitHub Releases
 - **Offline-faehig**: Laeuft komplett lokal, kein Internet noetig
 - **SQLite-Datenbank**: Robuste, persistente Datenspeicherung
 - **Backup & Restore**: Datenbank sichern und wiederherstellen mit nativem Dialog

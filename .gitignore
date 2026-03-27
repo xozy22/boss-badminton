@@ -32,3 +32,6 @@ Thumbs.db
 
 # Claude
 .claude/
+
+# Tauri signing keys (KEEP SECRET!)
+src-tauri/.tauri/

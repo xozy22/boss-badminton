@@ -13,14 +13,22 @@ const SETTINGS_KEY = "turnierplaner_settings";
 
 interface AppSettings {
   defaultCourts: number;
+  timerWarningMin: number;  // yellow threshold in minutes
+  timerDangerMin: number;   // red threshold in minutes
 }
+
+const DEFAULT_SETTINGS: AppSettings = {
+  defaultCourts: 2,
+  timerWarningMin: 20,
+  timerDangerMin: 30,
+};
 
 function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { ...{ defaultCourts: 2 }, ...JSON.parse(raw) };
+    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
   } catch {}
-  return { defaultCourts: 2 };
+  return { ...DEFAULT_SETTINGS };
 }
 
 function saveSettings(s: AppSettings) {
@@ -244,8 +252,15 @@ export default function Settings() {
         </p>
       </div>
 
+      {/* ===== Updates ===== */}
+      {isTauri() && (
+        <Section title="Updates" icon="🔄" defaultOpen={false}>
+          <UpdateChecker />
+        </Section>
+      )}
+
       {/* ===== Design ===== */}
-      <Section title="Design" icon="🎨" defaultOpen={true}>
+      <Section title="Design" icon="🎨" defaultOpen={false}>
         <ThemeSelector />
       </Section>
 
@@ -271,6 +286,60 @@ export default function Settings() {
               <span className="text-xs text-gray-400">
                 Wird als Standardwert beim Erstellen neuer Turniere verwendet.
               </span>
+            </div>
+          </div>
+
+          {/* Timer Thresholds */}
+          <div className={`pt-4 border-t ${theme.cardBorder}`}>
+            <label className={`block text-xs font-medium ${theme.textSecondary} mb-3 uppercase tracking-wide`}>
+              ⏱ Spielzeit-Timer Schwellenwerte
+            </label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-3 h-3 rounded-full bg-amber-400 shrink-0"></span>
+                  <span className={`text-xs font-medium ${theme.textSecondary}`}>Warnung (gelb)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={settings.timerWarningMin}
+                    onChange={(e) => {
+                      const val = Number(e.target.value) || 20;
+                      updateSetting("timerWarningMin", val);
+                      if (val >= settings.timerDangerMin) updateSetting("timerDangerMin", val + 5);
+                    }}
+                    className={`w-20 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-3 py-2 text-sm text-center ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+                  />
+                  <span className="text-xs text-gray-400">Minuten</span>
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-3 h-3 rounded-full bg-rose-500 shrink-0"></span>
+                  <span className={`text-xs font-medium ${theme.textSecondary}`}>Kritisch (rot)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={settings.timerDangerMin}
+                    onChange={(e) => {
+                      const val = Number(e.target.value) || 30;
+                      updateSetting("timerDangerMin", val);
+                      if (val <= settings.timerWarningMin) updateSetting("timerWarningMin", Math.max(1, val - 5));
+                    }}
+                    className={`w-20 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-3 py-2 text-sm text-center ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+                  />
+                  <span className="text-xs text-gray-400">Minuten</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-xs text-gray-400 mt-2">
+              Der Timer auf den Spielfeldern wechselt die Farbe wenn die Schwellenwerte ueberschritten werden.
             </div>
           </div>
         </div>
@@ -488,6 +557,141 @@ function ThemeSelector() {
           }
         )}
       </div>
+    </div>
+  );
+}
+
+function UpdateChecker() {
+  const { theme } = useTheme();
+  const [checking, setChecking] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [updateInfo, setUpdateInfo] = useState<{ version: string; notes: string } | null>(null);
+  const [status, setStatus] = useState<"idle" | "uptodate" | "available" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const currentVersion = "0.5.0"; // must match tauri.conf.json version
+
+  const checkForUpdates = async () => {
+    setChecking(true);
+    setStatus("idle");
+    setErrorMsg("");
+    try {
+      const { check } = await import("@tauri-apps/plugin-updater");
+      const update = await check();
+      if (update) {
+        setUpdateInfo({ version: update.version, notes: update.body || "" });
+        setStatus("available");
+      } else {
+        setStatus("uptodate");
+      }
+    } catch (err) {
+      setStatus("error");
+      setErrorMsg(String(err));
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const installUpdate = async () => {
+    setDownloading(true);
+    setProgress(0);
+    try {
+      const { check } = await import("@tauri-apps/plugin-updater");
+      const { relaunch } = await import("@tauri-apps/plugin-process");
+      const update = await check();
+      if (!update) return;
+
+      let totalBytes = 0;
+      await update.downloadAndInstall((event) => {
+        if (event.event === "Started" && event.data.contentLength) {
+          totalBytes = event.data.contentLength;
+        } else if (event.event === "Progress") {
+          const downloaded = (progress * totalBytes / 100) + event.data.chunkLength;
+          if (totalBytes > 0) {
+            setProgress(Math.min(100, Math.round((downloaded / totalBytes) * 100)));
+          }
+        } else if (event.event === "Finished") {
+          setProgress(100);
+        }
+      });
+
+      // Restart after install
+      await relaunch();
+    } catch (err) {
+      setStatus("error");
+      setErrorMsg(`Update fehlgeschlagen: ${err}`);
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className={`text-sm font-medium ${theme.textPrimary}`}>
+            Aktuelle Version: <span className="font-mono">{currentVersion}</span>
+          </div>
+          <div className="text-xs text-gray-400 mt-0.5">
+            Prueft auf neue Versionen bei GitHub Releases.
+          </div>
+        </div>
+        <button
+          onClick={checkForUpdates}
+          disabled={checking || downloading}
+          className={`${theme.primaryBg} text-white px-4 py-2 rounded-xl ${theme.primaryHoverBg} shadow-sm transition-all text-sm font-medium disabled:opacity-50`}
+        >
+          {checking ? "Pruefe..." : "🔄 Auf Updates pruefen"}
+        </button>
+      </div>
+
+      {status === "uptodate" && (
+        <div className="bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl px-4 py-3 text-sm">
+          ✅ Du hast die neueste Version ({currentVersion}).
+        </div>
+      )}
+
+      {status === "available" && updateInfo && (
+        <div className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl p-4`}>
+          <div className={`text-sm font-semibold ${theme.textPrimary} mb-1`}>
+            🎉 Neue Version verfuegbar: <span className="font-mono">{updateInfo.version}</span>
+          </div>
+          {updateInfo.notes && (
+            <div className={`text-xs ${theme.textSecondary} mb-3 whitespace-pre-line max-h-32 overflow-y-auto`}>
+              {updateInfo.notes}
+            </div>
+          )}
+          {downloading ? (
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <span className="text-xs font-mono text-gray-500">{progress}%</span>
+              </div>
+              <div className="text-xs text-gray-400">
+                Update wird heruntergeladen und installiert...
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={installUpdate}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 shadow-sm transition-all text-sm font-medium"
+            >
+              ⬇️ Update installieren &amp; neustarten
+            </button>
+          )}
+        </div>
+      )}
+
+      {status === "error" && (
+        <div className="bg-rose-50 text-rose-700 border border-rose-200 rounded-xl px-4 py-3 text-sm">
+          ❌ {errorMsg || "Update-Pruefung fehlgeschlagen. Bitte pruefe deine Internetverbindung."}
+        </div>
+      )}
     </div>
   );
 }

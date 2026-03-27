@@ -1750,6 +1750,38 @@ function MatchCard({
             ? isSetComplete(setData, pointsPerSet)
             : false;
 
+          const handleScoreKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, setNum: number, team: 1 | 2) => {
+            if (e.key === "Enter" || (e.key === "Tab" && !e.shiftKey)) {
+              e.preventDefault();
+              // Trigger blur on current field first (for auto-fill)
+              (e.target as HTMLInputElement).blur();
+              // Find next input: team1→team2 same set, team2→team1 next set
+              const card = (e.target as HTMLElement).closest("[data-match-id]");
+              if (!card) return;
+              let nextTeam: 1 | 2;
+              let nextSet: number;
+              if (team === 1) {
+                nextTeam = 2; nextSet = setNum;
+              } else {
+                nextTeam = 1; nextSet = setNum + 1;
+              }
+              const next = card.querySelector(`[data-score="${nextSet}-${nextTeam}"]`) as HTMLInputElement | null;
+              if (next && !next.disabled) {
+                setTimeout(() => { next.focus(); next.select(); }, 50);
+              } else {
+                // No more fields in this match - jump to next match's first input
+                const allCards = document.querySelectorAll("[data-match-id]");
+                const cardArr = Array.from(allCards);
+                const idx = cardArr.indexOf(card);
+                if (idx >= 0 && idx < cardArr.length - 1) {
+                  const nextCard = cardArr[idx + 1];
+                  const firstInput = nextCard.querySelector('input[type="number"]:not(:disabled)') as HTMLInputElement | null;
+                  if (firstInput) setTimeout(() => { firstInput.focus(); firstInput.select(); }, 50);
+                }
+              }
+            }
+          };
+
           return (
             <div key={setNum} className="text-center">
               <div className="text-[11px] font-medium text-gray-400 mb-1.5 uppercase tracking-wide">
@@ -1763,6 +1795,7 @@ function MatchCard({
                   type="number"
                   min={0}
                   max={maxScore}
+                  data-score={`${setNum}-1`}
                   value={setData?.team1_score ?? ""}
                   onChange={(e) =>
                     onScoreChange(
@@ -1773,6 +1806,8 @@ function MatchCard({
                     )
                   }
                   onBlur={() => onScoreBlur(match.id, setNum, 1)}
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={(e) => handleScoreKeyDown(e, setNum, 1)}
                   disabled={inputsDisabled}
                   className={`w-14 h-10 border-2 rounded-xl text-center text-base font-mono font-bold ${theme.inputBg} ${theme.inputText} disabled:opacity-60 outline-none transition-all ${
                     !validation.valid
@@ -1787,6 +1822,7 @@ function MatchCard({
                   type="number"
                   min={0}
                   max={maxScore}
+                  data-score={`${setNum}-2`}
                   value={setData?.team2_score ?? ""}
                   onChange={(e) =>
                     onScoreChange(
@@ -1797,6 +1833,8 @@ function MatchCard({
                     )
                   }
                   onBlur={() => onScoreBlur(match.id, setNum, 2)}
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={(e) => handleScoreKeyDown(e, setNum, 2)}
                   disabled={inputsDisabled}
                   className={`w-14 h-10 border-2 rounded-xl text-center text-base font-mono font-bold ${theme.inputBg} ${theme.inputText} disabled:opacity-60 outline-none transition-all ${
                     !validation.valid

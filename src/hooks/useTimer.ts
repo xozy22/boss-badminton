@@ -3,13 +3,14 @@ import { useState, useEffect } from "react";
 /**
  * Zeigt die vergangene Zeit seit `startIso` als "MM:SS" oder "H:MM:SS".
  * Aktualisiert sich jede Sekunde.
+ * Gibt auch die Gesamtsekunden zurueck fuer Threshold-Checks.
  */
-export function useTimer(startIso: string | null): string {
-  const [elapsed, setElapsed] = useState("");
+export function useTimer(startIso: string | null): { display: string; totalSeconds: number } {
+  const [state, setState] = useState<{ display: string; totalSeconds: number }>({ display: "", totalSeconds: 0 });
 
   useEffect(() => {
     if (!startIso) {
-      setElapsed("");
+      setState({ display: "", totalSeconds: 0 });
       return;
     }
 
@@ -20,11 +21,10 @@ export function useTimer(startIso: string | null): string {
       const h = Math.floor(diff / 3600);
       const m = Math.floor((diff % 3600) / 60);
       const s = diff % 60;
-      if (h > 0) {
-        setElapsed(`${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
-      } else {
-        setElapsed(`${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
-      }
+      const display = h > 0
+        ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+        : `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+      setState({ display, totalSeconds: diff });
     };
 
     tick();
@@ -32,5 +32,5 @@ export function useTimer(startIso: string | null): string {
     return () => clearInterval(interval);
   }, [startIso]);
 
-  return elapsed;
+  return state;
 }
