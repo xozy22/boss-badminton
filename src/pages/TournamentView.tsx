@@ -750,9 +750,29 @@ export default function TournamentView() {
           )}
           {tournament.status === "active" && (
             <button
-              onClick={() => {
-                const url = `${window.location.origin}/tv/${tournamentId}`;
-                window.open(url, `tv-${tournamentId}`, "width=1920,height=1080,menubar=no,toolbar=no");
+              onClick={async () => {
+                if ((window as any).__TAURI_INTERNALS__) {
+                  try {
+                    const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+                    const tvWin = new WebviewWindow(`tv-${tournamentId}`, {
+                      url: `/tv/${tournamentId}`,
+                      title: `TV-Modus: ${tournament.name}`,
+                      width: 1920,
+                      height: 1080,
+                      fullscreen: true,
+                      decorations: false,
+                      dragDropEnabled: false,
+                    });
+                    tvWin.once("tauri://error", (e) => {
+                      console.error("TV window error:", e);
+                    });
+                  } catch (err) {
+                    console.error("Failed to open TV window:", err);
+                  }
+                } else {
+                  const url = `${window.location.origin}/tv/${tournamentId}`;
+                  window.open(url, `tv-${tournamentId}`, "width=1920,height=1080,menubar=no,toolbar=no");
+                }
               }}
               className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl ${theme.cardHoverBorder} transition-all text-sm font-medium`}
             >
