@@ -581,3 +581,44 @@ export async function wipeAllTournaments(): Promise<void> {
   store.tournaments = [];
   saveStore(store);
 }
+
+// --- App Settings (key-value store in DB) ---
+
+export async function getAppSetting(key: string): Promise<string | null> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    const rows: { value: string }[] = await d.select(
+      "SELECT value FROM app_settings WHERE key = $1",
+      [key]
+    );
+    return rows.length > 0 ? rows[0].value : null;
+  }
+  // Fallback: localStorage
+  return localStorage.getItem(`app_setting_${key}`);
+}
+
+export async function setAppSetting(key: string, value: string): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    const existing: { key: string }[] = await d.select(
+      "SELECT key FROM app_settings WHERE key = $1",
+      [key]
+    );
+    if (existing.length > 0) {
+      await d.execute("UPDATE app_settings SET value = $1 WHERE key = $2", [value, key]);
+    } else {
+      await d.execute("INSERT INTO app_settings (key, value) VALUES ($1, $2)", [key, value]);
+    }
+    return;
+  }
+  localStorage.setItem(`app_setting_${key}`, value);
+}
+
+export async function deleteAppSetting(key: string): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("DELETE FROM app_settings WHERE key = $1", [key]);
+    return;
+  }
+  localStorage.removeItem(`app_setting_${key}`);
+}

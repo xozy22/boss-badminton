@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { useTheme } from "../../lib/ThemeContext";
 import { getCustomLogo } from "../../pages/Settings";
+import { getAppSetting } from "../../lib/db";
 
 const COLLAPSED_KEY = "turnierplaner_sidebar_collapsed";
 
@@ -18,8 +19,15 @@ export default function Sidebar() {
   });
   const [customLogo, setCustomLogo] = useState<string | null>(() => getCustomLogo());
 
-  // Listen for logo changes from Settings
+  // Load logo from DB on mount + listen for changes
   useEffect(() => {
+    // Load from DB and update cache
+    getAppSetting("custom_logo").then((dbLogo) => {
+      if (dbLogo) {
+        localStorage.setItem("turnierplaner_logo_cache", dbLogo);
+        setCustomLogo(dbLogo);
+      }
+    });
     const handler = () => setCustomLogo(getCustomLogo());
     window.addEventListener("logo-changed", handler);
     return () => window.removeEventListener("logo-changed", handler);

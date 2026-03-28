@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { wipeAllPlayers, wipeAllTournaments } from "../lib/db";
+import { wipeAllPlayers, wipeAllTournaments, getAppSetting, setAppSetting, deleteAppSetting } from "../lib/db";
 import { useTheme } from "../lib/ThemeContext";
 import { THEMES, type ThemeId } from "../lib/theme";
 
@@ -509,10 +509,35 @@ export default function Settings() {
   );
 }
 
-const LOGO_KEY = "turnierplaner_custom_logo";
+const LOGO_KEY = "custom_logo";
+const LOGO_CACHE_KEY = "turnierplaner_logo_cache"; // localStorage cache for sync access
 
+// Sync getter (uses localStorage cache, populated from DB on load)
 export function getCustomLogo(): string | null {
-  try { return localStorage.getItem(LOGO_KEY); } catch { return null; }
+  try { return localStorage.getItem(LOGO_CACHE_KEY); } catch { return null; }
+}
+
+// Async: load from DB and update cache
+async function loadLogoFromDb(): Promise<string | null> {
+  const logo = await getAppSetting(LOGO_KEY);
+  if (logo) {
+    localStorage.setItem(LOGO_CACHE_KEY, logo);
+  } else {
+    localStorage.removeItem(LOGO_CACHE_KEY);
+  }
+  return logo;
+}
+
+// Save to DB + cache
+async function saveLogoToDb(dataUrl: string): Promise<void> {
+  await setAppSetting(LOGO_KEY, dataUrl);
+  localStorage.setItem(LOGO_CACHE_KEY, dataUrl);
+}
+
+// Delete from DB + cache
+async function deleteLogoFromDb(): Promise<void> {
+  await deleteAppSetting(LOGO_KEY);
+  localStorage.removeItem(LOGO_CACHE_KEY);
 }
 
 function LogoCropper({
@@ -727,6 +752,13 @@ function LogoUploader() {
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Load from DB on mount (updates cache)
+  useEffect(() => {
+    loadLogoFromDb().then((dbLogo) => {
+      setLogo(dbLogo);
+    });
+  }, []);
+
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -747,15 +779,15 @@ function LogoUploader() {
     e.target.value = "";
   };
 
-  const handleCropSave = (croppedDataUrl: string) => {
-    localStorage.setItem(LOGO_KEY, croppedDataUrl);
+  const handleCropSave = async (croppedDataUrl: string) => {
+    await saveLogoToDb(croppedDataUrl);
     setLogo(croppedDataUrl);
     setCropSrc(null);
     window.dispatchEvent(new Event("logo-changed"));
   };
 
-  const handleRemove = () => {
-    localStorage.removeItem(LOGO_KEY);
+  const handleRemove = async () => {
+    await deleteLogoFromDb();
     setLogo(null);
     window.dispatchEvent(new Event("logo-changed"));
   };
