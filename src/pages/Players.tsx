@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getPlayers, createPlayer, updatePlayer, deletePlayer } from "../lib/db";
 import * as XLSX from "xlsx";
 import type { Player, Gender } from "../lib/types";
 import ExcelImport from "../components/players/ExcelImport";
 import { useTheme } from "../lib/ThemeContext";
+
+type GenderFilter = "all" | "m" | "f";
 
 export default function Players() {
   const { theme } = useTheme();
@@ -15,11 +17,25 @@ export default function Players() {
   const [editGender, setEditGender] = useState<Gender>("m");
   const [showImport, setShowImport] = useState(false);
 
-  const load = () => getPlayers().then(setPlayers);
+  // Filter
+  const [search, setSearch] = useState("");
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
 
-  useEffect(() => {
-    load();
-  }, []);
+  // Multi-select
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<{ ids: number[]; names: string[] } | null>(null);
+
+  const load = () => getPlayers().then((p) => { setPlayers(p); setSelectedIds(new Set()); });
+
+  useEffect(() => { load(); }, []);
+
+  const filteredPlayers = useMemo(() => {
+    return players.filter((p) => {
+      if (genderFilter !== "all" && p.gender !== genderFilter) return false;
+      if (search.trim() && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [players, search, genderFilter]);
 
   const handleAdd = async () => {
     if (!name.trim()) return;
@@ -41,10 +57,59 @@ export default function Players() {
     load();
   };
 
-  const handleDelete = async (id: number) => {
-    await deletePlayer(id);
+  // Single delete with confirmation
+  const handleDeleteSingle = (p: Player) => {
+    setDeleteTarget({ ids: [p.id], names: [p.name] });
+  };
+
+  // Multi delete with confirmation
+  const handleDeleteSelected = () => {
+    const ids = Array.from(selectedIds);
+    const names = ids.map((id) => players.find((p) => p.id === id)?.name ?? "?");
+    setDeleteTarget({ ids, names });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    for (const id of deleteTarget.ids) {
+      await deletePlayer(id);
+    }
+    setDeleteTarget(null);
     load();
   };
+
+  // Toggle selection
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const filteredIds = filteredPlayers.map((p) => p.id);
+    const allSelected = filteredIds.every((id) => selectedIds.has(id));
+    if (allSelected) {
+      // Deselect all filtered
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of filteredIds) next.delete(id);
+        return next;
+      });
+    } else {
+      // Select all filtered
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of filteredIds) next.add(id);
+        return next;
+      });
+    }
+  };
+
+  const allFilteredSelected = filteredPlayers.length > 0 && filteredPlayers.every((p) => selectedIds.has(p.id));
+  const someSelected = selectedIds.size > 0;
 
   const handleExport = async () => {
     const data = players.map((p) => ({
@@ -55,7 +120,6 @@ export default function Players() {
     ws["!cols"] = [{ wch: 30 }, { wch: 12 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Spieler");
-
     const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
 
     if ((window as any).__TAURI_INTERNALS__) {
@@ -74,7 +138,6 @@ export default function Players() {
         console.error("Tauri save failed, falling back to browser download", err);
       }
     }
-
     const blob = new Blob([buf], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
@@ -90,6 +153,7 @@ export default function Players() {
 
   return (
     <div>
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className={`text-2xl font-extrabold ${theme.textPrimary} tracking-tight`}>
@@ -117,10 +181,7 @@ export default function Players() {
       </div>
 
       {showImport && (
-        <ExcelImport
-          onImportDone={load}
-          onClose={() => setShowImport(false)}
-        />
+        <ExcelImport onImportDone={load} onClose={() => setShowImport(false)} />
       )}
 
       {/* Add Player */}
@@ -162,18 +223,97 @@ export default function Players() {
         </div>
       </div>
 
-      {/* Player Table */}
+      {/* Filter + Actions Bar */}
       <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
+        <div className={`px-5 py-3 border-b ${theme.cardBorder} flex items-center gap-3 flex-wrap`}>
+          {/* Search */}
+          <div className="relative flex-1 min-w-[180px]">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Spieler suchen..."
+              className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg pl-8 pr-3 py-1.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+            />
+            <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${theme.textMuted} text-xs`}>🔍</span>
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className={`absolute right-2.5 top-1/2 -translate-y-1/2 ${theme.textMuted} hover:opacity-80 text-xs`}
+              >✕</button>
+            )}
+          </div>
+
+          {/* Gender Filter */}
+          <div className={`flex rounded-lg border ${theme.inputBorder} overflow-hidden text-xs`}>
+            {([
+              { value: "all" as GenderFilter, label: "Alle" },
+              { value: "m" as GenderFilter, label: "Herren" },
+              { value: "f" as GenderFilter, label: "Damen" },
+            ]).map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setGenderFilter(opt.value)}
+                className={`px-3 py-1.5 font-medium transition-colors ${
+                  genderFilter === opt.value
+                    ? `${theme.primaryBg} text-white`
+                    : `${theme.textSecondary} hover:opacity-80`
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Selection Actions */}
+          {someSelected && (
+            <div className="flex items-center gap-2 ml-auto">
+              <span className={`text-xs ${theme.textMuted}`}>
+                {selectedIds.size} ausgewaehlt
+              </span>
+              <button
+                onClick={handleDeleteSelected}
+                className="bg-rose-500/10 text-rose-600 border border-rose-500/20 px-3 py-1.5 rounded-lg hover:bg-rose-500/20 transition-all text-xs font-medium"
+              >
+                🗑 Ausgewaehlte loeschen
+              </button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className={`${theme.textMuted} hover:opacity-80 px-2 py-1.5 text-xs`}
+              >
+                Auswahl aufheben
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Info bar */}
+        {(genderFilter !== "all" || search) && (
+          <div className={`px-5 py-1.5 text-xs ${theme.textMuted} border-b ${theme.cardBorder}`}>
+            {filteredPlayers.length} von {players.length} Spielern angezeigt
+          </div>
+        )}
+
+        {/* Player Table */}
         <table className="w-full text-sm">
           <thead>
             <tr className={`border-b ${theme.cardBorder} ${theme.headerGradient}`}>
-              <th className={`text-left px-5 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
+              <th className="w-10 px-3 py-3">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={toggleSelectAll}
+                  className="rounded accent-emerald-600"
+                  title="Alle auswaehlen"
+                />
+              </th>
+              <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
                 #
               </th>
-              <th className={`text-left px-5 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
+              <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
                 Name
               </th>
-              <th className={`text-left px-5 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
+              <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
                 Geschlecht
               </th>
               <th className={`text-right px-5 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
@@ -182,100 +322,165 @@ export default function Players() {
             </tr>
           </thead>
           <tbody>
-            {players.map((p, i) => (
-              <tr
-                key={p.id}
-                className="border-b border-gray-50 last:border-0 hover:bg-emerald-50/30 transition-colors"
-              >
-                <td className="px-5 py-3 text-gray-400 font-mono text-xs">
-                  {i + 1}
-                </td>
-                <td className={`px-5 py-3 font-medium ${theme.textPrimary}`}>
-                  {editingId === p.id ? (
-                    <input
-                      type="text"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleSave()}
-                      className={`border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm w-full focus:ring-2 ${theme.focusRing} outline-none`}
-                      autoFocus
-                    />
-                  ) : (
-                    p.name
-                  )}
-                </td>
-                <td className="px-5 py-3">
-                  {editingId === p.id ? (
-                    <select
-                      value={editGender}
-                      onChange={(e) =>
-                        setEditGender(e.target.value as Gender)
-                      }
-                      className={`border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm`}
-                    >
-                      <option value="m">Herr</option>
-                      <option value="f">Dame</option>
-                    </select>
-                  ) : (
-                    <span
-                      className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                        p.gender === "m"
-                          ? "bg-blue-50 text-blue-600"
-                          : "bg-pink-50 text-pink-600"
-                      }`}
-                    >
-                      {p.gender === "m" ? "Herr" : "Dame"}
-                    </span>
-                  )}
-                </td>
-                <td className="px-5 py-3 text-right">
-                  {editingId === p.id ? (
-                    <div className="flex gap-2 justify-end">
-                      <button
-                        onClick={handleSave}
-                        className={`${theme.activeBadgeText} text-sm font-medium`}
-                      >
-                        Speichern
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="text-gray-400 hover:text-gray-600 text-sm"
-                      >
-                        Abbrechen
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-3 justify-end">
-                      <button
-                        onClick={() => handleEdit(p)}
-                        className="text-gray-400 hover:text-emerald-600 text-sm transition-colors"
-                      >
-                        Bearbeiten
-                      </button>
-                      <button
-                        onClick={() => handleDelete(p.id)}
-                        className="text-gray-400 hover:text-rose-600 text-sm transition-colors"
-                      >
-                        Loeschen
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {players.length === 0 && (
-              <tr>
-                <td
-                  colSpan={4}
-                  className="px-5 py-12 text-center text-gray-400"
+            {filteredPlayers.map((p, i) => {
+              const isSelected = selectedIds.has(p.id);
+              return (
+                <tr
+                  key={p.id}
+                  className={`border-b ${theme.cardBorder} last:border-0 transition-colors ${
+                    isSelected ? theme.selectedBg : `hover:${theme.cardBg}`
+                  }`}
                 >
-                  Noch keine Spieler vorhanden.
+                  <td className="px-3 py-3">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(p.id)}
+                      className="rounded accent-emerald-600"
+                    />
+                  </td>
+                  <td className={`px-3 py-3 ${theme.textMuted} font-mono text-xs`}>
+                    {i + 1}
+                  </td>
+                  <td className={`px-3 py-3 font-medium ${theme.textPrimary}`}>
+                    {editingId === p.id ? (
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleSave()}
+                        className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm w-full focus:ring-2 ${theme.focusRing} outline-none`}
+                        autoFocus
+                      />
+                    ) : (
+                      p.name
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+                    {editingId === p.id ? (
+                      <select
+                        value={editGender}
+                        onChange={(e) => setEditGender(e.target.value as Gender)}
+                        className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm`}
+                      >
+                        <option value="m">Herr</option>
+                        <option value="f">Dame</option>
+                      </select>
+                    ) : (
+                      <span
+                        className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                          p.gender === "m"
+                            ? "bg-blue-500/10 text-blue-500"
+                            : "bg-pink-500/10 text-pink-500"
+                        }`}
+                      >
+                        {p.gender === "m" ? "Herr" : "Dame"}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    {editingId === p.id ? (
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={handleSave}
+                          className={`${theme.activeBadgeText} text-sm font-medium`}
+                        >
+                          Speichern
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className={`${theme.textMuted} hover:opacity-80 text-sm`}
+                        >
+                          Abbrechen
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-3 justify-end">
+                        <button
+                          onClick={() => handleEdit(p)}
+                          className={`${theme.textMuted} hover:${theme.activeBadgeText} text-sm transition-colors`}
+                        >
+                          Bearbeiten
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSingle(p)}
+                          className={`${theme.textMuted} hover:text-rose-600 text-sm transition-colors`}
+                        >
+                          Loeschen
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {filteredPlayers.length === 0 && (
+              <tr>
+                <td colSpan={5} className={`px-5 py-12 text-center ${theme.textMuted}`}>
+                  {players.length === 0
+                    ? "Noch keine Spieler vorhanden."
+                    : "Keine Spieler fuer diesen Filter gefunden."}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
+            <div className="text-center mb-5">
+              <div className="text-4xl mb-3">⚠️</div>
+              <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
+                {deleteTarget.ids.length === 1
+                  ? "Spieler loeschen?"
+                  : `${deleteTarget.ids.length} Spieler loeschen?`}
+              </h3>
+              <div className={`text-sm ${theme.textSecondary} mt-3`}>
+                {deleteTarget.ids.length <= 5 ? (
+                  <div className="space-y-1">
+                    {deleteTarget.names.map((n, i) => (
+                      <div key={i} className={`font-medium ${theme.textPrimary}`}>
+                        {n}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                    <div className="space-y-1 mb-2">
+                      {deleteTarget.names.slice(0, 3).map((n, i) => (
+                        <div key={i} className={`font-medium ${theme.textPrimary}`}>{n}</div>
+                      ))}
+                    </div>
+                    <div className={theme.textMuted}>
+                      ... und {deleteTarget.ids.length - 3} weitere
+                    </div>
+                  </div>
+                )}
+                <p className={`mt-3 ${theme.textMuted} text-xs`}>
+                  Diese Aktion kann nicht rueckgaengig gemacht werden.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className={`flex-1 ${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-all text-sm font-medium"
+              >
+                {deleteTarget.ids.length === 1 ? "Loeschen" : `${deleteTarget.ids.length} Spieler loeschen`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
