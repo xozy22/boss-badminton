@@ -570,7 +570,7 @@ function UpdateChecker() {
   const [status, setStatus] = useState<"idle" | "uptodate" | "available" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const currentVersion = "0.5.0"; // must match tauri.conf.json version
+  const currentVersion = __APP_VERSION__;
 
   const checkForUpdates = async () => {
     setChecking(true);
