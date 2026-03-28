@@ -117,9 +117,16 @@ fn restore_db(app_handle: tauri::AppHandle, source_path: String) -> Result<(), S
         return Err("Backup-Datei nicht gefunden".to_string());
     }
 
-    // Pruefen ob es eine gueltige SQLite-Datei ist
-    let header = fs::read(&source).map_err(|e| format!("Datei lesen fehlgeschlagen: {}", e))?;
-    if header.len() < 16 || &header[0..16] != b"SQLite format 3\0" {
+    // Pruefen ob es eine gueltige SQLite-Datei ist (nur Header lesen, nicht ganze Datei)
+    let mut header = [0u8; 16];
+    {
+        use std::io::Read;
+        let mut file = std::fs::File::open(&source)
+            .map_err(|e| format!("Datei oeffnen fehlgeschlagen: {}", e))?;
+        file.read_exact(&mut header)
+            .map_err(|e| format!("Datei lesen fehlgeschlagen: {}", e))?;
+    }
+    if &header[0..16] != b"SQLite format 3\0" {
         return Err("Die ausgewaehlte Datei ist keine gueltige SQLite-Datenbank".to_string());
     }
 
@@ -139,6 +146,10 @@ fn restore_db(app_handle: tauri::AppHandle, source_path: String) -> Result<(), S
 
 #[tauri::command]
 fn open_folder(path: String) -> Result<(), String> {
+    let p = PathBuf::from(&path);
+    if !p.exists() || !p.is_dir() {
+        return Err(format!("Pfad existiert nicht oder ist kein Verzeichnis: {}", path));
+    }
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("explorer")
@@ -270,6 +281,30 @@ pub fn run() {
             description: "add retired flag to tournament_players",
             sql: "
                 ALTER TABLE tournament_players ADD COLUMN retired INTEGER NOT NULL DEFAULT 0;
+            ",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 7,
+            description: "add group_ko to format CHECK constraint",
+            sql: "
+                CREATE TABLE tournaments_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    mode TEXT NOT NULL CHECK(mode IN ('singles', 'doubles', 'mixed')),
+                    format TEXT NOT NULL CHECK(format IN ('round_robin', 'elimination', 'random_doubles', 'group_ko')),
+                    sets_to_win INTEGER NOT NULL DEFAULT 2,
+                    points_per_set INTEGER NOT NULL DEFAULT 21,
+                    courts INTEGER NOT NULL DEFAULT 1,
+                    num_groups INTEGER NOT NULL DEFAULT 0,
+                    qualify_per_group INTEGER NOT NULL DEFAULT 0,
+                    current_phase TEXT,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'active', 'completed', 'archived'))
+                );
+                INSERT INTO tournaments_new SELECT id, name, mode, format, sets_to_win, points_per_set, courts, num_groups, qualify_per_group, current_phase, created_at, status FROM tournaments;
+                DROP TABLE tournaments;
+                ALTER TABLE tournaments_new RENAME TO tournaments;
             ",
             kind: MigrationKind::Up,
         },

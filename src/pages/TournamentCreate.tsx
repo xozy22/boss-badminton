@@ -59,7 +59,7 @@ export default function TournamentCreate() {
     if (!VALID_FORMATS[mode].includes(format)) {
       setFormat(VALID_FORMATS[mode][0]);
     }
-  }, [mode]);
+  }, [mode, format]);
 
   const filteredPlayers = useMemo(() => {
     return players.filter((p) => {

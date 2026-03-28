@@ -141,10 +141,13 @@ export async function getTournament(id: number): Promise<Tournament> {
   if (isTauri()) {
     const d = await getTauriDb();
     const rows: Tournament[] = await d.select("SELECT * FROM tournaments WHERE id = $1", [id]);
+    if (!rows[0]) throw new Error(`Tournament ${id} not found`);
     return rows[0];
   }
   const store = loadStore();
-  return store.tournaments.find((t) => t.id === id)!;
+  const t = store.tournaments.find((t) => t.id === id);
+  if (!t) throw new Error(`Tournament ${id} not found`);
+  return t;
 }
 
 export async function createTournament(
@@ -212,17 +215,24 @@ export async function updateTournamentStatus(id: number, status: string): Promis
 export async function deleteTournament(id: number): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute(
-      "DELETE FROM sets WHERE match_id IN (SELECT m.id FROM matches m JOIN rounds r ON m.round_id = r.id WHERE r.tournament_id = $1)",
-      [id]
-    );
-    await d.execute(
-      "DELETE FROM matches WHERE round_id IN (SELECT id FROM rounds WHERE tournament_id = $1)",
-      [id]
-    );
-    await d.execute("DELETE FROM rounds WHERE tournament_id = $1", [id]);
-    await d.execute("DELETE FROM tournament_players WHERE tournament_id = $1", [id]);
-    await d.execute("DELETE FROM tournaments WHERE id = $1", [id]);
+    await d.execute("BEGIN TRANSACTION");
+    try {
+      await d.execute(
+        "DELETE FROM sets WHERE match_id IN (SELECT m.id FROM matches m JOIN rounds r ON m.round_id = r.id WHERE r.tournament_id = $1)",
+        [id]
+      );
+      await d.execute(
+        "DELETE FROM matches WHERE round_id IN (SELECT id FROM rounds WHERE tournament_id = $1)",
+        [id]
+      );
+      await d.execute("DELETE FROM rounds WHERE tournament_id = $1", [id]);
+      await d.execute("DELETE FROM tournament_players WHERE tournament_id = $1", [id]);
+      await d.execute("DELETE FROM tournaments WHERE id = $1", [id]);
+      await d.execute("COMMIT");
+    } catch (err) {
+      await d.execute("ROLLBACK");
+      throw err;
+    }
     return;
   }
   const store = loadStore();

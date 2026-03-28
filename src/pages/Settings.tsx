@@ -603,13 +603,14 @@ function UpdateChecker() {
       if (!update) return;
 
       let totalBytes = 0;
+      let downloadedBytes = 0;
       await update.downloadAndInstall((event) => {
         if (event.event === "Started" && event.data.contentLength) {
           totalBytes = event.data.contentLength;
         } else if (event.event === "Progress") {
-          const downloaded = (progress * totalBytes / 100) + event.data.chunkLength;
+          downloadedBytes += event.data.chunkLength;
           if (totalBytes > 0) {
-            setProgress(Math.min(100, Math.round((downloaded / totalBytes) * 100)));
+            setProgress(Math.min(100, Math.round((downloadedBytes / totalBytes) * 100)));
           }
         } else if (event.event === "Finished") {
           setProgress(100);
