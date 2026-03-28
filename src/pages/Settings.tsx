@@ -262,6 +262,7 @@ export default function Settings() {
       {/* ===== Design ===== */}
       <Section title="Design" icon="🎨" defaultOpen={false}>
         <ThemeSelector />
+        <LogoUploader />
       </Section>
 
       {/* ===== Voreinstellungen ===== */}
@@ -504,6 +505,96 @@ export default function Settings() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const LOGO_KEY = "turnierplaner_custom_logo";
+
+export function getCustomLogo(): string | null {
+  try { return localStorage.getItem(LOGO_KEY); } catch { return null; }
+}
+
+function LogoUploader() {
+  const { theme } = useTheme();
+  const [logo, setLogo] = useState<string | null>(() => getCustomLogo());
+  const fileRef = { current: null as HTMLInputElement | null };
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Max 512KB
+    if (file.size > 512 * 1024) {
+      alert("Bild ist zu gross (max. 512 KB)");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      localStorage.setItem(LOGO_KEY, dataUrl);
+      setLogo(dataUrl);
+      // Trigger re-render in other components
+      window.dispatchEvent(new Event("logo-changed"));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemove = () => {
+    localStorage.removeItem(LOGO_KEY);
+    setLogo(null);
+    window.dispatchEvent(new Event("logo-changed"));
+  };
+
+  return (
+    <div className={`mt-5 pt-5 border-t ${theme.cardBorder}`}>
+      <label className={`block text-xs font-medium ${theme.textSecondary} mb-3 uppercase tracking-wide`}>
+        Vereinslogo
+      </label>
+      <div className="flex items-center gap-4">
+        {/* Preview */}
+        <div
+          className={`w-16 h-16 rounded-xl border-2 border-dashed ${theme.inputBorder} flex items-center justify-center overflow-hidden shrink-0 ${
+            logo ? "border-solid" : ""
+          }`}
+        >
+          {logo ? (
+            <img src={logo} alt="Logo" className="w-full h-full object-contain" />
+          ) : (
+            <span className="text-3xl">🏸</span>
+          )}
+        </div>
+
+        <div className="flex-1">
+          <div className="flex gap-2 mb-1.5">
+            <button
+              onClick={() => fileRef.current?.click()}
+              className={`${theme.primaryBg} text-white px-3 py-1.5 rounded-lg ${theme.primaryHoverBg} transition-all text-xs font-medium`}
+            >
+              {logo ? "Aendern" : "Logo hochladen"}
+            </button>
+            {logo && (
+              <button
+                onClick={handleRemove}
+                className="text-rose-500 hover:text-rose-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              >
+                Entfernen
+              </button>
+            )}
+          </div>
+          <div className={`text-[10px] ${theme.textMuted}`}>
+            PNG, JPG oder SVG. Max. 512 KB. Wird in der Sidebar und im TV-Modus angezeigt.
+          </div>
+          <input
+            ref={(el) => { fileRef.current = el; }}
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml,image/webp"
+            onChange={handleFile}
+            className="hidden"
+          />
+        </div>
+      </div>
     </div>
   );
 }

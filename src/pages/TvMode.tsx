@@ -17,6 +17,7 @@ import type {
 } from "../lib/types";
 import { MODE_LABELS, FORMAT_LABELS } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
+import { getCustomLogo } from "./Settings";
 
 interface Announcement {
   id: number;
@@ -197,7 +198,11 @@ export default function TvMode() {
       {/* Header */}
       <div className={`bg-black/30 backdrop-blur-sm border-b ${tv.headerBorder} px-8 py-4 flex justify-between items-center`}>
         <div className="flex items-center gap-4">
-          <span className="text-4xl">🏸</span>
+          {getCustomLogo() ? (
+            <img src={getCustomLogo()!} alt="Logo" className="w-10 h-10 object-contain" />
+          ) : (
+            <span className="text-4xl">🏸</span>
+          )}
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight">{tournament.name}</h1>
             <div className={`${tv.primary} text-sm font-medium`}>

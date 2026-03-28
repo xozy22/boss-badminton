@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { useTheme } from "../../lib/ThemeContext";
+import { getCustomLogo } from "../../pages/Settings";
 
 const COLLAPSED_KEY = "turnierplaner_sidebar_collapsed";
 
@@ -15,6 +16,14 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem(COLLAPSED_KEY) === "true"; } catch { return false; }
   });
+  const [customLogo, setCustomLogo] = useState<string | null>(() => getCustomLogo());
+
+  // Listen for logo changes from Settings
+  useEffect(() => {
+    const handler = () => setCustomLogo(getCustomLogo());
+    window.addEventListener("logo-changed", handler);
+    return () => window.removeEventListener("logo-changed", handler);
+  }, []);
 
   const toggle = () => {
     const next = !collapsed;
@@ -29,10 +38,20 @@ export default function Sidebar() {
       {/* Branding */}
       <div className={`${collapsed ? "p-3" : "p-5"} border-b ${theme.sidebarBorder}`}>
         {collapsed ? (
-          <div className="text-2xl text-center">🏸</div>
+          <div className="text-2xl text-center flex justify-center">
+            {customLogo ? (
+              <img src={customLogo} alt="Logo" className="w-8 h-8 object-contain" />
+            ) : (
+              <span>🏸</span>
+            )}
+          </div>
         ) : (
           <div className="flex items-center gap-3">
-            <div className="text-3xl">🏸</div>
+            {customLogo ? (
+              <img src={customLogo} alt="Logo" className="w-9 h-9 object-contain shrink-0" />
+            ) : (
+              <div className="text-3xl shrink-0">🏸</div>
+            )}
             <div>
               <div className="text-base font-bold tracking-tight text-white">
                 Badminton
