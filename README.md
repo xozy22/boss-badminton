@@ -69,6 +69,9 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 - Theme-Wechsel ueber Einstellungen → Design, wird sofort angewendet
 - Vollstaendiger Dark Mode: Alle Seiten, Modals, Inputs, Tabellen, Bracket-Ansicht
 - Theme wird persistent gespeichert
+- **Custom Vereinslogo**: Eigenes Logo hochladen mit Zuschnitt-Tool (1:1 Cropper)
+  - Wird in der Sidebar und im TV-Modus angezeigt (ersetzt Standard 🏸 Emoji)
+  - Gespeichert in der SQLite-Datenbank (im Backup enthalten, wandert mit DB)
 
 ### Sidebar
 - **Einklappbar**: Sidebar auf Icons reduzierbar fuer mehr Platz (persistent gespeichert)
@@ -76,7 +79,7 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 
 ### Einstellungen
 - **Updates**: Manueller Update-Check ueber GitHub Releases mit Fortschrittsanzeige und Auto-Restart
-- **Design**: 4 Farbschemas (aufklappbar)
+- **Design**: 4 Farbschemas (aufklappbar), Custom Vereinslogo mit Cropper
 - **Voreinstellungen**: Standard-Spielfelder, Timer-Schwellenwerte (Warnung gelb, Kritisch rot)
 - **Datenbank**: Speicherort anzeigen/aendern, Backup & Wiederherstellung
 - **Gefahrenzone**: Spieler oder Turniere komplett loeschen (mit Sicherheitsabfrage)
