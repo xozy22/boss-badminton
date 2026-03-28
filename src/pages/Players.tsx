@@ -298,7 +298,7 @@ export default function Players() {
         <table className="w-full text-sm">
           <thead>
             <tr className={`border-b ${theme.cardBorder} ${theme.headerGradient}`}>
-              <th className="w-10 px-3 py-3">
+              <th className="w-10 px-3 py-3 text-center align-middle">
                 <input
                   type="checkbox"
                   checked={allFilteredSelected}
@@ -307,7 +307,7 @@ export default function Players() {
                   title="Alle auswaehlen"
                 />
               </th>
-              <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
+              <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide align-middle`}>
                 #
               </th>
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
@@ -331,7 +331,7 @@ export default function Players() {
                     isSelected ? theme.selectedBg : `hover:${theme.cardBg}`
                   }`}
                 >
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3 text-center align-middle">
                     <input
                       type="checkbox"
                       checked={isSelected}
