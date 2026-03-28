@@ -580,7 +580,10 @@ function UpdateChecker() {
       const { check } = await import("@tauri-apps/plugin-updater");
       const update = await check();
       if (update) {
-        setUpdateInfo({ version: update.version, notes: update.body || "" });
+        // Sanitize: Strip HTML tags from release notes to prevent XSS
+        const rawNotes = update.body || "";
+        const sanitizedNotes = rawNotes.replace(/<[^>]*>/g, "");
+        setUpdateInfo({ version: update.version, notes: sanitizedNotes });
         setStatus("available");
       } else {
         setStatus("uptodate");
