@@ -175,7 +175,7 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
                   draggable
                   onDragStart={(e) => handleDragStart(e, m.id)}
                   onDoubleClick={() => handleDoubleClick(m.id)}
-                  className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl px-3 py-2 text-xs cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-sm transition-all select-none relative`}
+                  className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl px-3 py-2 text-xs cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-md transition-all duration-200 select-none relative ${courtPickerMatchId === m.id ? "z-40" : ""}`}
                   title="Drag auf ein Feld oder Doppelklick zum Zuweisen"
                 >
                   <span className={`font-medium ${theme.textPrimary}`}>{t1}</span>
@@ -192,7 +192,7 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
                         <button
                           key={c}
                           onClick={(e) => { e.stopPropagation(); handlePickCourt(c); }}
-                          className={`w-full px-4 py-2 text-left text-xs font-medium ${theme.textPrimary} hover:${theme.selectedBg} transition-colors`}
+                          className={`w-full px-4 py-2 text-left text-xs font-medium ${theme.textPrimary} hover:${theme.selectedBg} hover:pl-5 transition-all duration-150`}
                         >
                           Feld {c}
                         </button>

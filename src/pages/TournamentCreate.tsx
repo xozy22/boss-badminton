@@ -308,7 +308,7 @@ export default function TournamentCreate() {
     { key: "players" as const, label: "Spieler", icon: "👥", valid: playersValid },
     ...(needsTeamPairing ? [{ key: "teams" as const, label: "Teams", icon: "🤝", valid: teamsValid }] : []),
     ...(showSeedingStep ? [{ key: "seeding" as const, label: "Setzliste", icon: "🎯", valid: seedingValid }] : []),
-    { key: "create" as const, label: "Erstellen", icon: "🏆", valid: settingsValid && playersValid && teamsValid },
+    { key: "create" as const, label: "Erstellen", icon: "🏆", valid: false },
   ];
 
   const currentStepIdx = steps.findIndex((s) => s.key === createStep);
@@ -317,10 +317,68 @@ export default function TournamentCreate() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-2">
+      <div className="mb-2 flex justify-between items-center">
         <h1 className={`text-2xl font-extrabold ${theme.textPrimary} tracking-tight`}>
           {isEditMode ? "Turnier bearbeiten" : "Neues Turnier erstellen"}
         </h1>
+        {!isEditMode && (
+          <label className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2 rounded-xl ${theme.cardHoverBorder} hover:shadow-sm transition-all text-sm font-medium cursor-pointer`}>
+            📋 Vorlage laden
+            <input
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                  try {
+                    const tpl = JSON.parse(evt.target?.result as string);
+                    if (tpl.name) { setName(tpl.name); setNameManuallyEdited(true); }
+                    if (tpl.mode) setMode(tpl.mode);
+                    if (tpl.format) setFormat(tpl.format);
+                    if (tpl.sets_to_win) setSetsToWin(tpl.sets_to_win);
+                    if (tpl.points_per_set) setPointsPerSet(tpl.points_per_set);
+                    if (tpl.courts) setCourts(tpl.courts);
+                    if (tpl.num_groups) setNumGroups(tpl.num_groups);
+                    if (tpl.qualify_per_group) setQualifyPerGroup(tpl.qualify_per_group);
+                    if (tpl.entry_fee_single > 0 || tpl.entry_fee_double > 0) {
+                      setUseEntryFee(true);
+                      setEntryFeeSingle(String(tpl.entry_fee_single || 0));
+                      setEntryFeeDouble(String(tpl.entry_fee_double || 0));
+                    }
+                    if (tpl.players && Array.isArray(tpl.players)) {
+                      // Match by name since IDs may differ
+                      const ids = new Set<number>();
+                      for (const tp of tpl.players) {
+                        const match = players.find((p) => p.name.toLowerCase() === tp.name?.toLowerCase());
+                        if (match) ids.add(match.id);
+                      }
+                      if (ids.size > 0) setSelectedPlayerIds(ids);
+                    }
+                    if (tpl.team_config && Array.isArray(tpl.team_config)) {
+                      // Remap team IDs by name
+                      const remapped: [number, number][] = [];
+                      for (const [id1, id2] of tpl.team_config) {
+                        const p1Name = tpl.players?.find((p: any) => p.id === id1)?.name;
+                        const p2Name = tpl.players?.find((p: any) => p.id === id2)?.name;
+                        const newP1 = players.find((p) => p.name.toLowerCase() === p1Name?.toLowerCase());
+                        const newP2 = players.find((p) => p.name.toLowerCase() === p2Name?.toLowerCase());
+                        if (newP1 && newP2) remapped.push([newP1.id, newP2.id]);
+                      }
+                      if (remapped.length > 0) setManualTeams(remapped);
+                    }
+                  } catch (err) {
+                    console.error("Vorlage laden fehlgeschlagen:", err);
+                  }
+                };
+                reader.readAsText(file);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        )}
       </div>
 
       {/* Step Tabs */}
@@ -329,10 +387,10 @@ export default function TournamentCreate() {
           <button
             key={step.key}
             onClick={() => setCreateStep(step.key)}
-            className={`px-6 py-3 text-sm font-semibold transition-all relative ${
+            className={`px-6 py-3 text-sm font-semibold transition-all duration-200 relative rounded-t-lg ${
               createStep === step.key
                 ? `${theme.textPrimary}`
-                : `${theme.textMuted} hover:${theme.textSecondary}`
+                : `${theme.textMuted} hover:${theme.textPrimary} hover:bg-black/[0.03]`
             }`}
           >
             <span className="mr-1.5">{step.icon}</span>
@@ -340,8 +398,10 @@ export default function TournamentCreate() {
             {step.valid && createStep !== step.key && (
               <span className="ml-1.5 text-green-500">✓</span>
             )}
-            {createStep === step.key && (
+            {createStep === step.key ? (
               <span className={`absolute bottom-0 left-0 right-0 h-[3px] ${theme.primaryBg} rounded-t-full`} />
+            ) : (
+              <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-transparent rounded-t-full transition-all" />
             )}
           </button>
         ))}

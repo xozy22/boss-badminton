@@ -272,6 +272,10 @@ export default function TournamentView() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [paymentData, setPaymentData] = useState<TournamentPlayerInfo[]>([]);
   const [collapsedClubs, setCollapsedClubs] = useState<Set<string>>(new Set());
+  const [verwaltungSearch, setVerwaltungSearch] = useState("");
+  const [verwaltungFilter, setVerwaltungFilter] = useState<"all" | "paid" | "unpaid">("all");
+  const [showTemplateExport, setShowTemplateExport] = useState(false);
+  const [templateInclude, setTemplateInclude] = useState({ settings: true, players: true, teams: true });
   const [viewTab, setViewTab] = useState<"spiele" | "rangliste" | "verwaltung">("spiele");
   const [retireTarget, setRetireTarget] = useState<{ player: Player; partnerNote: string } | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
@@ -946,6 +950,12 @@ export default function TournamentView() {
                 ✏️ Bearbeiten
               </button>
               <button
+                onClick={() => setShowTemplateExport(true)}
+                className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl ${theme.cardHoverBorder} transition-all text-sm font-medium`}
+              >
+                📋 Vorlage
+              </button>
+              <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:border-rose-300 hover:text-rose-600 transition-all text-sm font-medium`}
               >
@@ -1126,6 +1136,86 @@ export default function TournamentView() {
         </div>
       )}
 
+      {/* Template Export Modal */}
+      {showTemplateExport && tournament && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
+            <h3 className={`text-lg font-bold ${theme.textPrimary} mb-4`}>📋 Als Vorlage exportieren</h3>
+            <p className={`text-sm ${theme.textSecondary} mb-4`}>Waehle was in der Vorlage enthalten sein soll:</p>
+            <div className="space-y-3 mb-5">
+              <label className={`flex items-center gap-3 p-3 rounded-xl border ${theme.cardBorder} ${templateInclude.settings ? theme.selectedBg : ''} cursor-pointer`}>
+                <input type="checkbox" checked={templateInclude.settings} onChange={(e) => setTemplateInclude((p) => ({ ...p, settings: e.target.checked }))} className="rounded accent-emerald-600" />
+                <div>
+                  <div className={`text-sm font-medium ${theme.textPrimary}`}>⚙️ Einstellungen</div>
+                  <div className={`text-xs ${theme.textMuted}`}>Modus, Format, Saetze, Punkte, Felder, Startgeld</div>
+                </div>
+              </label>
+              <label className={`flex items-center gap-3 p-3 rounded-xl border ${theme.cardBorder} ${templateInclude.players ? theme.selectedBg : ''} cursor-pointer`}>
+                <input type="checkbox" checked={templateInclude.players} onChange={(e) => setTemplateInclude((p) => ({ ...p, players: e.target.checked, teams: e.target.checked ? p.teams : false }))} className="rounded accent-emerald-600" />
+                <div>
+                  <div className={`text-sm font-medium ${theme.textPrimary}`}>👥 Spieler ({players.length})</div>
+                  <div className={`text-xs ${theme.textMuted}`}>Teilnehmerliste mit Namen und Geschlecht</div>
+                </div>
+              </label>
+              {tournament.team_config && (
+                <label className={`flex items-center gap-3 p-3 rounded-xl border ${theme.cardBorder} ${templateInclude.teams ? theme.selectedBg : ''} cursor-pointer ${!templateInclude.players ? 'opacity-40 pointer-events-none' : ''}`}>
+                  <input type="checkbox" checked={templateInclude.teams} disabled={!templateInclude.players} onChange={(e) => setTemplateInclude((p) => ({ ...p, teams: e.target.checked }))} className="rounded accent-emerald-600" />
+                  <div>
+                    <div className={`text-sm font-medium ${theme.textPrimary}`}>🤝 Teams</div>
+                    <div className={`text-xs ${theme.textMuted}`}>Gebildete Doppel-/Mixed-Paarungen</div>
+                  </div>
+                </label>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowTemplateExport(false)}
+                className={`flex-1 ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={() => {
+                  const template: Record<string, unknown> = { version: 1 };
+                  if (templateInclude.settings) {
+                    template.name = tournament.name;
+                    template.mode = tournament.mode;
+                    template.format = tournament.format;
+                    template.sets_to_win = tournament.sets_to_win;
+                    template.points_per_set = tournament.points_per_set;
+                    template.courts = tournament.courts;
+                    template.num_groups = tournament.num_groups;
+                    template.qualify_per_group = tournament.qualify_per_group;
+                    template.entry_fee_single = tournament.entry_fee_single;
+                    template.entry_fee_double = tournament.entry_fee_double;
+                  }
+                  if (templateInclude.players) {
+                    template.players = players.map((p) => ({ id: p.id, name: p.name, gender: p.gender }));
+                  }
+                  if (templateInclude.teams && tournament.team_config) {
+                    try { template.team_config = JSON.parse(tournament.team_config); } catch {}
+                  }
+                  const json = JSON.stringify(template, null, 2);
+                  const blob = new Blob([json], { type: "application/json" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `${(tournament.name || "vorlage").replace(/[^a-zA-Z0-9äöüÄÖÜß\-_ .]/g, "")}.json`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                  setShowTemplateExport(false);
+                }}
+                className={`flex-1 ${theme.primaryBg} text-white px-4 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm transition-all text-sm font-medium`}
+              >
+                📥 Exportieren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Retire/Injured Modal */}
       {retireTarget && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -1194,16 +1284,18 @@ export default function TournamentView() {
             <button
               key={tab.key}
               onClick={() => setViewTab(tab.key)}
-              className={`px-6 py-3 text-sm font-semibold transition-all relative ${
+              className={`px-6 py-3 text-sm font-semibold transition-all duration-200 relative rounded-t-lg ${
                 viewTab === tab.key
                   ? `${theme.textPrimary}`
-                  : `${theme.textMuted} hover:${theme.textSecondary}`
+                  : `${theme.textMuted} hover:${theme.textPrimary} hover:bg-black/[0.03]`
               }`}
             >
               <span className="mr-1.5">{tab.icon}</span>
               {tab.label}
-              {viewTab === tab.key && (
+              {viewTab === tab.key ? (
                 <span className={`absolute bottom-0 left-0 right-0 h-[3px] ${theme.primaryBg} rounded-t-full`} />
+              ) : (
+                <span className="absolute bottom-0 left-2 right-2 h-[2px] bg-transparent group-hover:bg-gray-200 rounded-t-full transition-all" />
               )}
             </button>
           ))}
@@ -1633,10 +1725,55 @@ export default function TournamentView() {
             </div>
           )}
 
+          {/* Search + Filter Bar */}
+          <div className={`px-4 py-2.5 border-b ${theme.cardBorder} flex items-center gap-3 flex-wrap`}>
+            <div className="relative flex-1 min-w-[150px]">
+              <input
+                type="text"
+                value={verwaltungSearch}
+                onChange={(e) => setVerwaltungSearch(e.target.value)}
+                placeholder="Spieler oder Verein suchen..."
+                className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg pl-8 pr-3 py-1.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+              />
+              <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${theme.textMuted} text-xs`}>🔍</span>
+              {verwaltungSearch && (
+                <button onClick={() => setVerwaltungSearch("")} className={`absolute right-2.5 top-1/2 -translate-y-1/2 ${theme.textMuted} hover:opacity-80 text-xs`}>✕</button>
+              )}
+            </div>
+            {(tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0) && (
+              <div className={`flex rounded-lg border ${theme.inputBorder} overflow-hidden text-xs`}>
+                {([
+                  { value: "all" as const, label: "Alle" },
+                  { value: "paid" as const, label: "Bezahlt" },
+                  { value: "unpaid" as const, label: "Offen" },
+                ]).map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setVerwaltungFilter(opt.value)}
+                    className={`px-3 py-1.5 font-medium transition-colors ${
+                      verwaltungFilter === opt.value
+                        ? `${theme.primaryBg} text-white`
+                        : `${theme.textSecondary} hover:opacity-80`
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           {(() => {
             const hasPayment = tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0;
             const fee = tournament.mode === "singles" ? tournament.entry_fee_single : tournament.entry_fee_double;
-            const sorted = [...paymentData].sort((a, b) => (a.player.club ?? "").localeCompare(b.player.club ?? "") || a.player.name.localeCompare(b.player.name));
+            const searchLower = verwaltungSearch.toLowerCase().trim();
+            const filtered = paymentData.filter((pd) => {
+              if (searchLower && !pd.player.name.toLowerCase().includes(searchLower) && !(pd.player.club ?? "").toLowerCase().includes(searchLower)) return false;
+              if (verwaltungFilter === "paid" && pd.payment_status !== "paid") return false;
+              if (verwaltungFilter === "unpaid" && pd.payment_status !== "unpaid") return false;
+              return true;
+            });
+            const sorted = [...filtered].sort((a, b) => (a.player.club ?? "").localeCompare(b.player.club ?? "") || a.player.name.localeCompare(b.player.name));
             const groups = new Map<string, TournamentPlayerInfo[]>();
             for (const pd of sorted) {
               const club = pd.player.club || "Kein Verein";
@@ -1645,6 +1782,12 @@ export default function TournamentView() {
             }
 
             return (
+              <>
+              {(searchLower || verwaltungFilter !== "all") && (
+                <div className={`px-4 py-1.5 text-xs ${theme.textMuted} border-b ${theme.cardBorder}`}>
+                  {filtered.length} von {paymentData.length} Teilnehmern angezeigt
+                </div>
+              )}
               <table className="w-full text-sm">
                 <thead>
                   <tr className={`border-b ${theme.cardBorder} text-xs ${theme.textMuted}`}>
@@ -1802,6 +1945,7 @@ export default function TournamentView() {
                   })}
                 </tbody>
               </table>
+              </>
             );
           })()}
         </div>

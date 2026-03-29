@@ -38,6 +38,10 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
   - Uebersicht mit Gesamtsumme, nach Verein gruppiert
 - **Turnier bearbeiten**: Draft-Turniere komplett bearbeitbar (alle Wizard-Tabs)
 - **Turnier loeschen**: Draft-Turniere loeschbar mit Bestaetigungsdialog
+- **Vorlagen-System**: Turniere als JSON-Datei exportieren/importieren
+  - Waehlbar: Einstellungen, Spieler, Teams (einzeln oder kombiniert)
+  - Spieler werden beim Import per Name gematcht (ID-unabhaengig)
+  - Teams werden automatisch remapped
 - **Tab-Navigation im Turnierbetrieb**: Spiele | Rangliste | Verwaltung
 - **Archivierung**: Beendete Turniere archivieren und wiederherstellen
 - **Auto-Benennung**: Turniername wird automatisch generiert (Datum - Modus - Format), editierbar
