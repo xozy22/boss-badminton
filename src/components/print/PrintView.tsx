@@ -8,7 +8,7 @@ import type {
   StandingEntry,
 } from "../../lib/types";
 import { MODE_LABELS, FORMAT_LABELS } from "../../lib/types";
-import { isSetComplete, getScoringDescription } from "../../lib/scoring";
+import { isSetComplete, getScoringDescription, calculateStandings, calculateTeamStandings } from "../../lib/scoring";
 import { calculateHighlights } from "../../lib/highlights";
 import type { PrintColors } from "../../lib/theme";
 import { PRINT_COLORS } from "../../lib/theme";
@@ -175,10 +175,16 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
       const matches = matchesByRound.get(round.id) || [];
       const maxSets = tournament.sets_to_win * 2 - 1;
 
+      const roundLabel = round.phase === "group" && round.group_number
+        ? `Gruppe ${round.group_number} - Runde ${rounds.filter((rr) => rr.phase === "group" && rr.group_number === round.group_number).indexOf(round) + 1}`
+        : round.phase === "ko"
+        ? `KO-Runde ${rounds.filter((rr) => rr.phase === "ko").indexOf(round) + 1}`
+        : `Runde ${round.round_number}`;
+
       return (
         <div key={round.id} style={{ marginBottom: 20 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: c.accent }}>
-            Runde {round.round_number}
+          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: round.phase === "ko" ? "#7c3aed" : c.accent }}>
+            {roundLabel}
           </h3>
           <table
             style={{
@@ -270,6 +276,111 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
         </table>
       </div>
     );
+
+    const isGroupKo = tournament.format === "group_ko";
+    const groupRounds = rounds.filter((r) => r.phase === "group");
+    const koRounds = rounds.filter((r) => r.phase === "ko");
+
+    const renderGroupStandings = () => {
+      if (!isGroupKo || groupRounds.length === 0) return null;
+      const numGroups = tournament.num_groups || 2;
+      const qualifyCount = tournament.qualify_per_group || 2;
+
+      return (
+        <div style={{ marginBottom: 20 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: c.accent }}>
+            Gruppentabellen
+          </h3>
+          {Array.from({ length: numGroups }, (_, g) => g + 1).map((groupNum) => {
+            const gRounds = rounds.filter((r) => r.phase === "group" && r.group_number === groupNum);
+            const gMatches: Match[] = [];
+            const gSets = new Map<number, GameSet[]>();
+            for (const r of gRounds) {
+              const ms = matchesByRound.get(r.id) || [];
+              gMatches.push(...ms);
+              for (const m of ms) gSets.set(m.id, setsByMatch.get(m.id) || []);
+            }
+            const pIds = new Set<number>();
+            for (const m of gMatches) {
+              pIds.add(m.team1_p1); if (m.team1_p2) pIds.add(m.team1_p2);
+              pIds.add(m.team2_p1); if (m.team2_p2) pIds.add(m.team2_p2);
+            }
+            const gPlayers = players.filter((p) => pIds.has(p.id));
+            const isDoubles = tournament.mode !== "singles";
+
+            if (isDoubles) {
+              const teamStandings = calculateTeamStandings(gPlayers, gMatches, gSets);
+              return (
+                <div key={groupNum} style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
+                    Gruppe {groupNum} <span style={{ fontWeight: 400, color: "#999", fontSize: 10 }}>({teamStandings.length} Teams, Top {qualifyCount})</span>
+                  </div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #d1d5db", fontSize: 11, marginBottom: 4 }}>
+                    <thead>
+                      <tr style={{ backgroundColor: c.accentLight, borderBottom: "2px solid #d1d5db" }}>
+                        <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 10, width: 30 }}>#</th>
+                        <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 10 }}>Team</th>
+                        <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 40 }}>S</th>
+                        <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 40 }}>N</th>
+                        <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 60 }}>Punkte</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {teamStandings.map((ts, i) => (
+                        <tr key={ts.teamKey} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: i < qualifyCount ? "#f0fdf4" : "transparent" }}>
+                          <td style={{ padding: "4px 8px", color: "#999" }}>{i + 1}</td>
+                          <td style={{ padding: "4px 8px", fontWeight: 600 }}>
+                            {ts.player1.name} / {ts.player2.name}
+                            {i < qualifyCount && <span style={{ marginLeft: 4, fontSize: 9, color: c.winColor, fontWeight: 700 }}>Q</span>}
+                          </td>
+                          <td style={{ padding: "4px 8px", textAlign: "center", fontWeight: 700, color: c.winColor }}>{ts.wins}</td>
+                          <td style={{ padding: "4px 8px", textAlign: "center", color: c.lossColor }}>{ts.losses}</td>
+                          <td style={{ padding: "4px 8px", textAlign: "center", fontFamily: "monospace" }}>{ts.pointsWon}:{ts.pointsLost}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            }
+
+            const gStandings = calculateStandings(gPlayers, gMatches, gSets);
+            return (
+              <div key={groupNum} style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
+                  Gruppe {groupNum} <span style={{ fontWeight: 400, color: "#999", fontSize: 10 }}>({gPlayers.length} Spieler, Top {qualifyCount})</span>
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #d1d5db", fontSize: 11, marginBottom: 4 }}>
+                  <thead>
+                    <tr style={{ backgroundColor: c.accentLight, borderBottom: "2px solid #d1d5db" }}>
+                      <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 10, width: 30 }}>#</th>
+                      <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 10 }}>Spieler</th>
+                      <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 40 }}>S</th>
+                      <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 40 }}>N</th>
+                      <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 60 }}>Punkte</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gStandings.map((s, i) => (
+                      <tr key={s.player.id} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: i < qualifyCount ? "#f0fdf4" : "transparent" }}>
+                        <td style={{ padding: "4px 8px", color: "#999" }}>{i + 1}</td>
+                        <td style={{ padding: "4px 8px", fontWeight: 600 }}>
+                          {s.player.name}
+                          {i < qualifyCount && <span style={{ marginLeft: 4, fontSize: 9, color: c.winColor, fontWeight: 700 }}>Q</span>}
+                        </td>
+                        <td style={{ padding: "4px 8px", textAlign: "center", fontWeight: 700, color: c.winColor }}>{s.wins}</td>
+                        <td style={{ padding: "4px 8px", textAlign: "center", color: c.lossColor }}>{s.losses}</td>
+                        <td style={{ padding: "4px 8px", textAlign: "center", fontFamily: "monospace" }}>{s.pointsWon}:{s.pointsLost}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
+        </div>
+      );
+    };
 
     const renderHighlights = () => {
       const allMatches: Match[] = [];
@@ -416,10 +527,11 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
       >
         {renderHeader()}
 
-        {/* Report mode: Highlights + Standings + Participants + All Rounds */}
+        {/* Report mode: Highlights + Group Standings + Standings + Participants + All Rounds */}
         {mode === "report" && (
           <>
             {renderHighlights()}
+            {renderGroupStandings()}
             {renderStandings()}
             {renderParticipants()}
             <div style={{ marginBottom: 10 }}>
@@ -427,13 +539,43 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
                 Alle Ergebnisse
               </h3>
             </div>
-            {rounds.map((r) => renderRound(r))}
+            {isGroupKo ? (
+              <>
+                {groupRounds.length > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <h3 style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, color: c.accent }}>Gruppenphase</h3>
+                  </div>
+                )}
+                {groupRounds.map((r) => renderRound(r))}
+                {koRounds.length > 0 && (
+                  <div style={{ marginBottom: 10, marginTop: 16 }}>
+                    <h3 style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, color: "#7c3aed" }}>KO-Phase</h3>
+                  </div>
+                )}
+                {koRounds.map((r) => renderRound(r))}
+              </>
+            ) : (
+              rounds.map((r) => renderRound(r))
+            )}
           </>
         )}
 
         {/* Schedule: all rounds */}
-        {(mode === "schedule" || mode === "full") &&
-          rounds.map((r) => renderRound(r))}
+        {(mode === "schedule" || mode === "full") && (
+          isGroupKo ? (
+            <>
+              {groupRounds.map((r) => renderRound(r))}
+              {koRounds.length > 0 && (
+                <div style={{ marginBottom: 10, marginTop: 16 }}>
+                  <h3 style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, color: "#7c3aed" }}>KO-Phase</h3>
+                </div>
+              )}
+              {koRounds.map((r) => renderRound(r))}
+            </>
+          ) : (
+            rounds.map((r) => renderRound(r))
+          )
+        )}
 
         {/* Single round */}
         {mode === "round" &&
@@ -443,7 +585,12 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
             .map((r) => renderRound(r))}
 
         {/* Standings */}
-        {(mode === "standings" || mode === "full") && renderStandings()}
+        {(mode === "standings" || mode === "full") && (
+          <>
+            {renderGroupStandings()}
+            {renderStandings()}
+          </>
+        )}
 
         {/* Footer */}
         <div

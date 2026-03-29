@@ -24,7 +24,11 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 - **Gruppenphase + KO**: Konfigurierbare Gruppenanzahl (2-8), Qualifikanten pro Gruppe (Top 1-4), dann KO-Runde
   - Einzel: Individuelle Spieler qualifizieren sich
   - Doppel/Mixed: Feste Teams bleiben durch Gruppenphase und KO bestehen
-- **KO-Bracket-Ansicht**: Visueller Turnierbaum mit Verbindungslinien, moegliche Teilnehmer in Grau, bestaetigte Gewinner sofort sichtbar
+  - **Dynamische Tabs**: Gruppentabellen, KO-Bracket, Rangliste als separate Tabs
+  - **Intelligente Warteschlange**: "Alle Gruppen"-Modus zeigt Spiele aus allen Gruppen gleichzeitig - kein unnötiges Warten
+  - **Gruppen-Buttons**: Pro Gruppe navigierbar, Zeilenumbruch zwischen Gruppen
+  - **Druckansicht**: Gruppentabellen mit Q-Badge, separate Gruppen-/KO-Ueberschriften
+- **KO-Bracket-Ansicht**: Visueller Turnierbaum als eigener Tab, moegliche Teilnehmer in Grau, bestaetigte Gewinner sofort sichtbar
 - **Konfigurierbar**: Saetze (Best of 1/3/5), Punkte pro Satz, Spielfelder (1-8)
 - **Setzliste/Seeding**: Optionales Seeding fuer KO-Turniere per Drag & Drop oder Pfeiltasten
 - **Turnier-Wizard**: Schrittweise Erstellung mit Tab-Navigation (Einstellungen → Spieler → Teams → Setzliste → Erstellen)

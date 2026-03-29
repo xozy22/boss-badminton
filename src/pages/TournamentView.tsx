@@ -7,6 +7,7 @@ import TemplateExportModal from "../components/tournament/TemplateExportModal";
 import DeleteTournamentModal from "../components/tournament/DeleteTournamentModal";
 import RetirePlayerModal from "../components/tournament/RetirePlayerModal";
 import RanglisteTab from "../components/tournament/RanglisteTab";
+import GruppenTab from "../components/tournament/GruppenTab";
 import VerwaltungTab from "../components/tournament/VerwaltungTab";
 import CourtOverview from "../components/courts/CourtOverview";
 import BracketView from "../components/bracket/BracketView";
@@ -269,13 +270,14 @@ export default function TournamentView() {
   const [allMatches, setAllMatches] = useState<Match[]>([]);
   const [retiredPlayerIds, setRetiredPlayerIds] = useState<Set<number>>(new Set());
   const [activeRound, setActiveRound] = useState<number | null>(null);
+  const [showAllGroups, setShowAllGroups] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [paymentData, setPaymentData] = useState<TournamentPlayerInfo[]>([]);
   const [collapsedClubs, setCollapsedClubs] = useState<Set<string>>(new Set());
   const [showTemplateExport, setShowTemplateExport] = useState(false);
-  const [viewTab, setViewTab] = useState<"spiele" | "rangliste" | "verwaltung">("spiele");
+  const [viewTab, setViewTab] = useState<"spiele" | "gruppen" | "bracket" | "rangliste" | "verwaltung">("spiele");
   const [retireTarget, setRetireTarget] = useState<{ player: Player; partnerNote: string } | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
   const [editingMatchIds, setEditingMatchIds] = useState<Set<number>>(new Set());
@@ -325,7 +327,12 @@ export default function TournamentView() {
     setStandings(s);
 
     if (r.length > 0) {
-      setActiveRound((prev) => prev ?? r[0].id);
+      // Bei group_ko: standardmaessig "Alle Gruppen" anzeigen
+      if (t.format === "group_ko" && r.some((rr) => rr.phase === "group")) {
+        setShowAllGroups(true);
+      } else {
+        setActiveRound((prev) => prev ?? r[0].id);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
@@ -1139,11 +1146,17 @@ export default function TournamentView() {
       {/* View Tabs */}
       {rounds.length > 0 && (
         <div className={`flex border-b-2 ${theme.inputBorder} mb-5`}>
-          {([
-            { key: "spiele" as const, label: "Spiele", icon: "🏸" },
-            { key: "rangliste" as const, label: "Rangliste", icon: "📊" },
-            { key: "verwaltung" as const, label: "Verwaltung", icon: "👥" },
-          ]).map((tab) => (
+          {(() => {
+            const hasBracket = koRoundsForBracket.length > 0 && (isElimination || (isGroupKo && tournament.current_phase === "ko"));
+            const viewTabs = [
+              { key: "spiele" as const, label: "Spiele", icon: "🏸" },
+              ...(isGroupKo && groupRounds.length > 0 ? [{ key: "gruppen" as const, label: "Gruppentabellen", icon: "📋" }] : []),
+              ...(hasBracket ? [{ key: "bracket" as const, label: "Bracket", icon: "🏆" }] : []),
+              ...(!isGroupKo || koRounds.length > 0 ? [{ key: "rangliste" as const, label: "Rangliste", icon: "📊" }] : []),
+              { key: "verwaltung" as const, label: "Verwaltung", icon: "👥" },
+            ];
+            return viewTabs;
+          })().map((tab) => (
             <button
               key={tab.key}
               onClick={() => setViewTab(tab.key)}
@@ -1169,79 +1182,110 @@ export default function TournamentView() {
       {viewTab === "spiele" && (
         <div>
           {rounds.length > 0 && (
-            <div className="flex gap-2 mb-4 flex-wrap">
-              {isGroupKo && groupRounds.length > 0 && (
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide self-center mr-1">
-                  Gruppen:
-                </span>
+            <div className="mb-4 space-y-2">
+              {/* "Alle Gruppen" + per-group rows for group_ko */}
+              {isGroupKo && groupRounds.length > 0 && (() => {
+                const numGroups = tournament.num_groups || 2;
+                return (
+                  <>
+                    <div className="flex gap-2 flex-wrap items-center">
+                      <button
+                        onClick={() => { setShowAllGroups(true); setActiveRound(null); }}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          showAllGroups
+                            ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
+                            : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`
+                        }`}
+                      >
+                        Alle Gruppen
+                      </button>
+                    </div>
+                    {Array.from({ length: numGroups }, (_, g) => g + 1).map((groupNum) => {
+                      const groupGroupRounds = rounds.filter(
+                        (rr) => rr.phase === "group" && rr.group_number === groupNum
+                      );
+                      if (groupGroupRounds.length === 0) return null;
+                      return (
+                        <div key={groupNum} className="flex gap-2 flex-wrap items-center">
+                          <span className={`text-xs font-bold ${theme.textMuted} uppercase tracking-wide w-8`}>G{groupNum}</span>
+                          {groupGroupRounds.map((r, idx) => {
+                            const label = groupGroupRounds.length > 1 ? `${idx + 1}` : `G${groupNum}`;
+                            const colorClass = activeRound === r.id
+                              ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
+                              : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`;
+                            return (
+                              <button
+                                key={r.id}
+                                onClick={() => { setActiveRound(r.id); setShowAllGroups(false); }}
+                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${colorClass}`}
+                              >
+                                {label}
+                                {allRoundMatchesCompleted(r.id) && <span className="ml-1.5">✓</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </>
+                );
+              })()}
+              {/* KO rounds */}
+              {koRounds.length > 0 && (
+                <div className="flex gap-2 flex-wrap items-center">
+                  <span className="text-xs font-bold text-violet-400 uppercase tracking-wide w-8">KO</span>
+                  {koRounds.map((r) => {
+                    const colorClass = activeRound === r.id
+                      ? "bg-violet-600 text-white shadow-md"
+                      : `${theme.cardBg} text-violet-600 hover:bg-violet-500/10 border border-violet-500/30 hover:border-violet-400`;
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={() => { setActiveRound(r.id); setShowAllGroups(false); }}
+                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${colorClass}`}
+                      >
+                        R{koRounds.indexOf(r) + 1}
+                        {allRoundMatchesCompleted(r.id) && <span className="ml-1.5">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
+              {/* Normal rounds (non group_ko) */}
+              {!isGroupKo && (
+                <div className="flex gap-2 flex-wrap">
               {rounds.map((r) => {
-                let label: string;
-                let colorClass: string;
-                if (r.phase === "group" && r.group_number) {
-                  const sameGroupRounds = rounds.filter(
-                    (rr) => rr.phase === "group" && rr.group_number === r.group_number
-                  );
-                  const inGroupIdx = sameGroupRounds.indexOf(r) + 1;
-                  label = sameGroupRounds.length > 1
-                    ? `G${r.group_number}.${inGroupIdx}`
-                    : `G${r.group_number}`;
-                  colorClass = activeRound === r.id
-                    ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
-                    : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`;
-                } else if (r.phase === "ko") {
-                  label = `KO R${r.round_number}`;
-                  colorClass = activeRound === r.id
-                    ? "bg-violet-600 text-white shadow-md"
-                    : `${theme.cardBg} text-violet-600 hover:bg-violet-500/10 border border-violet-500/30 hover:border-violet-400`;
-                } else {
-                  label = `Runde ${r.round_number}`;
-                  colorClass = activeRound === r.id
-                    ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
-                    : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`;
-                }
-                const isFirstKo = r.phase === "ko" && rounds.indexOf(r) > 0 &&
-                  rounds[rounds.indexOf(r) - 1]?.phase !== "ko";
+                const label = `Runde ${r.round_number}`;
+                const colorClass = activeRound === r.id
+                  ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
+                  : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`;
 
                 return (
-                  <React.Fragment key={r.id}>
-                    {isFirstKo && (
-                      <span className="text-xs font-bold text-violet-400 uppercase tracking-wide self-center mx-1">
-                        KO:
-                      </span>
-                    )}
-                    <button
-                      onClick={() => setActiveRound(r.id)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${colorClass}`}
-                    >
+                  <button
+                    key={r.id}
+                    onClick={() => { setActiveRound(r.id); setShowAllGroups(false); }}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${colorClass}`}
+                  >
                       {label}
                       {allRoundMatchesCompleted(r.id) && (
                         <span className="ml-1.5">✓</span>
                       )}
                     </button>
-                  </React.Fragment>
                 );
               })}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Bracket View for KO tournaments */}
-          {koRoundsForBracket.length > 0 && (isElimination || (isGroupKo && tournament.current_phase === "ko")) && (
-            <BracketView
-              rounds={koRoundsForBracket}
-              matchesByRound={matchesByRound}
-              setsByMatch={setsByMatch}
-              playerName={playerName}
-              pointsPerSet={tournament.points_per_set}
-            />
-          )}
-
           {/* Court Overview */}
-          {rounds.length > 0 && activeRound && tournament.status === "active" && (
+          {rounds.length > 0 && (activeRound || showAllGroups) && tournament.status === "active" && (
             <CourtOverview
               courts={Math.max(tournament.courts || 1, 1)}
               matches={allMatches}
-              activeRoundMatches={activeRound ? matchesByRound.get(activeRound) : undefined}
+              activeRoundMatches={showAllGroups
+                ? groupRounds.flatMap((r) => matchesByRound.get(r.id) || [])
+                : activeRound ? matchesByRound.get(activeRound) : undefined}
               playerName={playerName}
               onDrop={(matchId, court) => handleCourtChange(matchId, court)}
               onMatchClick={(matchId) => {
@@ -1262,9 +1306,11 @@ export default function TournamentView() {
           {rounds.length > 0 && (
             <div>
               {/* Matches - sorted: on court → open → completed */}
-              {activeRound &&
+              {(activeRound || showAllGroups) &&
                 (() => {
-                  const raw = matchesByRound.get(activeRound) || [];
+                  const raw = showAllGroups
+                    ? groupRounds.flatMap((r) => matchesByRound.get(r.id) || [])
+                    : matchesByRound.get(activeRound!) || [];
                   // Recently completed matches stay in their original section for 3s
                   const isRecent = (m: Match) => recentlyCompleted.has(m.id);
                   const isEditing = (m: Match) => editingMatchIds.has(m.id);
@@ -1329,6 +1375,27 @@ export default function TournamentView() {
         </div>
       )}
 
+      {/* Tab: Gruppen */}
+      {viewTab === "gruppen" && isGroupKo && (
+        <GruppenTab
+          tournament={tournament}
+          players={players}
+          theme={theme}
+          getGroupData={getGroupData}
+        />
+      )}
+
+      {/* Tab: Bracket */}
+      {viewTab === "bracket" && koRoundsForBracket.length > 0 && (isElimination || (isGroupKo && tournament.current_phase === "ko")) && (
+        <BracketView
+          rounds={koRoundsForBracket}
+          matchesByRound={matchesByRound}
+          setsByMatch={setsByMatch}
+          playerName={playerName}
+          pointsPerSet={tournament.points_per_set}
+        />
+      )}
+
       {/* Tab: Rangliste */}
       {viewTab === "rangliste" && (
         <RanglisteTab
@@ -1336,10 +1403,6 @@ export default function TournamentView() {
           players={players}
           standings={standings}
           theme={theme}
-          isGroupKo={!!isGroupKo}
-          groupRounds={groupRounds}
-          koRounds={koRounds}
-          getGroupData={getGroupData}
         />
       )}
 
