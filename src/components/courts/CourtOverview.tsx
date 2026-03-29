@@ -88,6 +88,19 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
     setCourtPickerMatchId(null);
   };
 
+  // SVG Badminton-Court als Hintergrund (dezent durchscheinend)
+  // Querformat: Netz vertikal in der Mitte, Spielfeld horizontal
+  const courtBgSvg = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 134" fill="none" opacity="0.18">
+    <rect x="2" y="2" width="256" height="130" rx="2" stroke="#9CA3AF" stroke-width="1.5"/>
+    <line x1="130" y1="2" x2="130" y2="132" stroke="#9CA3AF" stroke-width="2"/>
+    <rect x="2" y="17" width="256" height="100" rx="1" stroke="#9CA3AF" stroke-width="1"/>
+    <line x1="46" y1="17" x2="46" y2="117" stroke="#9CA3AF" stroke-width="1"/>
+    <line x1="214" y1="17" x2="214" y2="117" stroke="#9CA3AF" stroke-width="1"/>
+    <line x1="46" y1="67" x2="214" y2="67" stroke="#9CA3AF" stroke-width="1"/>
+    <line x1="236" y1="2" x2="236" y2="132" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="4 3"/>
+    <line x1="24" y1="2" x2="24" y2="132" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="4 3"/>
+  </svg>`)}`;
+
   return (
     <div className="mb-5">
       {/* Court Grid */}
@@ -104,11 +117,18 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
               onDragOver={(e) => handleDragOver(e, courtNum)}
               onDrop={(e) => handleDrop(e, courtNum)}
               onDoubleClick={() => match && onMatchClick?.(match.id)}
-              className={`rounded-2xl border-2 border-dashed p-4 transition-all duration-200 min-h-[100px] ${
+              className={`rounded-2xl border-2 border-dashed p-4 transition-all duration-200 min-h-[100px] relative overflow-hidden ${
                 isFree
                   ? `${theme.cardBorder} ${theme.cardBg} opacity-70 hover:opacity-100`
                   : `${theme.courtBorder} ${theme.cardBg} shadow-sm cursor-pointer`
               }`}
+              style={{
+                backgroundImage: `url("${courtBgSvg}")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'center',
+                backgroundSize: 'auto 85%',
+                opacity: undefined,
+              }}
               title={match ? "Doppelklick: Zum Spiel springen" : undefined}
             >
               <div className="flex items-center justify-between mb-2">
