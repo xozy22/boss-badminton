@@ -1,4 +1,3 @@
-import React from "react";
 import type { ThemeColors } from "../../lib/theme";
 import type {
   Tournament,
@@ -8,6 +7,7 @@ import type {
   GameSet,
   StandingEntry,
 } from "../../lib/types";
+// Round, Match, GameSet used in getGroupData return type
 import {
   calculateStandings,
   calculateTeamStandings,
@@ -16,9 +16,6 @@ import {
 interface RanglisteTabProps {
   tournament: Tournament;
   players: Player[];
-  rounds: Round[];
-  matchesByRound: Map<number, Match[]>;
-  setsByMatch: Map<number, GameSet[]>;
   standings: StandingEntry[];
   theme: ThemeColors;
   isGroupKo: boolean;
@@ -34,9 +31,6 @@ interface RanglisteTabProps {
 export default function RanglisteTab({
   tournament,
   players,
-  rounds,
-  matchesByRound,
-  setsByMatch,
   standings,
   theme,
   isGroupKo,

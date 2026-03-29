@@ -186,7 +186,15 @@ src/
 │   ├── bracket/       # KO-Bracket-Visualisierung
 │   ├── courts/        # Felduebersicht, Timer
 │   ├── players/       # Excel-Import
-│   └── print/         # Druckansicht, Turnierbericht
+│   ├── print/         # Druckansicht, Turnierbericht
+│   └── tournament/    # Extrahierte Turnier-Komponenten
+│       ├── DeleteTournamentModal.tsx
+│       ├── RetirePlayerModal.tsx
+│       ├── TemplateExportModal.tsx
+│       ├── RanglisteTab.tsx
+│       ├── VerwaltungTab.tsx
+│       ├── TeamPairingStep.tsx
+│       └── SeedingStep.tsx
 ├── hooks/
 │   └── useTimer.ts    # Court-Timer Hook
 ├── lib/

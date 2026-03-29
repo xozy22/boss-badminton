@@ -6,6 +6,8 @@ import type { ThemeColors } from "../lib/theme";
 import TemplateExportModal from "../components/tournament/TemplateExportModal";
 import DeleteTournamentModal from "../components/tournament/DeleteTournamentModal";
 import RetirePlayerModal from "../components/tournament/RetirePlayerModal";
+import RanglisteTab from "../components/tournament/RanglisteTab";
+import VerwaltungTab from "../components/tournament/VerwaltungTab";
 import CourtOverview from "../components/courts/CourtOverview";
 import BracketView from "../components/bracket/BracketView";
 import { CourtTimer } from "../components/courts/CourtTimer";
@@ -32,7 +34,6 @@ import {
   retirePlayerFromTournament,
   getRetiredPlayerIds,
   getTournamentPlayersDetailed,
-  updatePlayerPayment,
 } from "../lib/db";
 import {
   generateRoundRobinSingles,
@@ -1333,9 +1334,6 @@ export default function TournamentView() {
         <RanglisteTab
           tournament={tournament}
           players={players}
-          rounds={rounds}
-          matchesByRound={matchesByRound}
-          setsByMatch={setsByMatch}
           standings={standings}
           theme={theme}
           isGroupKo={!!isGroupKo}
