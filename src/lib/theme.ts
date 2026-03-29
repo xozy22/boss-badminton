@@ -256,6 +256,22 @@ const darkTheme: ThemeColors = {
   bodyBg: "bg-gray-950",
 };
 
+// Hex-Farbwerte fuer Print/Inline-Styles (nicht als Tailwind-Klassen verfuegbar)
+export interface PrintColors {
+  accent: string;       // Hauptakzent (Ueberschriften, Gewinner, Headerline)
+  accentLight: string;  // Heller Hintergrund (Tabellen-Header, Highlight-Karten)
+  accentBorder: string; // Rand fuer Highlight-Karten
+  winColor: string;     // Siege-Farbe
+  lossColor: string;    // Niederlagen-Farbe
+}
+
+export const PRINT_COLORS: Record<ThemeId, PrintColors> = {
+  green:  { accent: "#059669", accentLight: "#f0fdf4", accentBorder: "#d1fae5", winColor: "#059669", lossColor: "#e11d48" },
+  blue:   { accent: "#2563eb", accentLight: "#eff6ff", accentBorder: "#bfdbfe", winColor: "#2563eb", lossColor: "#e11d48" },
+  orange: { accent: "#ea580c", accentLight: "#fff7ed", accentBorder: "#fed7aa", winColor: "#ea580c", lossColor: "#e11d48" },
+  dark:   { accent: "#059669", accentLight: "#f0fdf4", accentBorder: "#d1fae5", winColor: "#059669", lossColor: "#e11d48" },
+};
+
 export const THEMES: Record<ThemeId, { label: string; colors: ThemeColors; preview: string }> = {
   green: { label: "Smaragd (Standard)", colors: greenTheme, preview: "#059669" },
   blue: { label: "Saphir", colors: blueTheme, preview: "#2563eb" },

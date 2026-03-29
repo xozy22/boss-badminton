@@ -9,6 +9,7 @@ import type {
   GameSet,
   StandingEntry,
 } from "../../lib/types";
+import { useTheme } from "../../lib/ThemeContext";
 
 interface PrintDialogProps {
   tournament: Tournament;
@@ -59,6 +60,7 @@ export default function PrintDialog({
   activeRoundId,
   onClose,
 }: PrintDialogProps) {
+  const { theme, themeId } = useTheme();
   const [mode, setMode] = useState<PrintMode>("full");
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -96,23 +98,23 @@ export default function PrintDialog({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-100">
+      <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col border ${theme.cardBorder}`}>
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+        <div className={`px-6 py-4 border-b ${theme.cardBorder} flex justify-between items-center`}>
           <div>
-            <h2 className="font-bold text-lg text-gray-900">🖨️ Druckansicht</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{tournament.name}</p>
+            <h2 className={`font-bold text-lg ${theme.textPrimary}`}>🖨️ Druckansicht</h2>
+            <p className={`text-xs ${theme.textSecondary} mt-0.5`}>{tournament.name}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+            className={`${theme.textMuted} hover:${theme.textSecondary} text-xl leading-none w-8 h-8 flex items-center justify-center rounded-lg transition-colors`}
           >
             ✕
           </button>
         </div>
 
         {/* Print Mode Selection */}
-        <div className="px-6 py-3 border-b border-gray-100 bg-gray-50/50">
+        <div className={`px-6 py-3 border-b ${theme.cardBorder}`}>
           <div className="flex gap-2">
             {PRINT_OPTIONS.map((opt) => (
               <button
@@ -120,21 +122,21 @@ export default function PrintDialog({
                 onClick={() => setMode(opt.value)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   mode === opt.value
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "bg-white text-gray-600 border border-gray-200 hover:border-emerald-200"
+                    ? `${theme.primaryBg} text-white shadow-sm`
+                    : `${theme.cardBg} ${theme.textSecondary} border ${theme.cardBorder} hover:opacity-80`
                 }`}
               >
                 {opt.label}
               </button>
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-2">
+          <p className={`text-xs ${theme.textMuted} mt-2`}>
             {PRINT_OPTIONS.find((o) => o.value === mode)?.desc}
           </p>
         </div>
 
         {/* Preview */}
-        <div className="flex-1 overflow-auto p-4 bg-gray-100">
+        <div className="flex-1 overflow-auto p-4 bg-gray-100 dark-mode:bg-gray-800">
           <div className="bg-white shadow-lg rounded-lg mx-auto" style={{ maxWidth: 800 }}>
             <PrintView
               ref={printRef}
@@ -146,21 +148,22 @@ export default function PrintDialog({
               standings={standings}
               mode={mode}
               activeRoundId={activeRoundId}
+              themeId={themeId}
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
+        <div className={`px-6 py-4 border-t ${theme.cardBorder} flex justify-end gap-3`}>
           <button
             onClick={onClose}
-            className="bg-white border border-gray-200 text-gray-600 px-5 py-2.5 rounded-xl hover:bg-gray-50 transition-all text-sm font-medium"
+            className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-5 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
           >
             Abbrechen
           </button>
           <button
             onClick={handlePrint}
-            className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl hover:bg-emerald-700 shadow-sm hover:shadow-md transition-all text-sm font-medium"
+            className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium`}
           >
             🖨️ Drucken
           </button>

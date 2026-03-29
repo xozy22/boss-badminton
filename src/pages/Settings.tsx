@@ -242,7 +242,7 @@ export default function Settings() {
   if (loading) return <div>Laden...</div>;
 
   return (
-    <div className="max-w-2xl">
+    <div>
       <div className="mb-6">
         <h1 className={`text-2xl font-extrabold ${theme.textPrimary} tracking-tight`}>
           Einstellungen

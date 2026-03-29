@@ -12,9 +12,13 @@ export default function Players() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [name, setName] = useState("");
   const [gender, setGender] = useState<Gender>("m");
+  const [age, setAge] = useState<string>("");
+  const [club, setClub] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editGender, setEditGender] = useState<Gender>("m");
+  const [editAge, setEditAge] = useState<string>("");
+  const [editClub, setEditClub] = useState("");
   const [showImport, setShowImport] = useState(false);
 
   // Filter
@@ -39,8 +43,10 @@ export default function Players() {
 
   const handleAdd = async () => {
     if (!name.trim()) return;
-    await createPlayer(name.trim(), gender);
+    await createPlayer(name.trim(), gender, age ? Number(age) : null, club.trim() || null);
     setName("");
+    setAge("");
+    setClub("");
     load();
   };
 
@@ -48,11 +54,13 @@ export default function Players() {
     setEditingId(p.id);
     setEditName(p.name);
     setEditGender(p.gender);
+    setEditAge(p.age != null ? String(p.age) : "");
+    setEditClub(p.club ?? "");
   };
 
   const handleSave = async () => {
     if (editingId === null || !editName.trim()) return;
-    await updatePlayer(editingId, editName.trim(), editGender);
+    await updatePlayer(editingId, editName.trim(), editGender, editAge ? Number(editAge) : null, editClub.trim() || null);
     setEditingId(null);
     load();
   };
@@ -115,9 +123,11 @@ export default function Players() {
     const data = players.map((p) => ({
       Name: p.name,
       Geschlecht: p.gender === "m" ? "Herr" : "Dame",
+      Alter: p.age ?? "",
+      Verein: p.club ?? "",
     }));
     const ws = XLSX.utils.json_to_sheet(data);
-    ws["!cols"] = [{ wch: 30 }, { wch: 12 }];
+    ws["!cols"] = [{ wch: 30 }, { wch: 12 }, { wch: 8 }, { wch: 25 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Spieler");
     const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
@@ -213,6 +223,33 @@ export default function Players() {
               <option value="m">Herr</option>
               <option value="f">Dame</option>
             </select>
+          </div>
+          <div>
+            <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
+              Alter
+            </label>
+            <input
+              type="number"
+              value={age}
+              onChange={(e) => setAge(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              className={`w-20 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+              placeholder="-"
+              min={1}
+            />
+          </div>
+          <div className="flex-1">
+            <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
+              Verein
+            </label>
+            <input
+              type="text"
+              value={club}
+              onChange={(e) => setClub(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+              placeholder="Vereinsname..."
+            />
           </div>
           <button
             onClick={handleAdd}
@@ -316,6 +353,12 @@ export default function Players() {
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
                 Geschlecht
               </th>
+              <th className={`text-center px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
+                Alter
+              </th>
+              <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
+                Verein
+              </th>
               <th className={`text-right px-5 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
                 Aktionen
               </th>
@@ -378,6 +421,33 @@ export default function Players() {
                       </span>
                     )}
                   </td>
+                  <td className={`px-3 py-3 text-center ${theme.textSecondary}`}>
+                    {editingId === p.id ? (
+                      <input
+                        type="number"
+                        value={editAge}
+                        onChange={(e) => setEditAge(e.target.value)}
+                        className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-2 py-1.5 text-sm w-16 text-center`}
+                        min={1}
+                        placeholder="-"
+                      />
+                    ) : (
+                      <span className="text-sm">{p.age ?? "-"}</span>
+                    )}
+                  </td>
+                  <td className={`px-3 py-3 ${theme.textSecondary}`}>
+                    {editingId === p.id ? (
+                      <input
+                        type="text"
+                        value={editClub}
+                        onChange={(e) => setEditClub(e.target.value)}
+                        className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm w-full`}
+                        placeholder="Verein..."
+                      />
+                    ) : (
+                      <span className="text-sm">{p.club ?? "-"}</span>
+                    )}
+                  </td>
                   <td className="px-5 py-3 text-right">
                     {editingId === p.id ? (
                       <div className="flex gap-2 justify-end">
@@ -416,7 +486,7 @@ export default function Players() {
             })}
             {filteredPlayers.length === 0 && (
               <tr>
-                <td colSpan={5} className={`px-5 py-12 text-center ${theme.textMuted}`}>
+                <td colSpan={7} className={`px-5 py-12 text-center ${theme.textMuted}`}>
                   {players.length === 0
                     ? "Noch keine Spieler vorhanden."
                     : "Keine Spieler fuer diesen Filter gefunden."}

@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import PrintDialog from "../components/print/PrintDialog";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
@@ -20,12 +20,16 @@ import {
   updateMatchCourt,
   clearMatchCourt,
   reopenMatch,
+  updateTournament,
   updateTournamentStatus,
   updateTournamentPhase,
+  deleteTournament,
   addPlayerToTournament,
   removePlayerFromTournament,
   retirePlayerFromTournament,
   getRetiredPlayerIds,
+  getTournamentPlayersDetailed,
+  updatePlayerPayment,
 } from "../lib/db";
 import {
   generateRoundRobinSingles,
@@ -58,15 +62,197 @@ import type {
   Match,
   GameSet,
   StandingEntry,
+  TournamentMode,
+  TournamentFormat,
+  TournamentPlayerInfo,
+  PaymentMethod,
 } from "../lib/types";
+import { PAYMENT_METHOD_LABELS } from "../lib/types";
 import { MODE_LABELS, FORMAT_LABELS, STATUS_LABELS } from "../lib/types";
+
+const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
+  singles: ["round_robin", "elimination", "group_ko"],
+  doubles: ["round_robin", "elimination", "random_doubles", "group_ko"],
+  mixed: ["round_robin", "elimination", "random_doubles", "group_ko"],
+};
+
+function EditTournamentModal({
+  tournament,
+  theme,
+  onClose,
+  onSave,
+}: {
+  tournament: Tournament;
+  theme: ThemeColors;
+  onClose: () => void;
+  onSave: (data: {
+    name: string;
+    mode: TournamentMode;
+    format: TournamentFormat;
+    setsToWin: number;
+    pointsPerSet: number;
+    courts: number;
+    numGroups: number;
+    qualifyPerGroup: number;
+    entryFeeSingle: number;
+    entryFeeDouble: number;
+  }) => void;
+}) {
+  const [name, setName] = useState(tournament.name);
+  const [mode, setMode] = useState<TournamentMode>(tournament.mode);
+  const [format, setFormat] = useState<TournamentFormat>(tournament.format);
+  const [setsToWin, setSetsToWin] = useState(tournament.sets_to_win);
+  const [pointsPerSet, setPointsPerSet] = useState(tournament.points_per_set);
+  const [courts, setCourts] = useState(tournament.courts);
+  const [numGroups, setNumGroups] = useState(tournament.num_groups || 2);
+  const [qualifyPerGroup, setQualifyPerGroup] = useState(tournament.qualify_per_group || 2);
+  const [entryFeeSingle, setEntryFeeSingle] = useState(String(tournament.entry_fee_single || 0));
+  const [entryFeeDouble, setEntryFeeDouble] = useState(String(tournament.entry_fee_double || 0));
+
+  useEffect(() => {
+    if (!VALID_FORMATS[mode].includes(format)) {
+      setFormat(VALID_FORMATS[mode][0]);
+    }
+  }, [mode, format]);
+
+  const inputClass = `w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`;
+  const labelClass = `block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-lg p-6 border ${theme.cardBorder}`}>
+        <div className="flex justify-between items-center mb-5">
+          <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
+            ✏️ Turnier bearbeiten
+          </h3>
+          <button
+            onClick={onClose}
+            className={`${theme.textMuted} text-xl leading-none w-8 h-8 flex items-center justify-center rounded-lg transition-colors`}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className={labelClass}>Turniername</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Modus</label>
+              <select value={mode} onChange={(e) => setMode(e.target.value as TournamentMode)} className={inputClass}>
+                {Object.entries(MODE_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Format</label>
+              <select value={format} onChange={(e) => setFormat(e.target.value as TournamentFormat)} className={inputClass}>
+                {VALID_FORMATS[mode].map((f) => (
+                  <option key={f} value={f}>{FORMAT_LABELS[f]}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className={labelClass}>Gewinnsaetze</label>
+              <select value={setsToWin} onChange={(e) => setSetsToWin(Number(e.target.value))} className={inputClass}>
+                <option value={1}>Best of 1</option>
+                <option value={2}>Best of 3</option>
+                <option value={3}>Best of 5</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Punkte/Satz</label>
+              <input type="number" value={pointsPerSet} onChange={(e) => setPointsPerSet(Number(e.target.value))} className={inputClass} min={1} />
+            </div>
+            <div>
+              <label className={labelClass}>Spielfelder</label>
+              <select value={courts} onChange={(e) => setCourts(Number(e.target.value))} className={inputClass}>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                  <option key={n} value={n}>{n} {n === 1 ? "Feld" : "Felder"}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {format === "group_ko" && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Anzahl Gruppen</label>
+                <select value={numGroups} onChange={(e) => setNumGroups(Number(e.target.value))} className={inputClass}>
+                  {[2, 3, 4, 5, 6, 7, 8].map((n) => (
+                    <option key={n} value={n}>{n} Gruppen</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Qualifikanten/Gruppe</label>
+                <select value={qualifyPerGroup} onChange={(e) => setQualifyPerGroup(Number(e.target.value))} className={inputClass}>
+                  {[1, 2, 3, 4].map((n) => (
+                    <option key={n} value={n}>Top {n}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Startgeld Einzel (EUR)</label>
+              <input type="number" value={entryFeeSingle} onChange={(e) => setEntryFeeSingle(e.target.value)} className={inputClass} min={0} step="0.5" />
+            </div>
+            <div>
+              <label className={labelClass}>Startgeld Doppel (EUR)</label>
+              <input type="number" value={entryFeeDouble} onChange={(e) => setEntryFeeDouble(e.target.value)} className={inputClass} min={0} step="0.5" />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onClose}
+            className={`flex-1 ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={() => onSave({ name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, entryFeeSingle: Number(entryFeeSingle) || 0, entryFeeDouble: Number(entryFeeDouble) || 0 })}
+            className={`flex-1 ${theme.primaryBg} text-white px-4 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm transition-all text-sm font-medium`}
+          >
+            Speichern
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function TournamentView() {
   const { theme } = useTheme();
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const location = useLocation();
   const navSeeds = (location.state as any)?.seeds as number[] | undefined;
+  const navTeamsFromState = (location.state as any)?.teams as [number, number][] | undefined;
   const [tournament, setTournament] = useState<Tournament | null>(null);
+  const navTeams = useMemo(() => {
+    if (navTeamsFromState && navTeamsFromState.length > 0) return navTeamsFromState;
+    if (tournament?.team_config) {
+      try { return JSON.parse(tournament.team_config) as [number, number][]; } catch {}
+    }
+    return undefined;
+  }, [navTeamsFromState, tournament?.team_config]);
   const [players, setPlayers] = useState<Player[]>([]);
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
   const [rounds, setRounds] = useState<Round[]>([]);
@@ -82,6 +268,12 @@ export default function TournamentView() {
   const [retiredPlayerIds, setRetiredPlayerIds] = useState<Set<number>>(new Set());
   const [activeRound, setActiveRound] = useState<number | null>(null);
   const [showPrint, setShowPrint] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [paymentData, setPaymentData] = useState<TournamentPlayerInfo[]>([]);
+  const [showPaymentSection, setShowPaymentSection] = useState(false);
+  const [collapsedClubs, setCollapsedClubs] = useState<Set<string>>(new Set());
+  const [viewTab, setViewTab] = useState<"spiele" | "rangliste" | "verwaltung">("spiele");
   const [retireTarget, setRetireTarget] = useState<{ player: Player; partnerNote: string } | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
   const [editingMatchIds, setEditingMatchIds] = useState<Set<number>>(new Set());
@@ -123,6 +315,9 @@ export default function TournamentView() {
 
     const retiredIds = await getRetiredPlayerIds(tournamentId);
     setRetiredPlayerIds(new Set(retiredIds));
+
+    const pd = await getTournamentPlayersDetailed(tournamentId);
+    setPaymentData(pd);
 
     const s = calculateStandings(p, allMatches, sbm);
     setStandings(s);
@@ -171,6 +366,19 @@ export default function TournamentView() {
           await createMatch(roundId, m.team1_p1, null, m.team2_p1, null, court);
         }
       }
+    } else if (tournament.format === "elimination" && tournament.mode !== "singles") {
+      // Doppel/Mixed KO: Manuelle Teams oder automatisch bilden
+      const teams = navTeams && navTeams.length > 0
+        ? navTeams
+        : tournament.mode === "mixed"
+          ? formFixedMixedTeams(players)
+          : formFixedDoubleTeams(players);
+      const matches = generateEliminationBracketDoubles(teams);
+      const roundId = await createRound(tournamentId, 1);
+      for (const m of matches) {
+        const court = autoAssign ? 1 : null;
+        await createMatch(roundId, m.team1_p1, m.team1_p2, m.team2_p1, m.team2_p2, court);
+      }
     } else if (tournament.format === "group_ko") {
       // Gruppenphase starten
       await updateTournamentPhase(tournamentId, "group");
@@ -194,9 +402,11 @@ export default function TournamentView() {
       } else {
         // Doppel/Mixed: Feste Teams, Round-Robin innerhalb jeder Gruppe
         // Erst Teams bilden, dann in Gruppen aufteilen
-        const allTeams = tournament.mode === "mixed"
-          ? formFixedMixedTeams(players)
-          : formFixedDoubleTeams(players);
+        const allTeams = navTeams && navTeams.length > 0
+          ? navTeams
+          : tournament.mode === "mixed"
+            ? formFixedMixedTeams(players)
+            : formFixedDoubleTeams(players);
         const teamGroups = splitTeamsIntoGroups(allTeams, tournament.num_groups || 2);
 
         for (let g = 0; g < teamGroups.length; g++) {
@@ -212,7 +422,22 @@ export default function TournamentView() {
           }
         }
       }
-    } else if (tournament.format === "random_doubles" || (tournament.format === "round_robin" && tournament.mode !== "singles")) {
+    } else if (tournament.format === "round_robin" && tournament.mode !== "singles") {
+      // Doppel/Mixed Round-Robin: Feste Teams
+      const teams = navTeams && navTeams.length > 0
+        ? navTeams
+        : tournament.mode === "mixed"
+          ? formFixedMixedTeams(players)
+          : formFixedDoubleTeams(players);
+      const allRounds = generateRoundRobinDoubles(teams);
+      for (let i = 0; i < allRounds.length; i++) {
+        const roundId = await createRound(tournamentId, i + 1);
+        for (const m of allRounds[i]) {
+          const court = autoAssign ? 1 : null;
+          await createMatch(roundId, m.team1_p1, m.team1_p2, m.team2_p1, m.team2_p2, court);
+        }
+      }
+    } else if (tournament.format === "random_doubles") {
       await generateNextRound();
     }
 
@@ -714,12 +939,26 @@ export default function TournamentView() {
         </div>
         <div className="flex gap-2">
           {tournament.status === "draft" && (
-            <button
-              onClick={handleStartTournament}
-              className={`${theme.primaryBg} ${theme.primaryText} px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium`}
-            >
-              🚀 Turnier starten
-            </button>
+            <>
+              <button
+                onClick={() => navigate(`/tournaments/${tournament.id}/edit`)}
+                className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl ${theme.cardHoverBorder} transition-all text-sm font-medium`}
+              >
+                ✏️ Bearbeiten
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:border-rose-300 hover:text-rose-600 transition-all text-sm font-medium`}
+              >
+                🗑️ Loeschen
+              </button>
+              <button
+                onClick={handleStartTournament}
+                className={`${theme.primaryBg} ${theme.primaryText} px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium`}
+              >
+                🚀 Turnier starten
+              </button>
+            </>
           )}
           {canGenerateNextRound && (
             <button
@@ -824,6 +1063,70 @@ export default function TournamentView() {
         />
       )}
 
+      {/* Edit Tournament Modal */}
+      {showEditModal && tournament && (
+        <EditTournamentModal
+          tournament={tournament}
+          theme={theme}
+          onClose={() => setShowEditModal(false)}
+          onSave={async (data) => {
+            await updateTournament(
+              tournament.id,
+              data.name,
+              data.mode,
+              data.format,
+              data.setsToWin,
+              data.pointsPerSet,
+              data.courts,
+              data.numGroups,
+              data.qualifyPerGroup,
+              data.entryFeeSingle,
+              data.entryFeeDouble
+            );
+            setShowEditModal(false);
+            loadAll();
+          }}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && tournament && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
+            <div className="text-center mb-5">
+              <div className="text-4xl mb-3">🗑️</div>
+              <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
+                Turnier loeschen?
+              </h3>
+              <p className={`text-sm ${theme.textSecondary} mt-2`}>
+                <span className={`font-semibold ${theme.textPrimary}`}>{tournament.name}</span> wird
+                unwiderruflich geloescht.
+              </p>
+              <p className={`text-xs ${theme.textMuted} mt-2`}>
+                Alle Runden, Spiele und Ergebnisse werden entfernt.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className={`flex-1 ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={async () => {
+                  await deleteTournament(tournament.id);
+                  navigate("/");
+                }}
+                className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 shadow-sm transition-all text-sm font-medium"
+              >
+                Endgueltig loeschen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Retire/Injured Modal */}
       {retireTarget && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -881,103 +1184,127 @@ export default function TournamentView() {
         </div>
       )}
 
+      {/* View Tabs */}
       {rounds.length > 0 && (
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {isGroupKo && groupRounds.length > 0 && (
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-wide self-center mr-1">
-              Gruppen:
-            </span>
-          )}
-          {rounds.map((r) => {
-            let label: string;
-            let colorClass: string;
-            if (r.phase === "group" && r.group_number) {
-              // Count which round this is within the same group
-              const sameGroupRounds = rounds.filter(
-                (rr) => rr.phase === "group" && rr.group_number === r.group_number
-              );
-              const inGroupIdx = sameGroupRounds.indexOf(r) + 1;
-              label = sameGroupRounds.length > 1
-                ? `G${r.group_number}.${inGroupIdx}`
-                : `G${r.group_number}`;
-              colorClass = activeRound === r.id
-                ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
-                : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`;
-            } else if (r.phase === "ko") {
-              label = `KO R${r.round_number}`;
-              colorClass = activeRound === r.id
-                ? "bg-violet-600 text-white shadow-md"
-                : `${theme.cardBg} text-violet-600 hover:bg-violet-500/10 border border-violet-500/30 hover:border-violet-400`;
-            } else {
-              label = `Runde ${r.round_number}`;
-              colorClass = activeRound === r.id
-                ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
-                : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`;
-            }
-            // Insert "KO:" separator before first KO round
-            const isFirstKo = r.phase === "ko" && rounds.indexOf(r) > 0 &&
-              rounds[rounds.indexOf(r) - 1]?.phase !== "ko";
-
-            return (
-              <React.Fragment key={r.id}>
-                {isFirstKo && (
-                  <span className="text-xs font-bold text-violet-400 uppercase tracking-wide self-center mx-1">
-                    KO:
-                  </span>
-                )}
-                <button
-                  onClick={() => setActiveRound(r.id)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${colorClass}`}
-                >
-                  {label}
-                  {allRoundMatchesCompleted(r.id) && (
-                    <span className="ml-1.5">✓</span>
-                  )}
-                </button>
-              </React.Fragment>
-            );
-          })}
+        <div className={`flex border-b-2 ${theme.inputBorder} mb-5`}>
+          {([
+            { key: "spiele" as const, label: "Spiele", icon: "🏸" },
+            { key: "rangliste" as const, label: "Rangliste", icon: "📊" },
+            { key: "verwaltung" as const, label: "Verwaltung", icon: "👥" },
+          ]).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setViewTab(tab.key)}
+              className={`px-6 py-3 text-sm font-semibold transition-all relative ${
+                viewTab === tab.key
+                  ? `${theme.textPrimary}`
+                  : `${theme.textMuted} hover:${theme.textSecondary}`
+              }`}
+            >
+              <span className="mr-1.5">{tab.icon}</span>
+              {tab.label}
+              {viewTab === tab.key && (
+                <span className={`absolute bottom-0 left-0 right-0 h-[3px] ${theme.primaryBg} rounded-t-full`} />
+              )}
+            </button>
+          ))}
         </div>
       )}
 
-      {/* Bracket View for KO tournaments */}
-      {koRoundsForBracket.length > 0 && (isElimination || (isGroupKo && tournament.current_phase === "ko")) && (
-        <BracketView
-          rounds={koRoundsForBracket}
-          matchesByRound={matchesByRound}
-          setsByMatch={setsByMatch}
-          playerName={playerName}
-          pointsPerSet={tournament.points_per_set}
-        />
-      )}
+      {/* Tab: Spiele */}
+      {viewTab === "spiele" && (
+        <div>
+          {rounds.length > 0 && (
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {isGroupKo && groupRounds.length > 0 && (
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wide self-center mr-1">
+                  Gruppen:
+                </span>
+              )}
+              {rounds.map((r) => {
+                let label: string;
+                let colorClass: string;
+                if (r.phase === "group" && r.group_number) {
+                  const sameGroupRounds = rounds.filter(
+                    (rr) => rr.phase === "group" && rr.group_number === r.group_number
+                  );
+                  const inGroupIdx = sameGroupRounds.indexOf(r) + 1;
+                  label = sameGroupRounds.length > 1
+                    ? `G${r.group_number}.${inGroupIdx}`
+                    : `G${r.group_number}`;
+                  colorClass = activeRound === r.id
+                    ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
+                    : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`;
+                } else if (r.phase === "ko") {
+                  label = `KO R${r.round_number}`;
+                  colorClass = activeRound === r.id
+                    ? "bg-violet-600 text-white shadow-md"
+                    : `${theme.cardBg} text-violet-600 hover:bg-violet-500/10 border border-violet-500/30 hover:border-violet-400`;
+                } else {
+                  label = `Runde ${r.round_number}`;
+                  colorClass = activeRound === r.id
+                    ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
+                    : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`;
+                }
+                const isFirstKo = r.phase === "ko" && rounds.indexOf(r) > 0 &&
+                  rounds[rounds.indexOf(r) - 1]?.phase !== "ko";
 
-      {/* Court Overview - always shown when tournament has courts configured */}
-      {rounds.length > 0 && activeRound && tournament.status === "active" && (
-        <CourtOverview
-          courts={Math.max(tournament.courts || 1, 1)}
-          matches={allMatches}
-          activeRoundMatches={activeRound ? matchesByRound.get(activeRound) : undefined}
-          playerName={playerName}
-          onDrop={(matchId, court) => handleCourtChange(matchId, court)}
-          onMatchClick={(matchId) => {
-            const el = document.querySelector(`[data-match-id="${matchId}"]`);
-            if (el) {
-              el.scrollIntoView({ behavior: "smooth", block: "center" });
-              el.classList.add("ring-2", "ring-amber-400");
-              setTimeout(() => el.classList.remove("ring-2", "ring-amber-400"), 2000);
-              // Focus first enabled score input
-              setTimeout(() => {
-                const input = el.querySelector('input[type="number"]:not(:disabled)') as HTMLInputElement | null;
-                if (input) input.focus();
-              }, 400);
-            }
-          }}
-        />
-      )}
+                return (
+                  <React.Fragment key={r.id}>
+                    {isFirstKo && (
+                      <span className="text-xs font-bold text-violet-400 uppercase tracking-wide self-center mx-1">
+                        KO:
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setActiveRound(r.id)}
+                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${colorClass}`}
+                    >
+                      {label}
+                      {allRoundMatchesCompleted(r.id) && (
+                        <span className="ml-1.5">✓</span>
+                      )}
+                    </button>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Matches */}
-        <div className="lg:col-span-2">
+          {/* Bracket View for KO tournaments */}
+          {koRoundsForBracket.length > 0 && (isElimination || (isGroupKo && tournament.current_phase === "ko")) && (
+            <BracketView
+              rounds={koRoundsForBracket}
+              matchesByRound={matchesByRound}
+              setsByMatch={setsByMatch}
+              playerName={playerName}
+              pointsPerSet={tournament.points_per_set}
+            />
+          )}
+
+          {/* Court Overview */}
+          {rounds.length > 0 && activeRound && tournament.status === "active" && (
+            <CourtOverview
+              courts={Math.max(tournament.courts || 1, 1)}
+              matches={allMatches}
+              activeRoundMatches={activeRound ? matchesByRound.get(activeRound) : undefined}
+              playerName={playerName}
+              onDrop={(matchId, court) => handleCourtChange(matchId, court)}
+              onMatchClick={(matchId) => {
+                const el = document.querySelector(`[data-match-id="${matchId}"]`);
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  el.classList.add("ring-2", "ring-amber-400");
+                  setTimeout(() => el.classList.remove("ring-2", "ring-amber-400"), 2000);
+                  setTimeout(() => {
+                    const input = el.querySelector('input[type="number"]:not(:disabled)') as HTMLInputElement | null;
+                    if (input) input.focus();
+                  }, 400);
+                }
+              }}
+            />
+          )}
+
           {rounds.length > 0 && (
             <div>
               {/* Matches - sorted: on court → open → completed */}
@@ -1046,9 +1373,11 @@ export default function TournamentView() {
             </div>
           )}
         </div>
+      )}
 
-        {/* Sidebar: Standings + Players */}
-        <div className="space-y-4">
+      {/* Tab: Rangliste */}
+      {viewTab === "rangliste" && (
+        <div>
           {/* Standings */}
           {isGroupKo && groupRounds.length > 0 ? (
             /* Group Standings */
@@ -1251,138 +1580,233 @@ export default function TournamentView() {
               </table>
             </div>
           )}
-
-          {/* Participants */}
-          <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
-            <div className={`px-5 py-3 border-b ${theme.cardBorder} ${theme.headerGradient} flex justify-between items-center`}>
-              <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
-                👥 Teilnehmer ({players.length})
-              </span>
-              {tournament.status === "draft" && (
-                <button
-                  onClick={() => setShowAddPlayer(!showAddPlayer)}
-                  className={`text-xs font-medium ${theme.activeBadgeText} transition-colors`}
-                >
-                  {showAddPlayer ? "Fertig" : "+ Spieler"}
-                </button>
-              )}
-            </div>
-
-            {/* Add Player Dropdown - only in draft */}
-            {showAddPlayer && tournament.status === "draft" && (
-              <div className={`p-3 border-b ${theme.cardBorder} ${theme.selectedBg}`}>
-                <div className="text-xs text-gray-500 mb-2 font-medium">
-                  Spieler hinzufuegen:
-                </div>
-                <div className="max-h-40 overflow-y-auto space-y-1">
-                  {allPlayers
-                    .filter((ap) => !players.some((p) => p.id === ap.id))
-                    .map((ap) => (
-                      <button
-                        key={ap.id}
-                        onClick={() => handleAddPlayer(ap.id)}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm hover:bg-gray-100 transition-colors text-left"
-                      >
-                        <span className={theme.textPrimary}>{ap.name}</span>
-                        <span
-                          className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                            ap.gender === "m"
-                              ? "bg-blue-50 text-blue-500"
-                              : "bg-pink-50 text-pink-500"
-                          }`}
-                        >
-                          {ap.gender === "m" ? "H" : "D"}
-                        </span>
-                      </button>
-                    ))}
-                  {allPlayers.filter((ap) => !players.some((p) => p.id === ap.id)).length === 0 && (
-                    <div className="text-xs text-gray-400 py-2 text-center">
-                      Alle Spieler sind bereits dabei.
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="p-3">
-              {players.map((p) => {
-                const isRetired = retiredPlayerIds.has(p.id);
-
-                return (
-                  <div
-                    key={p.id}
-                    className="text-sm py-1.5 px-2 flex justify-between items-center group"
-                  >
-                    <span className={`${isRetired ? `${theme.textMuted} line-through` : theme.textPrimary}`}>
-                      {p.name}
-                      {isRetired && (
-                        <span className="ml-1.5 text-[10px] font-medium text-rose-400 no-underline inline-block">
-                          🏥 Ausgeschieden
-                        </span>
-                      )}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                          p.gender === "m"
-                            ? "bg-blue-50 text-blue-500"
-                            : "bg-pink-50 text-pink-500"
-                        }`}
-                      >
-                        {p.gender === "m" ? "H" : "D"}
-                      </span>
-                      {/* Draft: remove player */}
-                      {tournament.status === "draft" && (
-                        <button
-                          onClick={() => handleRemovePlayer(p.id)}
-                          title="Aus Turnier entfernen"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-rose-400 hover:text-rose-600"
-                        >
-                          ✕
-                        </button>
-                      )}
-                      {/* Active: retire/injured - only if not already retired */}
-                      {tournament.status === "active" && !isRetired && (
-                        <button
-                          onClick={() => {
-                            const isFixedTeam = tournament.format !== "random_doubles" && tournament.mode !== "singles";
-                            let partnerNote = "";
-                            if (isFixedTeam) {
-                              for (const m of allMatches) {
-                                if (m.team1_p1 === p.id && m.team1_p2) {
-                                  partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team1_p2)} aus.`;
-                                  break;
-                                }
-                                if (m.team1_p2 === p.id) {
-                                  partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team1_p1)} aus.`;
-                                  break;
-                                }
-                                if (m.team2_p1 === p.id && m.team2_p2) {
-                                  partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team2_p2)} aus.`;
-                                  break;
-                                }
-                                if (m.team2_p2 === p.id) {
-                                  partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team2_p1)} aus.`;
-                                  break;
-                                }
-                              }
-                            }
-                            setRetireTarget({ player: p, partnerNote });
-                          }}
-                          title="Verletzt / Aufgabe - Spieler scheidet fuer restliches Turnier aus"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-amber-500 hover:text-amber-700"
-                        >
-                          🏥
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
-      </div>
+      )}
+
+      {/* Tab: Verwaltung (Teilnehmer + Startgeld kombiniert) */}
+      {viewTab === "verwaltung" && tournament && (
+        <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
+          <div className={`px-5 py-3 border-b ${theme.cardBorder} ${theme.headerGradient} flex justify-between items-center`}>
+            <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
+              👥 Teilnehmer ({players.length})
+              {(tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0) && (
+                <span className={`ml-2 font-normal text-xs ${theme.textSecondary}`}>
+                  💰 {paymentData.filter((p) => p.payment_status === "paid").length}/{paymentData.length} bezahlt
+                  &middot; {paymentData.filter((p) => p.payment_status === "paid").length *
+                    (tournament.mode === "singles" ? tournament.entry_fee_single : tournament.entry_fee_double)
+                  } EUR
+                </span>
+              )}
+            </span>
+            {tournament.status === "draft" && (
+              <button
+                onClick={() => setShowAddPlayer(!showAddPlayer)}
+                className={`text-xs font-medium ${theme.activeBadgeText} transition-colors`}
+              >
+                {showAddPlayer ? "Fertig" : "+ Spieler"}
+              </button>
+            )}
+          </div>
+
+          {/* Add Player Dropdown - only in draft */}
+          {showAddPlayer && tournament.status === "draft" && (
+            <div className={`p-3 border-b ${theme.cardBorder} ${theme.selectedBg}`}>
+              <div className="text-xs text-gray-500 mb-2 font-medium">Spieler hinzufuegen:</div>
+              <div className="max-h-40 overflow-y-auto space-y-1">
+                {allPlayers
+                  .filter((ap) => !players.some((p) => p.id === ap.id))
+                  .map((ap) => (
+                    <button
+                      key={ap.id}
+                      onClick={() => handleAddPlayer(ap.id)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm hover:bg-gray-100 transition-colors text-left"
+                    >
+                      <span className={theme.textPrimary}>{ap.name}</span>
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ap.gender === "m" ? "bg-blue-50 text-blue-500" : "bg-pink-50 text-pink-500"}`}>
+                        {ap.gender === "m" ? "H" : "D"}
+                      </span>
+                    </button>
+                  ))}
+                {allPlayers.filter((ap) => !players.some((p) => p.id === ap.id)).length === 0 && (
+                  <div className="text-xs text-gray-400 py-2 text-center">Alle Spieler sind bereits dabei.</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {(() => {
+            const hasPayment = tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0;
+            const fee = tournament.mode === "singles" ? tournament.entry_fee_single : tournament.entry_fee_double;
+            const sorted = [...paymentData].sort((a, b) => (a.player.club ?? "").localeCompare(b.player.club ?? "") || a.player.name.localeCompare(b.player.name));
+            const groups = new Map<string, TournamentPlayerInfo[]>();
+            for (const pd of sorted) {
+              const club = pd.player.club || "Kein Verein";
+              if (!groups.has(club)) groups.set(club, []);
+              groups.get(club)!.push(pd);
+            }
+
+            return (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className={`border-b ${theme.cardBorder} text-xs ${theme.textMuted}`}>
+                    <th className="text-left px-3 py-2">Name</th>
+                    <th className="text-center px-2 py-2">Geschlecht</th>
+                    <th className="text-left px-2 py-2">Verein</th>
+                    {hasPayment && (
+                      <>
+                        <th className="text-center px-2 py-2">Startgeld</th>
+                        <th className="text-center px-2 py-2">Zahlungsart</th>
+                        <th className="text-center px-2 py-2">Datum</th>
+                      </>
+                    )}
+                    <th className="text-right px-3 py-2">Aktion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from(groups.entries()).map(([clubName, members]) => {
+                    const isCollapsed = collapsedClubs.has(clubName);
+                    const paidCount = members.filter((m) => m.payment_status === "paid").length;
+                    const colSpan = hasPayment ? 7 : 4;
+                    return (
+                      <React.Fragment key={clubName}>
+                        <tr
+                          className={`${theme.headerGradient} cursor-pointer`}
+                          onClick={() => setCollapsedClubs((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(clubName)) next.delete(clubName);
+                            else next.add(clubName);
+                            return next;
+                          })}
+                        >
+                          <td colSpan={colSpan} className={`px-3 py-2 text-xs font-semibold ${theme.standingsHeaderText}`}>
+                            <span className="mr-1">{isCollapsed ? "▶" : "▼"}</span>
+                            {clubName} ({members.length})
+                            {hasPayment && (
+                              <span className={`ml-2 font-normal ${theme.textMuted}`}>
+                                {paidCount}/{members.length} bezahlt
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                        {!isCollapsed && members.map((pd) => {
+                          const isRetired = pd.retired;
+                          return (
+                            <tr key={pd.player.id} className={`border-b ${theme.cardBorder} last:border-0 group`}>
+                              <td className={`px-3 py-2 pl-6 font-medium ${isRetired ? `${theme.textMuted} line-through` : theme.textPrimary}`}>
+                                {pd.player.name}
+                                {isRetired && <span className="ml-1.5 text-[10px] text-rose-400 no-underline inline-block">🏥</span>}
+                              </td>
+                              <td className="px-2 py-2 text-center">
+                                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${pd.player.gender === "m" ? "bg-blue-50 text-blue-500" : "bg-pink-50 text-pink-500"}`}>
+                                  {pd.player.gender === "m" ? "H" : "D"}
+                                </span>
+                              </td>
+                              <td className={`px-2 py-2 text-xs ${theme.textSecondary}`}>{pd.player.club ?? "-"}</td>
+                              {hasPayment && (
+                                <>
+                                  <td className="px-2 py-2 text-center">
+                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                                      pd.payment_status === "paid"
+                                        ? "bg-green-500/10 text-green-600"
+                                        : "bg-orange-500/10 text-orange-600"
+                                    }`}>
+                                      {pd.payment_status === "paid" ? `${fee} EUR` : "Offen"}
+                                    </span>
+                                  </td>
+                                  <td className={`px-2 py-2 text-center text-xs ${theme.textSecondary}`}>
+                                    {pd.payment_method ? PAYMENT_METHOD_LABELS[pd.payment_method] : "-"}
+                                  </td>
+                                  <td className={`px-2 py-2 text-center text-xs ${theme.textSecondary}`}>
+                                    {pd.payment_status === "paid" ? (
+                                      <input
+                                        type="text"
+                                        value={pd.paid_date ?? ""}
+                                        onChange={async (e) => {
+                                          await updatePlayerPayment(tournament.id, pd.player.id, "paid", pd.payment_method, e.target.value || null);
+                                          const updated = await getTournamentPlayersDetailed(tournament.id);
+                                          setPaymentData(updated);
+                                        }}
+                                        className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded px-1.5 py-0.5 text-xs text-center w-24`}
+                                        placeholder="TT.MM.JJJJ"
+                                      />
+                                    ) : "-"}
+                                  </td>
+                                </>
+                              )}
+                              <td className="px-3 py-2 text-right">
+                                <div className="flex items-center gap-1 justify-end">
+                                  {hasPayment && pd.payment_status === "paid" ? (
+                                    <button
+                                      onClick={async () => {
+                                        await updatePlayerPayment(tournament.id, pd.player.id, "unpaid", null, null);
+                                        const updated = await getTournamentPlayersDetailed(tournament.id);
+                                        setPaymentData(updated);
+                                      }}
+                                      className={`text-xs ${theme.textMuted} hover:text-orange-600 transition-colors`}
+                                    >
+                                      ↩
+                                    </button>
+                                  ) : hasPayment && pd.payment_status !== "paid" ? (
+                                    (["bar", "ueberweisung", "paypal"] as PaymentMethod[]).map((m) => (
+                                      <button
+                                        key={m}
+                                        onClick={async () => {
+                                          const today = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+                                          await updatePlayerPayment(tournament.id, pd.player.id, "paid", m, today);
+                                          const updated = await getTournamentPlayersDetailed(tournament.id);
+                                          setPaymentData(updated);
+                                        }}
+                                        className={`text-xs px-2 py-1 rounded-lg border ${theme.cardBorder} ${theme.textSecondary} hover:border-green-400 hover:text-green-600 transition-all`}
+                                      >
+                                        {PAYMENT_METHOD_LABELS[m]}
+                                      </button>
+                                    ))
+                                  ) : null}
+                                  {tournament.status === "draft" && (
+                                    <button
+                                      onClick={() => handleRemovePlayer(pd.player.id)}
+                                      title="Aus Turnier entfernen"
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-rose-400 hover:text-rose-600 ml-1"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
+                                  {tournament.status === "active" && !isRetired && (
+                                    <button
+                                      onClick={() => {
+                                        const p = pd.player;
+                                        const isFixedTeam = tournament.format !== "random_doubles" && tournament.mode !== "singles";
+                                        let partnerNote = "";
+                                        if (isFixedTeam) {
+                                          for (const m of allMatches) {
+                                            if (m.team1_p1 === p.id && m.team1_p2) { partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team1_p2)} aus.`; break; }
+                                            if (m.team1_p2 === p.id) { partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team1_p1)} aus.`; break; }
+                                            if (m.team2_p1 === p.id && m.team2_p2) { partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team2_p2)} aus.`; break; }
+                                            if (m.team2_p2 === p.id) { partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team2_p1)} aus.`; break; }
+                                          }
+                                        }
+                                        setRetireTarget({ player: p, partnerNote });
+                                      }}
+                                      title="Verletzt / Aufgabe"
+                                      className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-amber-500 hover:text-amber-700 ml-1"
+                                    >
+                                      🏥
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 }

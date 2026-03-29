@@ -8,6 +8,8 @@ export interface Player {
   id: number;
   name: string;
   gender: Gender;
+  age: number | null;
+  club: string | null;
   created_at: string;
 }
 
@@ -24,13 +26,33 @@ export interface Tournament {
   num_groups: number;
   qualify_per_group: number;
   current_phase: TournamentPhase;
+  entry_fee_single: number;
+  entry_fee_double: number;
+  team_config: string | null;
   created_at: string;
   status: TournamentStatus;
 }
 
+export type PaymentMethod = "bar" | "ueberweisung" | "paypal";
+export type PaymentStatus = "unpaid" | "paid";
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  bar: "Bar",
+  ueberweisung: "Ueberweisung",
+  paypal: "PayPal",
+};
+
 export interface TournamentPlayer {
   tournament_id: number;
   player_id: number;
+}
+
+export interface TournamentPlayerInfo {
+  player: Player;
+  payment_status: PaymentStatus;
+  payment_method: PaymentMethod | null;
+  paid_date: string | null;
+  retired: boolean;
 }
 
 export interface Round {

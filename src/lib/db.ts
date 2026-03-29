@@ -4,6 +4,9 @@ import type {
   Tournament,
   TournamentMode,
   TournamentFormat,
+  TournamentPlayerInfo,
+  PaymentStatus,
+  PaymentMethod,
   Round,
   Match,
   GameSet,
@@ -82,10 +85,10 @@ export async function getPlayers(): Promise<Player[]> {
   return [...store.players].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function createPlayer(name: string, gender: Gender): Promise<void> {
+export async function createPlayer(name: string, gender: Gender, age?: number | null, club?: string | null): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute("INSERT INTO players (name, gender) VALUES ($1, $2)", [name, gender]);
+    await d.execute("INSERT INTO players (name, gender, age, club) VALUES ($1, $2, $3, $4)", [name, gender, age ?? null, club ?? null]);
     return;
   }
   const store = loadStore();
@@ -93,15 +96,17 @@ export async function createPlayer(name: string, gender: Gender): Promise<void> 
     id: nextId(store, "players"),
     name,
     gender,
+    age: age ?? null,
+    club: club ?? null,
     created_at: new Date().toISOString(),
   });
   saveStore(store);
 }
 
-export async function updatePlayer(id: number, name: string, gender: Gender): Promise<void> {
+export async function updatePlayer(id: number, name: string, gender: Gender, age?: number | null, club?: string | null): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute("UPDATE players SET name = $1, gender = $2 WHERE id = $3", [name, gender, id]);
+    await d.execute("UPDATE players SET name = $1, gender = $2, age = $3, club = $4 WHERE id = $5", [name, gender, age ?? null, club ?? null, id]);
     return;
   }
   const store = loadStore();
@@ -109,6 +114,8 @@ export async function updatePlayer(id: number, name: string, gender: Gender): Pr
   if (p) {
     p.name = name;
     p.gender = gender;
+    p.age = age ?? null;
+    p.club = club ?? null;
   }
   saveStore(store);
 }
@@ -158,13 +165,15 @@ export async function createTournament(
   pointsPerSet: number,
   courts: number = 1,
   numGroups: number = 0,
-  qualifyPerGroup: number = 0
+  qualifyPerGroup: number = 0,
+  entryFeeSingle: number = 0,
+  entryFeeDouble: number = 0
 ): Promise<number> {
   if (isTauri()) {
     const d = await getTauriDb();
     const result = await d.execute(
-      "INSERT INTO tournaments (name, mode, format, sets_to_win, points_per_set, courts, num_groups, qualify_per_group) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      [name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup]
+      "INSERT INTO tournaments (name, mode, format, sets_to_win, points_per_set, courts, num_groups, qualify_per_group, entry_fee_single, entry_fee_double) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
+      [name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, entryFeeSingle, entryFeeDouble]
     );
     return result.lastInsertId!;
   }
@@ -181,11 +190,64 @@ export async function createTournament(
     num_groups: numGroups,
     qualify_per_group: qualifyPerGroup,
     current_phase: null,
+    entry_fee_single: entryFeeSingle,
+    entry_fee_double: entryFeeDouble,
     created_at: new Date().toISOString(),
     status: "draft",
   });
   saveStore(store);
   return id;
+}
+
+export async function updateTournament(
+  id: number,
+  name: string,
+  mode: TournamentMode,
+  format: TournamentFormat,
+  setsToWin: number,
+  pointsPerSet: number,
+  courts: number,
+  numGroups: number,
+  qualifyPerGroup: number,
+  entryFeeSingle: number = 0,
+  entryFeeDouble: number = 0
+): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute(
+      "UPDATE tournaments SET name=$1, mode=$2, format=$3, sets_to_win=$4, points_per_set=$5, courts=$6, num_groups=$7, qualify_per_group=$8, entry_fee_single=$9, entry_fee_double=$10 WHERE id=$11",
+      [name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, entryFeeSingle, entryFeeDouble, id]
+    );
+    return;
+  }
+  const store = loadStore();
+  const t = store.tournaments.find((t) => t.id === id);
+  if (t) {
+    t.name = name;
+    t.mode = mode;
+    t.format = format;
+    t.sets_to_win = setsToWin;
+    t.points_per_set = pointsPerSet;
+    t.courts = courts;
+    t.num_groups = numGroups;
+    t.qualify_per_group = qualifyPerGroup;
+    t.entry_fee_single = entryFeeSingle;
+    t.entry_fee_double = entryFeeDouble;
+  }
+  saveStore(store);
+}
+
+export async function updateTeamConfig(id: number, teamConfig: [number, number][] | null): Promise<void> {
+  const json = teamConfig ? JSON.stringify(teamConfig) : null;
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("UPDATE tournaments SET team_config=$1 WHERE id=$2", [json, id]);
+    return;
+  }
+  const store = loadStore();
+  const t = store.tournaments.find((t) => t.id === id);
+  if (t) (t as any).team_config = json;
+  saveStore(store);
 }
 
 export async function updateTournamentPhase(id: number, phase: string | null): Promise<void> {
@@ -336,6 +398,68 @@ export async function getRetiredPlayerIds(tournamentId: number): Promise<number[
   return store.tournamentPlayers
     .filter((tp) => tp.tournament_id === tournamentId && (tp as any).retired === 1)
     .map((tp) => tp.player_id);
+}
+
+// --- Payment Tracking ---
+
+export async function getTournamentPlayersDetailed(tournamentId: number): Promise<TournamentPlayerInfo[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    const rows: any[] = await d.select(
+      `SELECT p.*, tp.retired, tp.payment_status, tp.payment_method, tp.paid_date
+       FROM tournament_players tp
+       JOIN players p ON p.id = tp.player_id
+       WHERE tp.tournament_id = $1
+       ORDER BY p.name`,
+      [tournamentId]
+    );
+    return rows.map((r) => ({
+      player: { id: r.id, name: r.name, gender: r.gender, age: r.age, club: r.club, created_at: r.created_at },
+      payment_status: r.payment_status ?? "unpaid",
+      payment_method: r.payment_method ?? null,
+      paid_date: r.paid_date ?? null,
+      retired: r.retired === 1,
+    }));
+  }
+  const store = loadStore();
+  const tps = store.tournamentPlayers.filter((tp) => tp.tournament_id === tournamentId);
+  return tps.map((tp) => {
+    const player = store.players.find((p) => p.id === tp.player_id)!;
+    return {
+      player,
+      payment_status: (tp as any).payment_status ?? "unpaid",
+      payment_method: (tp as any).payment_method ?? null,
+      paid_date: (tp as any).paid_date ?? null,
+      retired: (tp as any).retired === 1,
+    };
+  }).filter((x) => x.player).sort((a, b) => a.player.name.localeCompare(b.player.name));
+}
+
+export async function updatePlayerPayment(
+  tournamentId: number,
+  playerId: number,
+  status: PaymentStatus,
+  method: PaymentMethod | null,
+  date: string | null
+): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute(
+      "UPDATE tournament_players SET payment_status=$1, payment_method=$2, paid_date=$3 WHERE tournament_id=$4 AND player_id=$5",
+      [status, method, date, tournamentId, playerId]
+    );
+    return;
+  }
+  const store = loadStore();
+  const tp = store.tournamentPlayers.find(
+    (tp) => tp.tournament_id === tournamentId && tp.player_id === playerId
+  ) as any;
+  if (tp) {
+    tp.payment_status = status;
+    tp.payment_method = method;
+    tp.paid_date = date;
+  }
+  saveStore(store);
 }
 
 // --- Rounds ---

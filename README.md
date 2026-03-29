@@ -13,14 +13,25 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 - **KO-Bracket-Ansicht**: Visueller Turnierbaum mit Verbindungslinien, moegliche Teilnehmer in Grau, bestaetigte Gewinner sofort sichtbar
 - **Konfigurierbar**: Saetze (Best of 1/3/5), Punkte pro Satz, Spielfelder (1-8)
 - **Setzliste/Seeding**: Optionales Seeding fuer KO-Turniere per Drag & Drop oder Pfeiltasten
+- **Turnier-Wizard**: Schrittweise Erstellung mit Tab-Navigation (Einstellungen → Spieler → Teams → Setzliste → Erstellen)
+- **Manuelle Team-Zuordnung**: Klick-Pairing fuer Doppel/Mixed - zwei Spieler nacheinander anklicken bildet ein Team
+  - Im Mixed-Modus: Damen/Herren in getrennten Spalten, gleiches Geschlecht wird ausgegraut
+  - "Restliche automatisch zuordnen" fuer schnelles Auffuellen
+  - Teams werden persistiert und beim Bearbeiten wiederhergestellt
+- **Startgeld-Verwaltung**: Pro Turnier konfigurierbar (Einzel-/Doppel-Betrag)
+  - Zahlungsstatus pro Spieler (Bar, Ueberweisung, PayPal)
+  - Datum der Zahlung (editierbar)
+  - Uebersicht mit Gesamtsumme, nach Verein gruppiert
+- **Turnier bearbeiten**: Draft-Turniere komplett bearbeitbar (alle Wizard-Tabs)
+- **Turnier loeschen**: Draft-Turniere loeschbar mit Bestaetigungsdialog
+- **Tab-Navigation im Turnierbetrieb**: Spiele | Rangliste | Verwaltung
 - **Archivierung**: Beendete Turniere archivieren und wiederherstellen
-- **Turnier loeschen**: Mit Sicherheitsabfrage (Eingabe "LOESCHEN")
 - **Auto-Benennung**: Turniername wird automatisch generiert (Datum - Modus - Format), editierbar
 
 ### Spielerverwaltung
-- Spieler anlegen, bearbeiten, loeschen
-- **Excel-Import** mit Spaltenmapping (Name, Geschlecht) und Duplikaterkennung
-- **Excel-Export** mit nativem Speichern-Dialog
+- Spieler anlegen, bearbeiten, loeschen mit **Alter** und **Vereinszugehoerigkeit**
+- **Excel-Import** mit Spaltenmapping (Name, Geschlecht, Alter, Verein) und Duplikaterkennung
+- **Excel-Export** mit nativem Speichern-Dialog (inkl. Alter + Verein)
 - Geschlechter-Filter und Suchfunktion bei der Spielerauswahl
 - **Verletzung/Aufgabe**: Spieler als verletzt markieren - scheidet fuer restliches Turnier aus
   - Gestylter Modal-Dialog (kein Browser-Popup) mit Warnung bei Team-Auswirkungen
@@ -69,9 +80,11 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
 - Theme-Wechsel ueber Einstellungen → Design, wird sofort angewendet
 - Vollstaendiger Dark Mode: Alle Seiten, Modals, Inputs, Tabellen, Bracket-Ansicht
 - Theme wird persistent gespeichert
+- **Theme-konforme Druckansicht**: Druck-Report passt sich dem gewaehlten Farbschema an
 - **Custom Vereinslogo**: Eigenes Logo hochladen mit Zuschnitt-Tool (1:1 Cropper)
   - Wird in der Sidebar und im TV-Modus angezeigt (ersetzt Standard 🏸 Emoji)
   - Gespeichert in der SQLite-Datenbank (im Backup enthalten, wandert mit DB)
+- **Badminton-Court SVG**: Dezentes Spielfeld-Hintergrundbild auf den Feld-Karten
 
 ### Sidebar
 - **Einklappbar**: Sidebar auf Icons reduzierbar fuer mehr Platz (persistent gespeichert)

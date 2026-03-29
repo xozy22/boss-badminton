@@ -319,6 +319,35 @@ pub fn run() {
             ",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 9,
+            description: "add age and club to players",
+            sql: "
+                ALTER TABLE players ADD COLUMN age INTEGER;
+                ALTER TABLE players ADD COLUMN club TEXT;
+            ",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 10,
+            description: "add entry fees and payment tracking",
+            sql: "
+                ALTER TABLE tournaments ADD COLUMN entry_fee_single REAL NOT NULL DEFAULT 0;
+                ALTER TABLE tournaments ADD COLUMN entry_fee_double REAL NOT NULL DEFAULT 0;
+                ALTER TABLE tournament_players ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'unpaid';
+                ALTER TABLE tournament_players ADD COLUMN payment_method TEXT;
+                ALTER TABLE tournament_players ADD COLUMN paid_date TEXT;
+            ",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 11,
+            description: "add team_config to tournaments for manual team pairings",
+            sql: "
+                ALTER TABLE tournaments ADD COLUMN team_config TEXT;
+            ",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

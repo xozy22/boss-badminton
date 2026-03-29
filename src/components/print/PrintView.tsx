@@ -10,6 +10,9 @@ import type {
 import { MODE_LABELS, FORMAT_LABELS } from "../../lib/types";
 import { isSetComplete, getScoringDescription } from "../../lib/scoring";
 import { calculateHighlights } from "../../lib/highlights";
+import type { PrintColors } from "../../lib/theme";
+import { PRINT_COLORS } from "../../lib/theme";
+import type { ThemeId } from "../../lib/theme";
 
 export type PrintMode = "schedule" | "round" | "standings" | "full" | "report";
 
@@ -22,6 +25,7 @@ interface PrintViewProps {
   standings: StandingEntry[];
   mode: PrintMode;
   activeRoundId?: number | null;
+  themeId?: ThemeId;
 }
 
 const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
@@ -35,9 +39,12 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
       standings,
       mode,
       activeRoundId,
+      themeId = "green",
     },
     ref
   ) => {
+    const c: PrintColors = PRINT_COLORS[themeId];
+
     const playerName = (id: number | null): string => {
       if (!id) return "-";
       return players.find((p) => p.id === id)?.name ?? "?";
@@ -58,7 +65,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
     });
 
     const renderHeader = () => (
-      <div style={{ marginBottom: 20, borderBottom: "2px solid #059669", paddingBottom: 12 }}>
+      <div style={{ marginBottom: 20, borderBottom: `2px solid ${c.accent}`, paddingBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>
@@ -109,7 +116,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
               padding: "6px 8px",
               fontSize: 12,
               fontWeight: m.winner_team === 1 ? 700 : 400,
-              color: m.winner_team === 1 ? "#059669" : "#111",
+              color: m.winner_team === 1 ? c.winColor : "#111",
             }}
           >
             {teamLabel(m, 1)}
@@ -122,7 +129,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
               padding: "6px 8px",
               fontSize: 12,
               fontWeight: m.winner_team === 2 ? 700 : 400,
-              color: m.winner_team === 2 ? "#059669" : "#111",
+              color: m.winner_team === 2 ? c.winColor : "#111",
             }}
           >
             {teamLabel(m, 2)}
@@ -170,7 +177,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
 
       return (
         <div key={round.id} style={{ marginBottom: 20 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: "#059669" }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: c.accent }}>
             Runde {round.round_number}
           </h3>
           <table
@@ -182,7 +189,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
             }}
           >
             <thead>
-              <tr style={{ backgroundColor: "#f0fdf4", borderBottom: "2px solid #d1d5db" }}>
+              <tr style={{ backgroundColor: c.accentLight, borderBottom: "2px solid #d1d5db" }}>
                 <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 10, fontWeight: 600 }}>#</th>
                 {tournament.courts > 1 && (
                   <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 50 }}>Feld</th>
@@ -210,7 +217,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
 
     const renderStandings = () => (
       <div style={{ marginBottom: 20 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: "#059669" }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: c.accent }}>
           Rangliste
         </h3>
         <table
@@ -222,7 +229,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
           }}
         >
           <thead>
-            <tr style={{ backgroundColor: "#f0fdf4", borderBottom: "2px solid #d1d5db" }}>
+            <tr style={{ backgroundColor: c.accentLight, borderBottom: "2px solid #d1d5db" }}>
               <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 40 }}>Platz</th>
               <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 10, fontWeight: 600 }}>Spieler</th>
               <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 50 }}>Siege</th>
@@ -244,10 +251,10 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
                 >
                   <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 13 }}>{medal}</td>
                   <td style={{ padding: "6px 8px", fontWeight: 600 }}>{s.player.name}</td>
-                  <td style={{ padding: "6px 8px", textAlign: "center", color: "#059669", fontWeight: 700 }}>
+                  <td style={{ padding: "6px 8px", textAlign: "center", color: c.winColor, fontWeight: 700 }}>
                     {s.wins}
                   </td>
-                  <td style={{ padding: "6px 8px", textAlign: "center", color: "#e11d48" }}>
+                  <td style={{ padding: "6px 8px", textAlign: "center", color: c.lossColor }}>
                     {s.losses}
                   </td>
                   <td style={{ padding: "6px 8px", textAlign: "center", fontFamily: "monospace" }}>
@@ -326,7 +333,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
 
       return (
         <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: "#059669" }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: c.accent }}>
             Highlights
           </h3>
           <div style={{
@@ -338,10 +345,10 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
               <div
                 key={i}
                 style={{
-                  backgroundColor: "#f0fdf4",
+                  backgroundColor: c.accentLight,
                   borderRadius: 8,
                   padding: "10px 14px",
-                  border: "1px solid #d1fae5",
+                  border: `1px solid ${c.accentBorder}`,
                 }}
               >
                 <div style={{ fontSize: 10, color: "#666", marginBottom: 2 }}>
@@ -374,7 +381,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
 
     const renderParticipants = () => (
       <div style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: "#059669" }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: c.accent }}>
           Teilnehmer ({players.length})
         </h3>
         <div style={{
@@ -416,7 +423,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
             {renderStandings()}
             {renderParticipants()}
             <div style={{ marginBottom: 10 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: "#059669" }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: c.accent }}>
                 Alle Ergebnisse
               </h3>
             </div>

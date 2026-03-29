@@ -59,6 +59,8 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
   // Mapping
   const [nameCol, setNameCol] = useState("");
   const [genderCol, setGenderCol] = useState("");
+  const [ageCol, setAgeCol] = useState("");
+  const [clubCol, setClubCol] = useState("");
   const [defaultGender, setDefaultGender] = useState<Gender>("m");
 
   // Existing players for duplicate check
@@ -66,7 +68,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
   // Preview
   const [previewRows, setPreviewRows] = useState<
-    { name: string; gender: Gender; valid: boolean; duplicate: boolean }[]
+    { name: string; gender: Gender; age: number | null; club: string | null; valid: boolean; duplicate: boolean }[]
   >([]);
   const [importCount, setImportCount] = useState(0);
   const [importing, setImporting] = useState(false);
@@ -116,8 +118,17 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
         ["geschlecht", "gender", "sex", "m/w", "m/f"].includes(c.toLowerCase())
       );
 
+      const ageLower = cols.find((c) =>
+        ["alter", "age", "jahrgang", "geburtsjahr"].includes(c.toLowerCase())
+      );
+      const clubLower = cols.find((c) =>
+        ["verein", "club", "team", "mannschaft"].includes(c.toLowerCase())
+      );
+
       setNameCol(nameLower ?? cols[0] ?? "");
       setGenderCol(genderLower ?? "");
+      setAgeCol(ageLower ?? "");
+      setClubCol(clubLower ?? "");
     }
 
     setStep("mapping");
@@ -153,7 +164,12 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
       if (name.length > 0) seenInImport.add(nameLower);
 
-      return { name, gender, valid: name.length > 0, duplicate };
+      const rawAge = ageCol ? row[ageCol] : null;
+      const age = rawAge != null ? (Number(rawAge) || null) : null;
+      const rawClub = clubCol ? row[clubCol] : null;
+      const club = rawClub != null ? String(rawClub).trim() || null : null;
+
+      return { name, gender, age, club, valid: name.length > 0, duplicate };
     });
 
     setPreviewRows(rows);
@@ -167,7 +183,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
     for (const row of previewRows) {
       if (!row.valid || row.duplicate) continue;
       try {
-        await createPlayer(row.name, row.gender);
+        await createPlayer(row.name, row.gender, row.age, row.club);
         count++;
       } catch (err) {
         console.error("Import error:", err);
@@ -311,6 +327,38 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                     <option key={c} value={c}>
                       {c}
                     </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={`block text-sm ${theme.textSecondary} mb-1`}>
+                  Spalte fuer <strong>Alter</strong> (optional)
+                </label>
+                <select
+                  value={ageCol}
+                  onChange={(e) => setAgeCol(e.target.value)}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                >
+                  <option value="">-- Nicht vorhanden --</option>
+                  {columns.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={`block text-sm ${theme.textSecondary} mb-1`}>
+                  Spalte fuer <strong>Verein</strong> (optional)
+                </label>
+                <select
+                  value={clubCol}
+                  onChange={(e) => setClubCol(e.target.value)}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                >
+                  <option value="">-- Nicht vorhanden --</option>
+                  {columns.map((c) => (
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
