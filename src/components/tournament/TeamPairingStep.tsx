@@ -1,0 +1,174 @@
+import type { ThemeColors } from "../../lib/theme";
+import type { Player, TournamentMode } from "../../lib/types";
+
+interface TeamPairingStepProps {
+  mode: TournamentMode;
+  players: Player[];
+  poolPlayers: Player[];
+  manualTeams: [number, number][];
+  firstPick: number | null;
+  theme: ThemeColors;
+  onPoolClick: (playerId: number) => void;
+  onAutoAssign: () => void;
+  onRemoveTeam: (idx: number) => void;
+  onClearAll: () => void;
+}
+
+export default function TeamPairingStep({
+  mode,
+  players,
+  poolPlayers,
+  manualTeams,
+  firstPick,
+  theme,
+  onPoolClick,
+  onAutoAssign,
+  onRemoveTeam,
+  onClearAll,
+}: TeamPairingStepProps) {
+  const firstPickGender = firstPick !== null ? players.find((pl) => pl.id === firstPick)?.gender : null;
+  const isMixed = mode === "mixed";
+  const poolMale = poolPlayers.filter((p) => p.gender === "m").sort((a, b) => a.name.localeCompare(b.name));
+  const poolFemale = poolPlayers.filter((p) => p.gender === "f").sort((a, b) => a.name.localeCompare(b.name));
+  const poolSorted = isMixed ? [...poolFemale, ...poolMale] : [...poolPlayers].sort((a, b) => a.name.localeCompare(b.name));
+
+  const renderPlayer = (p: Player) => {
+    const isFirst = firstPick === p.id;
+    const isMixedBlocked = isMixed && firstPick !== null && firstPickGender === p.gender;
+    return (
+      <button
+        key={p.id}
+        onClick={() => !isMixedBlocked && onPoolClick(p.id)}
+        disabled={!!isMixedBlocked}
+        className={`px-3 py-2 rounded-xl text-sm font-medium transition-all border ${
+          isFirst
+            ? `${theme.primaryBg} text-white shadow-md`
+            : isMixedBlocked
+            ? `${theme.cardBg} ${theme.textMuted} border-gray-200 opacity-30 cursor-not-allowed`
+            : `${theme.cardBg} ${theme.textPrimary} ${theme.cardBorder} ${theme.cardHoverBorder} hover:shadow-sm cursor-pointer`
+        }`}
+      >
+        {p.name}
+        {!isMixed && (
+          <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${
+            p.gender === "m" ? "bg-blue-500/10 text-blue-500" : "bg-pink-500/10 text-pink-500"
+          }`}>
+            {p.gender === "m" ? "H" : "D"}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-5`}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className={`font-semibold ${theme.textPrimary}`}>
+          🤝 Teams bilden
+          <span className={`ml-2 text-xs font-normal ${theme.textSecondary}`}>
+            {manualTeams.length > 0
+              ? `${manualTeams.length} Teams · ${poolPlayers.length} offen`
+              : `${poolPlayers.length} Spieler verfuegbar`}
+          </span>
+        </h2>
+        <div className="flex gap-2">
+          {poolPlayers.length >= 2 && (
+            <button
+              onClick={onAutoAssign}
+              className={`text-xs font-medium ${theme.activeBadgeText} ${theme.activeBadgeBg} px-3 py-1.5 rounded-lg transition-colors`}
+            >
+              Restliche automatisch zuordnen
+            </button>
+          )}
+          {manualTeams.length > 0 && (
+            <button
+              onClick={onClearAll}
+              className={`text-xs ${theme.textMuted} hover:text-rose-600 transition-colors`}
+            >
+              Alle aufloesen
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Pool: ungepaarte Spieler */}
+      {poolPlayers.length > 0 && (
+        <div className="mb-4">
+          <div className={`text-xs font-medium ${theme.textMuted} uppercase tracking-wide mb-2`}>
+            Verfuegbar ({poolPlayers.length}) {firstPick !== null && "— Waehle den Partner"}
+          </div>
+          {isMixed ? (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className={`text-[10px] font-bold uppercase tracking-wide mb-1.5 px-1 ${firstPickGender === "f" ? theme.textMuted + " opacity-40" : "text-pink-500"}`}>
+                  Damen ({poolFemale.length})
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {poolFemale.map(renderPlayer)}
+                </div>
+              </div>
+              <div>
+                <div className={`text-[10px] font-bold uppercase tracking-wide mb-1.5 px-1 ${firstPickGender === "m" ? theme.textMuted + " opacity-40" : "text-blue-500"}`}>
+                  Herren ({poolMale.length})
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {poolMale.map(renderPlayer)}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {poolSorted.map(renderPlayer)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Gebildete Teams */}
+      {manualTeams.length > 0 && (
+        <div>
+          <div className={`text-xs font-medium ${theme.textMuted} uppercase tracking-wide mb-2`}>
+            Teams ({manualTeams.length})
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+            {manualTeams.map(([id1, id2], idx) => {
+              const p1 = players.find((p) => p.id === id1);
+              const p2 = players.find((p) => p.id === id2);
+              return (
+                <div
+                  key={idx}
+                  className={`${theme.selectedBg} border ${theme.cardBorder} rounded-xl px-3 py-2 flex items-center justify-between group`}
+                >
+                  <div className="text-sm">
+                    <span className={`font-medium ${theme.textPrimary}`}>{p1?.name ?? "?"}</span>
+                    <span className={`${theme.textMuted} mx-1.5`}>/</span>
+                    <span className={`font-medium ${theme.textPrimary}`}>{p2?.name ?? "?"}</span>
+                  </div>
+                  <button
+                    onClick={() => onRemoveTeam(idx)}
+                    className="opacity-0 group-hover:opacity-100 text-xs text-rose-400 hover:text-rose-600 transition-all ml-2"
+                    title="Team aufloesen"
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Status */}
+      {poolPlayers.length > 0 && poolPlayers.length < 2 && (
+        <div className={`text-xs ${theme.textMuted} mt-3`}>
+          ⚠️ 1 Spieler uebrig - ungerade Anzahl. Spieler wird nicht zugeteilt.
+        </div>
+      )}
+      {poolPlayers.length === 0 && manualTeams.length > 0 && (
+        <div className={`text-xs text-green-600 mt-3`}>
+          ✓ Alle Spieler sind Teams zugeteilt.
+        </div>
+      )}
+    </div>
+  );
+}

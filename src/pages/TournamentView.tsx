@@ -3,6 +3,9 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import PrintDialog from "../components/print/PrintDialog";
 import { useTheme } from "../lib/ThemeContext";
 import type { ThemeColors } from "../lib/theme";
+import TemplateExportModal from "../components/tournament/TemplateExportModal";
+import DeleteTournamentModal from "../components/tournament/DeleteTournamentModal";
+import RetirePlayerModal from "../components/tournament/RetirePlayerModal";
 import CourtOverview from "../components/courts/CourtOverview";
 import BracketView from "../components/bracket/BracketView";
 import { CourtTimer } from "../components/courts/CourtTimer";
@@ -65,9 +68,7 @@ import type {
   TournamentMode,
   TournamentFormat,
   TournamentPlayerInfo,
-  PaymentMethod,
 } from "../lib/types";
-import { PAYMENT_METHOD_LABELS } from "../lib/types";
 import { MODE_LABELS, FORMAT_LABELS, STATUS_LABELS } from "../lib/types";
 
 const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
@@ -272,10 +273,7 @@ export default function TournamentView() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [paymentData, setPaymentData] = useState<TournamentPlayerInfo[]>([]);
   const [collapsedClubs, setCollapsedClubs] = useState<Set<string>>(new Set());
-  const [verwaltungSearch, setVerwaltungSearch] = useState("");
-  const [verwaltungFilter, setVerwaltungFilter] = useState<"all" | "paid" | "unpaid">("all");
   const [showTemplateExport, setShowTemplateExport] = useState(false);
-  const [templateInclude, setTemplateInclude] = useState({ settings: true, players: true, teams: true });
   const [viewTab, setViewTab] = useState<"spiele" | "rangliste" | "verwaltung">("spiele");
   const [retireTarget, setRetireTarget] = useState<{ player: Player; partnerNote: string } | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
@@ -891,13 +889,6 @@ export default function TournamentView() {
       ? "bg-violet-100 text-violet-600"
       : "bg-amber-100 text-amber-700";
 
-  const rankMedal = (i: number) => {
-    if (i === 0) return "🥇";
-    if (i === 1) return "🥈";
-    if (i === 2) return "🥉";
-    return `${i + 1}`;
-  };
-
   return (
     <div>
       {/* Header */}
@@ -1100,164 +1091,35 @@ export default function TournamentView() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && tournament && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
-            <div className="text-center mb-5">
-              <div className="text-4xl mb-3">🗑️</div>
-              <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
-                Turnier loeschen?
-              </h3>
-              <p className={`text-sm ${theme.textSecondary} mt-2`}>
-                <span className={`font-semibold ${theme.textPrimary}`}>{tournament.name}</span> wird
-                unwiderruflich geloescht.
-              </p>
-              <p className={`text-xs ${theme.textMuted} mt-2`}>
-                Alle Runden, Spiele und Ergebnisse werden entfernt.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className={`flex-1 ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={async () => {
-                  await deleteTournament(tournament.id);
-                  navigate("/");
-                }}
-                className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 shadow-sm transition-all text-sm font-medium"
-              >
-                Endgueltig loeschen
-              </button>
-            </div>
-          </div>
-        </div>
+        <DeleteTournamentModal
+          tournament={tournament}
+          theme={theme}
+          onClose={() => setShowDeleteConfirm(false)}
+          onConfirm={async () => {
+            await deleteTournament(tournament.id);
+            navigate("/");
+          }}
+        />
       )}
 
       {/* Template Export Modal */}
       {showTemplateExport && tournament && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
-            <h3 className={`text-lg font-bold ${theme.textPrimary} mb-4`}>📋 Als Vorlage exportieren</h3>
-            <p className={`text-sm ${theme.textSecondary} mb-4`}>Waehle was in der Vorlage enthalten sein soll:</p>
-            <div className="space-y-3 mb-5">
-              <label className={`flex items-center gap-3 p-3 rounded-xl border ${theme.cardBorder} ${templateInclude.settings ? theme.selectedBg : ''} cursor-pointer`}>
-                <input type="checkbox" checked={templateInclude.settings} onChange={(e) => setTemplateInclude((p) => ({ ...p, settings: e.target.checked }))} className="rounded accent-emerald-600" />
-                <div>
-                  <div className={`text-sm font-medium ${theme.textPrimary}`}>⚙️ Einstellungen</div>
-                  <div className={`text-xs ${theme.textMuted}`}>Modus, Format, Saetze, Punkte, Felder, Startgeld</div>
-                </div>
-              </label>
-              <label className={`flex items-center gap-3 p-3 rounded-xl border ${theme.cardBorder} ${templateInclude.players ? theme.selectedBg : ''} cursor-pointer`}>
-                <input type="checkbox" checked={templateInclude.players} onChange={(e) => setTemplateInclude((p) => ({ ...p, players: e.target.checked, teams: e.target.checked ? p.teams : false }))} className="rounded accent-emerald-600" />
-                <div>
-                  <div className={`text-sm font-medium ${theme.textPrimary}`}>👥 Spieler ({players.length})</div>
-                  <div className={`text-xs ${theme.textMuted}`}>Teilnehmerliste mit Namen und Geschlecht</div>
-                </div>
-              </label>
-              {tournament.team_config && (
-                <label className={`flex items-center gap-3 p-3 rounded-xl border ${theme.cardBorder} ${templateInclude.teams ? theme.selectedBg : ''} cursor-pointer ${!templateInclude.players ? 'opacity-40 pointer-events-none' : ''}`}>
-                  <input type="checkbox" checked={templateInclude.teams} disabled={!templateInclude.players} onChange={(e) => setTemplateInclude((p) => ({ ...p, teams: e.target.checked }))} className="rounded accent-emerald-600" />
-                  <div>
-                    <div className={`text-sm font-medium ${theme.textPrimary}`}>🤝 Teams</div>
-                    <div className={`text-xs ${theme.textMuted}`}>Gebildete Doppel-/Mixed-Paarungen</div>
-                  </div>
-                </label>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowTemplateExport(false)}
-                className={`flex-1 ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={() => {
-                  const template: Record<string, unknown> = { version: 1 };
-                  if (templateInclude.settings) {
-                    template.name = tournament.name;
-                    template.mode = tournament.mode;
-                    template.format = tournament.format;
-                    template.sets_to_win = tournament.sets_to_win;
-                    template.points_per_set = tournament.points_per_set;
-                    template.courts = tournament.courts;
-                    template.num_groups = tournament.num_groups;
-                    template.qualify_per_group = tournament.qualify_per_group;
-                    template.entry_fee_single = tournament.entry_fee_single;
-                    template.entry_fee_double = tournament.entry_fee_double;
-                  }
-                  if (templateInclude.players) {
-                    template.players = players.map((p) => ({ id: p.id, name: p.name, gender: p.gender }));
-                  }
-                  if (templateInclude.teams && tournament.team_config) {
-                    try { template.team_config = JSON.parse(tournament.team_config); } catch {}
-                  }
-                  const json = JSON.stringify(template, null, 2);
-                  const blob = new Blob([json], { type: "application/json" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `${(tournament.name || "vorlage").replace(/[^a-zA-Z0-9äöüÄÖÜß\-_ .]/g, "")}.json`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  URL.revokeObjectURL(url);
-                  setShowTemplateExport(false);
-                }}
-                className={`flex-1 ${theme.primaryBg} text-white px-4 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm transition-all text-sm font-medium`}
-              >
-                📥 Exportieren
-              </button>
-            </div>
-          </div>
-        </div>
+        <TemplateExportModal
+          tournament={tournament}
+          players={players}
+          theme={theme}
+          onClose={() => setShowTemplateExport(false)}
+        />
       )}
 
       {/* Retire/Injured Modal */}
       {retireTarget && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
-            <div className="text-center mb-5">
-              <div className="text-4xl mb-3">🏥</div>
-              <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
-                Verletzt / Aufgabe
-              </h3>
-              <p className={`text-sm ${theme.textSecondary} mt-2`}>
-                <span className={`font-semibold ${theme.textPrimary}`}>{retireTarget.player.name}</span> als
-                verletzt oder aufgegeben markieren?
-              </p>
-              <p className={`text-xs ${theme.textMuted} mt-2`}>
-                Der Spieler scheidet fuer das gesamte restliche Turnier aus.
-                Alle offenen Spiele werden als Freilos fuer den Gegner gewertet.
-              </p>
-              {retireTarget.partnerNote && (
-                <p className="text-xs text-amber-500 mt-2 font-medium">
-                  ⚠️ {retireTarget.partnerNote}
-                </p>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setRetireTarget(null)}
-                className={`flex-1 ${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={() => {
-                  handlePlayerRetire(retireTarget.player.id);
-                  setRetireTarget(null);
-                }}
-                className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-all text-sm font-medium"
-              >
-                🏥 Als verletzt markieren
-              </button>
-            </div>
-          </div>
-        </div>
+        <RetirePlayerModal
+          retireTarget={retireTarget}
+          theme={theme}
+          onClose={() => setRetireTarget(null)}
+          onConfirm={handlePlayerRetire}
+        />
       )}
 
       {/* Round Tabs - above everything */}
@@ -1468,487 +1330,40 @@ export default function TournamentView() {
 
       {/* Tab: Rangliste */}
       {viewTab === "rangliste" && (
-        <div>
-          {/* Standings */}
-          {isGroupKo && groupRounds.length > 0 ? (
-            /* Group Standings */
-            <>
-              {Array.from({ length: tournament.num_groups || 2 }, (_, g) => g + 1).map((groupNum) => {
-                const { gMatches, gSets, pIds } = getGroupData(groupNum);
-                const gPlayers = players.filter((p) => pIds.has(p.id));
-                const qualifyCount = tournament.qualify_per_group || 2;
-                const isDoublesGroup = tournament.mode !== "singles";
-
-                if (isDoublesGroup) {
-                  // Team standings
-                  const teamStandings = calculateTeamStandings(gPlayers, gMatches, gSets);
-                  return (
-                    <div key={groupNum} className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
-                      <div className={`px-5 py-2.5 border-b ${theme.cardBorder} ${theme.headerGradient}`}>
-                        <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
-                          Gruppe {groupNum}
-                        </span>
-                        <span className="text-xs text-gray-400 ml-2">
-                          ({teamStandings.length} Teams, Top {qualifyCount})
-                        </span>
-                      </div>
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b border-gray-100">
-                            <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>#</th>
-                            <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>Team</th>
-                            <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>S</th>
-                            <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>N</th>
-                            <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>Pkt</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {teamStandings.map((ts, i) => (
-                            <tr
-                              key={ts.teamKey}
-                              className={`border-b border-gray-50 last:border-0 ${
-                                i < qualifyCount ? `${theme.selectedBg}` : ""
-                              }`}
-                            >
-                              <td className={`px-3 py-2 ${theme.textMuted} font-mono`}>{i + 1}</td>
-                              <td className={`px-3 py-2 font-medium ${theme.textPrimary}`}>
-                                {ts.player1.name} / {ts.player2.name}
-                                {i < qualifyCount && (
-                                  <span className="ml-1 text-[9px] text-emerald-500 font-bold">Q</span>
-                                )}
-                              </td>
-                              <td className={`px-3 py-2 text-center font-bold ${theme.activeBadgeText}`}>{ts.wins}</td>
-                              <td className="px-3 py-2 text-center text-rose-400">{ts.losses}</td>
-                              <td className={`px-3 py-2 text-center font-mono ${theme.textSecondary}`}>
-                                {ts.pointsWon}:{ts.pointsLost}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                }
-
-                // Einzel standings
-                const gStandings = calculateStandings(gPlayers, gMatches, gSets);
-                return (
-                  <div key={groupNum} className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
-                    <div className={`px-5 py-2.5 border-b ${theme.cardBorder} ${theme.headerGradient}`}>
-                      <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
-                        Gruppe {groupNum}
-                      </span>
-                      <span className="text-xs text-gray-400 ml-2">
-                        ({gPlayers.length} Spieler, Top {qualifyCount})
-                      </span>
-                    </div>
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-gray-100">
-                          <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>#</th>
-                          <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>Spieler</th>
-                          <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>S</th>
-                          <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>N</th>
-                          <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>Pkt</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {gStandings.map((s, i) => (
-                          <tr
-                            key={s.player.id}
-                            className={`border-b border-gray-50 last:border-0 ${
-                              i < qualifyCount ? `${theme.selectedBg}` : ""
-                            }`}
-                          >
-                            <td className={`px-3 py-2 ${theme.textMuted} font-mono`}>{i + 1}</td>
-                            <td className={`px-3 py-2 font-medium ${theme.textPrimary}`}>
-                              {s.player.name}
-                              {i < qualifyCount && (
-                                <span className="ml-1 text-[9px] text-emerald-500 font-bold">Q</span>
-                              )}
-                            </td>
-                            <td className={`px-3 py-2 text-center font-bold ${theme.activeBadgeText}`}>{s.wins}</td>
-                            <td className="px-3 py-2 text-center text-rose-400">{s.losses}</td>
-                            <td className={`px-3 py-2 text-center font-mono ${theme.textSecondary}`}>
-                              {s.pointsWon}:{s.pointsLost}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })}
-              {/* Overall KO Standings */}
-              {koRounds.length > 0 && (
-                <div className={`${theme.cardBg} rounded-2xl shadow-sm border border-violet-500/20 overflow-hidden`}>
-                  <div className="px-5 py-3 border-b border-violet-100 bg-gradient-to-r from-violet-50 to-transparent">
-                    <span className="font-semibold text-sm text-violet-800">
-                      🏆 KO-Phase
-                    </span>
-                  </div>
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-gray-100">
-                        <th className={`px-3 py-2.5 text-left ${theme.textSecondary} font-medium`}>#</th>
-                        <th className={`px-3 py-2.5 text-left ${theme.textSecondary} font-medium`}>Spieler</th>
-                        <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>S</th>
-                        <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>N</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {standings.map((s, i) => (
-                        <tr key={s.player.id} className="border-b border-gray-50 last:border-0">
-                          <td className={`px-3 py-2.5 text-center text-sm ${theme.textSecondary}`}>{rankMedal(i)}</td>
-                          <td className={`px-3 py-2.5 font-medium ${theme.textPrimary}`}>{s.player.name}</td>
-                          <td className={`px-3 py-2.5 text-center font-bold ${theme.activeBadgeText}`}>{s.wins}</td>
-                          <td className="px-3 py-2.5 text-center text-rose-400">{s.losses}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          ) : (
-            /* Normal Standings */
-            <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
-              <div className={`px-5 py-3 border-b ${theme.cardBorder} ${theme.headerGradient}`}>
-                <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
-                  📊 Rangliste
-                </span>
-              </div>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className={`px-3 py-2.5 text-left ${theme.textSecondary} font-medium`}>#</th>
-                    <th className={`px-3 py-2.5 text-left ${theme.textSecondary} font-medium`}>Spieler</th>
-                    <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>S</th>
-                    <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>N</th>
-                    <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>Saetze</th>
-                    <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>Punkte</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {standings.map((s, i) => (
-                    <tr
-                      key={s.player.id}
-                      className={`border-b border-gray-50 last:border-0 ${
-                        i < 3 && s.wins > 0 ? "bg-amber-500/10" : ""
-                      }`}
-                    >
-                      <td className={`px-3 py-2.5 text-center text-sm ${theme.textSecondary}`}>
-                        {rankMedal(i)}
-                      </td>
-                      <td className={`px-3 py-2.5 font-medium ${theme.textPrimary}`}>
-                        {s.player.name}
-                      </td>
-                      <td className={`px-3 py-2.5 text-center font-bold ${theme.activeBadgeText}`}>
-                        {s.wins}
-                      </td>
-                      <td className="px-3 py-2.5 text-center text-rose-400">
-                        {s.losses}
-                      </td>
-                      <td className={`px-3 py-2.5 text-center font-mono ${theme.textSecondary}`}>
-                        {s.setsWon}:{s.setsLost}
-                      </td>
-                      <td className={`px-3 py-2.5 text-center font-mono ${theme.textSecondary}`}>
-                        {s.pointsWon}:{s.pointsLost}
-                      </td>
-                    </tr>
-                  ))}
-                  {standings.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="px-3 py-6 text-center text-gray-400"
-                      >
-                        Noch keine Ergebnisse
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <RanglisteTab
+          tournament={tournament}
+          players={players}
+          rounds={rounds}
+          matchesByRound={matchesByRound}
+          setsByMatch={setsByMatch}
+          standings={standings}
+          theme={theme}
+          isGroupKo={!!isGroupKo}
+          groupRounds={groupRounds}
+          koRounds={koRounds}
+          getGroupData={getGroupData}
+        />
       )}
 
       {/* Tab: Verwaltung (Teilnehmer + Startgeld kombiniert) */}
       {viewTab === "verwaltung" && tournament && (
-        <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
-          <div className={`px-5 py-3 border-b ${theme.cardBorder} ${theme.headerGradient} flex justify-between items-center`}>
-            <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
-              👥 Teilnehmer ({players.length})
-              {(tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0) && (
-                <span className={`ml-2 font-normal text-xs ${theme.textSecondary}`}>
-                  💰 {paymentData.filter((p) => p.payment_status === "paid").length}/{paymentData.length} bezahlt
-                  &middot; {paymentData.filter((p) => p.payment_status === "paid").length *
-                    (tournament.mode === "singles" ? tournament.entry_fee_single : tournament.entry_fee_double)
-                  } EUR
-                </span>
-              )}
-            </span>
-            {tournament.status === "draft" && (
-              <button
-                onClick={() => setShowAddPlayer(!showAddPlayer)}
-                className={`text-xs font-medium ${theme.activeBadgeText} transition-colors`}
-              >
-                {showAddPlayer ? "Fertig" : "+ Spieler"}
-              </button>
-            )}
-          </div>
-
-          {/* Add Player Dropdown - only in draft */}
-          {showAddPlayer && tournament.status === "draft" && (
-            <div className={`p-3 border-b ${theme.cardBorder} ${theme.selectedBg}`}>
-              <div className="text-xs text-gray-500 mb-2 font-medium">Spieler hinzufuegen:</div>
-              <div className="max-h-40 overflow-y-auto space-y-1">
-                {allPlayers
-                  .filter((ap) => !players.some((p) => p.id === ap.id))
-                  .map((ap) => (
-                    <button
-                      key={ap.id}
-                      onClick={() => handleAddPlayer(ap.id)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm hover:bg-gray-100 transition-colors text-left"
-                    >
-                      <span className={theme.textPrimary}>{ap.name}</span>
-                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ap.gender === "m" ? "bg-blue-50 text-blue-500" : "bg-pink-50 text-pink-500"}`}>
-                        {ap.gender === "m" ? "H" : "D"}
-                      </span>
-                    </button>
-                  ))}
-                {allPlayers.filter((ap) => !players.some((p) => p.id === ap.id)).length === 0 && (
-                  <div className="text-xs text-gray-400 py-2 text-center">Alle Spieler sind bereits dabei.</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Search + Filter Bar */}
-          <div className={`px-4 py-2.5 border-b ${theme.cardBorder} flex items-center gap-3 flex-wrap`}>
-            <div className="relative flex-1 min-w-[150px]">
-              <input
-                type="text"
-                value={verwaltungSearch}
-                onChange={(e) => setVerwaltungSearch(e.target.value)}
-                placeholder="Spieler oder Verein suchen..."
-                className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg pl-8 pr-3 py-1.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-              />
-              <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${theme.textMuted} text-xs`}>🔍</span>
-              {verwaltungSearch && (
-                <button onClick={() => setVerwaltungSearch("")} className={`absolute right-2.5 top-1/2 -translate-y-1/2 ${theme.textMuted} hover:opacity-80 text-xs`}>✕</button>
-              )}
-            </div>
-            {(tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0) && (
-              <div className={`flex rounded-lg border ${theme.inputBorder} overflow-hidden text-xs`}>
-                {([
-                  { value: "all" as const, label: "Alle" },
-                  { value: "paid" as const, label: "Bezahlt" },
-                  { value: "unpaid" as const, label: "Offen" },
-                ]).map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setVerwaltungFilter(opt.value)}
-                    className={`px-3 py-1.5 font-medium transition-colors ${
-                      verwaltungFilter === opt.value
-                        ? `${theme.primaryBg} text-white`
-                        : `${theme.textSecondary} hover:opacity-80`
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {(() => {
-            const hasPayment = tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0;
-            const fee = tournament.mode === "singles" ? tournament.entry_fee_single : tournament.entry_fee_double;
-            const searchLower = verwaltungSearch.toLowerCase().trim();
-            const filtered = paymentData.filter((pd) => {
-              if (searchLower && !pd.player.name.toLowerCase().includes(searchLower) && !(pd.player.club ?? "").toLowerCase().includes(searchLower)) return false;
-              if (verwaltungFilter === "paid" && pd.payment_status !== "paid") return false;
-              if (verwaltungFilter === "unpaid" && pd.payment_status !== "unpaid") return false;
-              return true;
-            });
-            const sorted = [...filtered].sort((a, b) => (a.player.club ?? "").localeCompare(b.player.club ?? "") || a.player.name.localeCompare(b.player.name));
-            const groups = new Map<string, TournamentPlayerInfo[]>();
-            for (const pd of sorted) {
-              const club = pd.player.club || "Kein Verein";
-              if (!groups.has(club)) groups.set(club, []);
-              groups.get(club)!.push(pd);
-            }
-
-            return (
-              <>
-              {(searchLower || verwaltungFilter !== "all") && (
-                <div className={`px-4 py-1.5 text-xs ${theme.textMuted} border-b ${theme.cardBorder}`}>
-                  {filtered.length} von {paymentData.length} Teilnehmern angezeigt
-                </div>
-              )}
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className={`border-b ${theme.cardBorder} text-xs ${theme.textMuted}`}>
-                    <th className="text-left px-3 py-2">Name</th>
-                    <th className="text-center px-2 py-2">Geschlecht</th>
-                    <th className="text-left px-2 py-2">Verein</th>
-                    {hasPayment && (
-                      <>
-                        <th className="text-center px-2 py-2">Startgeld</th>
-                        <th className="text-center px-2 py-2">Zahlungsart</th>
-                        <th className="text-center px-2 py-2">Datum</th>
-                      </>
-                    )}
-                    <th className="text-right px-3 py-2">Aktion</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from(groups.entries()).map(([clubName, members]) => {
-                    const isCollapsed = collapsedClubs.has(clubName);
-                    const paidCount = members.filter((m) => m.payment_status === "paid").length;
-                    const colSpan = hasPayment ? 7 : 4;
-                    return (
-                      <React.Fragment key={clubName}>
-                        <tr
-                          className={`${theme.headerGradient} cursor-pointer`}
-                          onClick={() => setCollapsedClubs((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(clubName)) next.delete(clubName);
-                            else next.add(clubName);
-                            return next;
-                          })}
-                        >
-                          <td colSpan={colSpan} className={`px-3 py-2 text-xs font-semibold ${theme.standingsHeaderText}`}>
-                            <span className="mr-1">{isCollapsed ? "▶" : "▼"}</span>
-                            {clubName} ({members.length})
-                            {hasPayment && (
-                              <span className={`ml-2 font-normal ${theme.textMuted}`}>
-                                {paidCount}/{members.length} bezahlt
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                        {!isCollapsed && members.map((pd) => {
-                          const isRetired = pd.retired;
-                          return (
-                            <tr key={pd.player.id} className={`border-b ${theme.cardBorder} last:border-0 group`}>
-                              <td className={`px-3 py-2 pl-6 font-medium ${isRetired ? `${theme.textMuted} line-through` : theme.textPrimary}`}>
-                                {pd.player.name}
-                                {isRetired && <span className="ml-1.5 text-[10px] text-rose-400 no-underline inline-block">🏥</span>}
-                              </td>
-                              <td className="px-2 py-2 text-center">
-                                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${pd.player.gender === "m" ? "bg-blue-50 text-blue-500" : "bg-pink-50 text-pink-500"}`}>
-                                  {pd.player.gender === "m" ? "H" : "D"}
-                                </span>
-                              </td>
-                              <td className={`px-2 py-2 text-xs ${theme.textSecondary}`}>{pd.player.club ?? "-"}</td>
-                              {hasPayment && (
-                                <>
-                                  <td className="px-2 py-2 text-center">
-                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                                      pd.payment_status === "paid"
-                                        ? "bg-green-500/10 text-green-600"
-                                        : "bg-orange-500/10 text-orange-600"
-                                    }`}>
-                                      {pd.payment_status === "paid" ? `${fee} EUR` : "Offen"}
-                                    </span>
-                                  </td>
-                                  <td className={`px-2 py-2 text-center text-xs ${theme.textSecondary}`}>
-                                    {pd.payment_method ? PAYMENT_METHOD_LABELS[pd.payment_method] : "-"}
-                                  </td>
-                                  <td className={`px-2 py-2 text-center text-xs ${theme.textSecondary}`}>
-                                    {pd.payment_status === "paid" ? (
-                                      <input
-                                        type="text"
-                                        value={pd.paid_date ?? ""}
-                                        onChange={async (e) => {
-                                          await updatePlayerPayment(tournament.id, pd.player.id, "paid", pd.payment_method, e.target.value || null);
-                                          const updated = await getTournamentPlayersDetailed(tournament.id);
-                                          setPaymentData(updated);
-                                        }}
-                                        className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded px-1.5 py-0.5 text-xs text-center w-24`}
-                                        placeholder="TT.MM.JJJJ"
-                                      />
-                                    ) : "-"}
-                                  </td>
-                                </>
-                              )}
-                              <td className="px-3 py-2 text-right">
-                                <div className="flex items-center gap-1 justify-end">
-                                  {hasPayment && pd.payment_status === "paid" ? (
-                                    <button
-                                      onClick={async () => {
-                                        await updatePlayerPayment(tournament.id, pd.player.id, "unpaid", null, null);
-                                        const updated = await getTournamentPlayersDetailed(tournament.id);
-                                        setPaymentData(updated);
-                                      }}
-                                      className={`text-xs ${theme.textMuted} hover:text-orange-600 transition-colors`}
-                                    >
-                                      ↩
-                                    </button>
-                                  ) : hasPayment && pd.payment_status !== "paid" ? (
-                                    (["bar", "ueberweisung", "paypal"] as PaymentMethod[]).map((m) => (
-                                      <button
-                                        key={m}
-                                        onClick={async () => {
-                                          const today = new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
-                                          await updatePlayerPayment(tournament.id, pd.player.id, "paid", m, today);
-                                          const updated = await getTournamentPlayersDetailed(tournament.id);
-                                          setPaymentData(updated);
-                                        }}
-                                        className={`text-xs px-2 py-1 rounded-lg border ${theme.cardBorder} ${theme.textSecondary} hover:border-green-400 hover:text-green-600 transition-all`}
-                                      >
-                                        {PAYMENT_METHOD_LABELS[m]}
-                                      </button>
-                                    ))
-                                  ) : null}
-                                  {tournament.status === "draft" && (
-                                    <button
-                                      onClick={() => handleRemovePlayer(pd.player.id)}
-                                      title="Aus Turnier entfernen"
-                                      className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-rose-400 hover:text-rose-600 ml-1"
-                                    >
-                                      ✕
-                                    </button>
-                                  )}
-                                  {tournament.status === "active" && !isRetired && (
-                                    <button
-                                      onClick={() => {
-                                        const p = pd.player;
-                                        const isFixedTeam = tournament.format !== "random_doubles" && tournament.mode !== "singles";
-                                        let partnerNote = "";
-                                        if (isFixedTeam) {
-                                          for (const m of allMatches) {
-                                            if (m.team1_p1 === p.id && m.team1_p2) { partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team1_p2)} aus.`; break; }
-                                            if (m.team1_p2 === p.id) { partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team1_p1)} aus.`; break; }
-                                            if (m.team2_p1 === p.id && m.team2_p2) { partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team2_p2)} aus.`; break; }
-                                            if (m.team2_p2 === p.id) { partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team2_p1)} aus.`; break; }
-                                          }
-                                        }
-                                        setRetireTarget({ player: p, partnerNote });
-                                      }}
-                                      title="Verletzt / Aufgabe"
-                                      className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-amber-500 hover:text-amber-700 ml-1"
-                                    >
-                                      🏥
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-              </>
-            );
-          })()}
-        </div>
+        <VerwaltungTab
+          tournament={tournament}
+          players={players}
+          allPlayers={allPlayers}
+          paymentData={paymentData}
+          theme={theme}
+          collapsedClubs={collapsedClubs}
+          showAddPlayer={showAddPlayer}
+          allMatches={allMatches}
+          setShowAddPlayer={setShowAddPlayer}
+          handleAddPlayer={handleAddPlayer}
+          handleRemovePlayer={handleRemovePlayer}
+          setPaymentData={setPaymentData}
+          setCollapsedClubs={setCollapsedClubs}
+          setRetireTarget={setRetireTarget}
+          playerName={playerName}
+        />
       )}
     </div>
   );
