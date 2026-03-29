@@ -192,6 +192,7 @@ export async function createTournament(
     current_phase: null,
     entry_fee_single: entryFeeSingle,
     entry_fee_double: entryFeeDouble,
+    team_config: null,
     created_at: new Date().toISOString(),
     status: "draft",
   });

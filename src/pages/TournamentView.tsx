@@ -271,7 +271,6 @@ export default function TournamentView() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [paymentData, setPaymentData] = useState<TournamentPlayerInfo[]>([]);
-  const [showPaymentSection, setShowPaymentSection] = useState(false);
   const [collapsedClubs, setCollapsedClubs] = useState<Set<string>>(new Set());
   const [viewTab, setViewTab] = useState<"spiele" | "rangliste" | "verwaltung">("spiele");
   const [retireTarget, setRetireTarget] = useState<{ player: Player; partnerNote: string } | null>(null);

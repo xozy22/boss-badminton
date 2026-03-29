@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   getPlayers,
@@ -30,7 +30,6 @@ export default function TournamentCreate() {
   const { id: editId } = useParams<{ id: string }>();
   const isEditMode = !!editId;
   const [editLoaded, setEditLoaded] = useState(false);
-  const editLoadingRef = useRef(isEditMode);
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(
     new Set()
@@ -63,7 +62,6 @@ export default function TournamentCreate() {
   // Team pairing state
   const [manualTeams, setManualTeams] = useState<[number, number][]>([]);
   const [firstPick, setFirstPick] = useState<number | null>(null);
-  const [showTeamPairing, setShowTeamPairing] = useState(false);
   const [createStep, setCreateStep] = useState<"settings" | "players" | "teams" | "seeding" | "create">("settings");
 
   // Filter state
