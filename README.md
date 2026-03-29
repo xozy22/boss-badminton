@@ -2,6 +2,20 @@
 
 Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turniere. Gebaut mit [Tauri](https://tauri.app/), React und SQLite.
 
+## Screenshots
+
+| Turnierbetrieb (Spiele) | Rangliste |
+|---|---|
+| ![Spiele](screenshots/turnierbetrieb-spiele.png) | ![Rangliste](screenshots/turnierbetrieb-rangliste.png) |
+
+| Verwaltung (Startgeld + Teilnehmer) | Spielerverwaltung |
+|---|---|
+| ![Verwaltung](screenshots/turnierbetrieb-verwaltung.png) | ![Spieler](screenshots/spielerverwaltung.png) |
+
+| Turnier-Wizard |
+|---|
+| ![Wizard](screenshots/wizard-einstellungen.png) |
+
 ## Features
 
 ### Turnierverwaltung
