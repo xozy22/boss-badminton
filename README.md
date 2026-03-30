@@ -141,6 +141,7 @@
 - Komplette Ergebniseingabe ohne Maus moeglich
 
 ### Technisch
+- **Installer**: Wahl zwischen Installation fuer alle Benutzer (Programme) oder nur aktuellen Benutzer
 - **Auto-Update**: Manueller Check ueber Einstellungen, signierte Updates von GitHub Releases
 - **Offline-faehig**: Laeuft komplett lokal, kein Internet noetig
 - **SQLite-Datenbank**: Robuste, persistente Datenspeicherung
