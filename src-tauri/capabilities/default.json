@@ -23,6 +23,7 @@
     "fs:allow-read-file",
     "fs:allow-copy-file",
     "fs:allow-exists",
-    "updater:default"
+    "updater:default",
+    "process:default"
   ]
 }
