@@ -53,10 +53,14 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
+  cleanup:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
       - name: Remove .sig files from release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for asset in $(gh release view ${{ github.ref_name }} --json assets -q '.assets[].name' | grep '\.sig$'); do
-            gh release delete-asset ${{ github.ref_name }} "$asset" --yes
+          for asset in $(gh release view ${{ github.ref_name }} --repo ${{ github.repository }} --json assets -q '.assets[].name' | grep '\.sig$'); do
+            gh release delete-asset ${{ github.ref_name }} "$asset" --repo ${{ github.repository }} --yes
           done
