@@ -118,6 +118,13 @@ export default function Sidebar() {
           </span>
           {!collapsed && <span>Einklappen</span>}
         </button>
+
+        {/* Version */}
+        {!collapsed && (
+          <div className={`text-[10px] ${theme.sidebarText} text-center pt-1 opacity-50`}>
+            v{__APP_VERSION__}
+          </div>
+        )}
       </div>
     </aside>
   );

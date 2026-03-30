@@ -128,6 +128,7 @@
 ### Sidebar
 - **Einklappbar**: Sidebar auf Icons reduzierbar fuer mehr Platz (persistent gespeichert)
 - Toggle-Button unten, Tooltip bei eingeklapptem Zustand
+- **Versionsanzeige**: Aktuelle App-Version unten in der Sidebar
 
 ### Einstellungen
 - **Updates**: Manueller Update-Check ueber GitHub Releases mit Fortschrittsanzeige und Auto-Restart
