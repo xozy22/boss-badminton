@@ -10,6 +10,7 @@ import type {
   StandingEntry,
 } from "../../lib/types";
 import { useTheme } from "../../lib/ThemeContext";
+import { useT } from "../../lib/I18nContext";
 
 interface PrintDialogProps {
   tournament: Tournament;
@@ -22,34 +23,6 @@ interface PrintDialogProps {
   onClose: () => void;
 }
 
-const PRINT_OPTIONS: { value: PrintMode; label: string; desc: string }[] = [
-  {
-    value: "report",
-    label: "📊 Turnierbericht",
-    desc: "Kompletter Bericht mit Highlights, Statistiken, allen Ergebnissen und Endrangliste",
-  },
-  {
-    value: "full",
-    label: "Kompletter Bericht",
-    desc: "Alle Runden + Rangliste",
-  },
-  {
-    value: "schedule",
-    label: "Spielplan",
-    desc: "Alle Runden mit Ergebnissen",
-  },
-  {
-    value: "round",
-    label: "Aktuelle Runde",
-    desc: "Nur die ausgewaehlte Runde",
-  },
-  {
-    value: "standings",
-    label: "Rangliste",
-    desc: "Aktuelle Platzierungen",
-  },
-];
-
 export default function PrintDialog({
   tournament,
   players,
@@ -61,7 +34,16 @@ export default function PrintDialog({
   onClose,
 }: PrintDialogProps) {
   const { theme, themeId } = useTheme();
+  const { t } = useT();
   const [mode, setMode] = useState<PrintMode>("full");
+
+  const PRINT_OPTIONS: { value: PrintMode; label: string; desc: string }[] = [
+    { value: "report", label: `📊 ${t.print_report}`, desc: t.print_report_desc },
+    { value: "full", label: t.print_full, desc: t.print_full_desc },
+    { value: "schedule", label: t.print_schedule, desc: t.print_schedule_desc },
+    { value: "round", label: t.print_current_round, desc: t.print_current_round_desc },
+    { value: "standings", label: t.print_standings, desc: t.print_standings_desc },
+  ];
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
@@ -102,7 +84,7 @@ export default function PrintDialog({
         {/* Header */}
         <div className={`px-6 py-4 border-b ${theme.cardBorder} flex justify-between items-center`}>
           <div>
-            <h2 className={`font-bold text-lg ${theme.textPrimary}`}>🖨️ Druckansicht</h2>
+            <h2 className={`font-bold text-lg ${theme.textPrimary}`}>🖨️ {t.print_title}</h2>
             <p className={`text-xs ${theme.textSecondary} mt-0.5`}>{tournament.name}</p>
           </div>
           <button
@@ -159,13 +141,13 @@ export default function PrintDialog({
             onClick={onClose}
             className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-5 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
           >
-            Abbrechen
+            {t.common_cancel}
           </button>
           <button
             onClick={handlePrint}
             className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium`}
           >
-            🖨️ Drucken
+            🖨️ {t.print_button}
           </button>
         </div>
       </div>

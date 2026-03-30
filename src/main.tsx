@@ -8,11 +8,14 @@ import "@fontsource/inter/800.css";
 import "./index.css";
 import App from "./App";
 import { ThemeProvider } from "./lib/ThemeContext";
+import { I18nProvider } from "./lib/I18nContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
-      <App />
+      <I18nProvider>
+        <App />
+      </I18nProvider>
     </ThemeProvider>
   </StrictMode>
 );

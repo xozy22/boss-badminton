@@ -7,11 +7,11 @@ import type {
   TournamentPlayerInfo,
   PaymentMethod,
 } from "../../lib/types";
-import { PAYMENT_METHOD_LABELS } from "../../lib/types";
 import {
   getTournamentPlayersDetailed,
   updatePlayerPayment,
 } from "../../lib/db";
+import { useT } from "../../lib/I18nContext";
 
 interface VerwaltungTabProps {
   tournament: Tournament;
@@ -48,6 +48,7 @@ export default function VerwaltungTab({
   setRetireTarget,
   playerName,
 }: VerwaltungTabProps) {
+  const { t } = useT();
   const [verwaltungSearch, setVerwaltungSearch] = useState("");
   const [verwaltungFilter, setVerwaltungFilter] = useState<"all" | "paid" | "unpaid">("all");
 
@@ -55,10 +56,10 @@ export default function VerwaltungTab({
     <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
       <div className={`px-5 py-3 border-b ${theme.cardBorder} ${theme.headerGradient} flex justify-between items-center`}>
         <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
-          {"\u{1F465}"} Teilnehmer ({players.length})
+          {"\u{1F465}"} {t.management_participants.replace("{count}", String(players.length))}
           {(tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0) && (
             <span className={`ml-2 font-normal text-xs ${theme.textSecondary}`}>
-              {"\u{1F4B0}"} {paymentData.filter((p) => p.payment_status === "paid").length}/{paymentData.length} bezahlt
+              {"\u{1F4B0}"} {t.management_paid_count.replace("{paid}", String(paymentData.filter((p) => p.payment_status === "paid").length)).replace("{total}", String(paymentData.length))}
               &middot; {paymentData.filter((p) => p.payment_status === "paid").length *
                 (tournament.mode === "singles" ? tournament.entry_fee_single : tournament.entry_fee_double)
               } EUR
@@ -70,7 +71,7 @@ export default function VerwaltungTab({
             onClick={() => setShowAddPlayer(!showAddPlayer)}
             className={`text-xs font-medium ${theme.activeBadgeText} transition-colors`}
           >
-            {showAddPlayer ? "Fertig" : "+ Spieler"}
+            {showAddPlayer ? t.management_done : t.management_add_player}
           </button>
         )}
       </div>
@@ -78,7 +79,7 @@ export default function VerwaltungTab({
       {/* Add Player Dropdown - only in draft */}
       {showAddPlayer && tournament.status === "draft" && (
         <div className={`p-3 border-b ${theme.cardBorder} ${theme.selectedBg}`}>
-          <div className="text-xs text-gray-500 mb-2 font-medium">Spieler hinzufuegen:</div>
+          <div className="text-xs text-gray-500 mb-2 font-medium">{t.management_add_player_label}</div>
           <div className="max-h-40 overflow-y-auto space-y-1">
             {allPlayers
               .filter((ap) => !players.some((p) => p.id === ap.id))
@@ -90,12 +91,12 @@ export default function VerwaltungTab({
                 >
                   <span className={theme.textPrimary}>{ap.name}</span>
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ap.gender === "m" ? "bg-blue-50 text-blue-500" : "bg-pink-50 text-pink-500"}`}>
-                    {ap.gender === "m" ? "H" : "D"}
+                    {ap.gender === "m" ? t.common_gender_male_short : t.common_gender_female_short}
                   </span>
                 </button>
               ))}
             {allPlayers.filter((ap) => !players.some((p) => p.id === ap.id)).length === 0 && (
-              <div className="text-xs text-gray-400 py-2 text-center">Alle Spieler sind bereits dabei.</div>
+              <div className="text-xs text-gray-400 py-2 text-center">{t.management_all_players_added}</div>
             )}
           </div>
         </div>
@@ -108,7 +109,7 @@ export default function VerwaltungTab({
             type="text"
             value={verwaltungSearch}
             onChange={(e) => setVerwaltungSearch(e.target.value)}
-            placeholder="Spieler oder Verein suchen..."
+            placeholder={t.management_search_placeholder}
             className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg pl-8 pr-3 py-1.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
           />
           <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${theme.textMuted} text-xs`}>{"\u{1F50D}"}</span>
@@ -119,9 +120,9 @@ export default function VerwaltungTab({
         {(tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0) && (
           <div className={`flex rounded-lg border ${theme.inputBorder} overflow-hidden text-xs`}>
             {([
-              { value: "all" as const, label: "Alle" },
-              { value: "paid" as const, label: "Bezahlt" },
-              { value: "unpaid" as const, label: "Offen" },
+              { value: "all" as const, label: t.management_filter_all },
+              { value: "paid" as const, label: t.management_filter_paid },
+              { value: "unpaid" as const, label: t.management_filter_open },
             ]).map((opt) => (
               <button
                 key={opt.value}
@@ -152,7 +153,7 @@ export default function VerwaltungTab({
         const sorted = [...filtered].sort((a, b) => (a.player.club ?? "").localeCompare(b.player.club ?? "") || a.player.name.localeCompare(b.player.name));
         const groups = new Map<string, TournamentPlayerInfo[]>();
         for (const pd of sorted) {
-          const club = pd.player.club || "Kein Verein";
+          const club = pd.player.club || t.management_no_club;
           if (!groups.has(club)) groups.set(club, []);
           groups.get(club)!.push(pd);
         }
@@ -161,23 +162,23 @@ export default function VerwaltungTab({
           <>
           {(searchLower || verwaltungFilter !== "all") && (
             <div className={`px-4 py-1.5 text-xs ${theme.textMuted} border-b ${theme.cardBorder}`}>
-              {filtered.length} von {paymentData.length} Teilnehmern angezeigt
+              {t.management_shown_of_total.replace("{shown}", String(filtered.length)).replace("{total}", String(paymentData.length))}
             </div>
           )}
           <table className="w-full text-sm">
             <thead>
               <tr className={`border-b ${theme.cardBorder} text-xs ${theme.textMuted}`}>
-                <th className="text-left px-3 py-2">Name</th>
-                <th className="text-center px-2 py-2">Geschlecht</th>
-                <th className="text-left px-2 py-2">Verein</th>
+                <th className="text-left px-3 py-2">{t.common_name}</th>
+                <th className="text-center px-2 py-2">{t.common_gender}</th>
+                <th className="text-left px-2 py-2">{t.common_club}</th>
                 {hasPayment && (
                   <>
-                    <th className="text-center px-2 py-2">Startgeld</th>
-                    <th className="text-center px-2 py-2">Zahlungsart</th>
-                    <th className="text-center px-2 py-2">Datum</th>
+                    <th className="text-center px-2 py-2">{t.management_entry_fee}</th>
+                    <th className="text-center px-2 py-2">{t.management_payment_method}</th>
+                    <th className="text-center px-2 py-2">{t.management_payment_date}</th>
                   </>
                 )}
-                <th className="text-right px-3 py-2">Aktion</th>
+                <th className="text-right px-3 py-2">{t.common_actions}</th>
               </tr>
             </thead>
             <tbody>
@@ -201,7 +202,7 @@ export default function VerwaltungTab({
                         {clubName} ({members.length})
                         {hasPayment && (
                           <span className={`ml-2 font-normal ${theme.textMuted}`}>
-                            {paidCount}/{members.length} bezahlt
+                            {t.management_paid_count_label.replace("{paid}", String(paidCount)).replace("{total}", String(members.length))}
                           </span>
                         )}
                       </td>
@@ -216,7 +217,7 @@ export default function VerwaltungTab({
                           </td>
                           <td className="px-2 py-2 text-center">
                             <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${pd.player.gender === "m" ? "bg-blue-50 text-blue-500" : "bg-pink-50 text-pink-500"}`}>
-                              {pd.player.gender === "m" ? "H" : "D"}
+                              {pd.player.gender === "m" ? t.common_gender_male_short : t.common_gender_female_short}
                             </span>
                           </td>
                           <td className={`px-2 py-2 text-xs ${theme.textSecondary}`}>{pd.player.club ?? "-"}</td>
@@ -228,11 +229,11 @@ export default function VerwaltungTab({
                                     ? "bg-green-500/10 text-green-600"
                                     : "bg-orange-500/10 text-orange-600"
                                 }`}>
-                                  {pd.payment_status === "paid" ? `${fee} EUR` : "Offen"}
+                                  {pd.payment_status === "paid" ? `${fee} EUR` : t.management_open}
                                 </span>
                               </td>
                               <td className={`px-2 py-2 text-center text-xs ${theme.textSecondary}`}>
-                                {pd.payment_method ? PAYMENT_METHOD_LABELS[pd.payment_method] : "-"}
+                                {pd.payment_method ? (pd.payment_method === "bar" ? t.payment_cash : pd.payment_method === "ueberweisung" ? t.payment_transfer : t.payment_paypal) : "-"}
                               </td>
                               <td className={`px-2 py-2 text-center text-xs ${theme.textSecondary}`}>
                                 {pd.payment_status === "paid" ? (
@@ -245,7 +246,7 @@ export default function VerwaltungTab({
                                       setPaymentData(updated);
                                     }}
                                     className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded px-1.5 py-0.5 text-xs text-center w-24`}
-                                    placeholder="TT.MM.JJJJ"
+                                    placeholder={t.management_date_placeholder}
                                   />
                                 ) : "-"}
                               </td>
@@ -276,14 +277,14 @@ export default function VerwaltungTab({
                                     }}
                                     className={`text-xs px-2 py-1 rounded-lg border ${theme.cardBorder} ${theme.textSecondary} hover:border-green-400 hover:text-green-600 transition-all`}
                                   >
-                                    {PAYMENT_METHOD_LABELS[m]}
+                                    {m === "bar" ? t.payment_cash : m === "ueberweisung" ? t.payment_transfer : t.payment_paypal}
                                   </button>
                                 ))
                               ) : null}
                               {tournament.status === "draft" && (
                                 <button
                                   onClick={() => handleRemovePlayer(pd.player.id)}
-                                  title="Aus Turnier entfernen"
+                                  title={t.management_remove_from_tournament}
                                   className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-rose-400 hover:text-rose-600 ml-1"
                                 >
                                   {"\u2715"}
@@ -297,15 +298,15 @@ export default function VerwaltungTab({
                                     let partnerNote = "";
                                     if (isFixedTeam) {
                                       for (const m of allMatches) {
-                                        if (m.team1_p1 === p.id && m.team1_p2) { partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team1_p2)} aus.`; break; }
-                                        if (m.team1_p2 === p.id) { partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team1_p1)} aus.`; break; }
-                                        if (m.team2_p1 === p.id && m.team2_p2) { partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team2_p2)} aus.`; break; }
-                                        if (m.team2_p2 === p.id) { partnerNote = `Da dies ein festes Team ist, scheidet auch ${playerName(m.team2_p1)} aus.`; break; }
+                                        if (m.team1_p1 === p.id && m.team1_p2) { partnerNote = t.management_partner_also_retires.replace("{name}", playerName(m.team1_p2)); break; }
+                                        if (m.team1_p2 === p.id) { partnerNote = t.management_partner_also_retires.replace("{name}", playerName(m.team1_p1)); break; }
+                                        if (m.team2_p1 === p.id && m.team2_p2) { partnerNote = t.management_partner_also_retires.replace("{name}", playerName(m.team2_p2)); break; }
+                                        if (m.team2_p2 === p.id) { partnerNote = t.management_partner_also_retires.replace("{name}", playerName(m.team2_p1)); break; }
                                       }
                                     }
                                     setRetireTarget({ player: p, partnerNote });
                                   }}
-                                  title="Verletzt / Aufgabe"
+                                  title={t.management_retire_title}
                                   className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-amber-500 hover:text-amber-700 ml-1"
                                 >
                                   {"\u{1F3E5}"}

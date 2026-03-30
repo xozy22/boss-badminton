@@ -4,6 +4,7 @@ import type {
   Player,
   StandingEntry,
 } from "../../lib/types";
+import { useT } from "../../lib/I18nContext";
 
 interface RanglisteTabProps {
   tournament: Tournament;
@@ -18,6 +19,7 @@ export default function RanglisteTab({
   standings,
   theme,
 }: RanglisteTabProps) {
+  const { t } = useT();
   const rankMedal = (i: number) => {
     if (i === 0) return "\u{1F947}";
     if (i === 1) return "\u{1F948}";
@@ -31,18 +33,18 @@ export default function RanglisteTab({
       <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
         <div className={`px-5 py-3 border-b ${theme.cardBorder} ${theme.headerGradient}`}>
           <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
-            {"\u{1F4CA}"} Rangliste
+            {"\u{1F4CA}"} {t.standings_title}
           </span>
         </div>
         <table className="w-full text-xs">
           <thead>
             <tr className={`border-b ${theme.cardBorder}`}>
               <th className={`px-3 py-2.5 text-left ${theme.textSecondary} font-medium`}>#</th>
-              <th className={`px-3 py-2.5 text-left ${theme.textSecondary} font-medium`}>Spieler</th>
-              <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>S</th>
-              <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>N</th>
-              <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>Saetze</th>
-              <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>Punkte</th>
+              <th className={`px-3 py-2.5 text-left ${theme.textSecondary} font-medium`}>{t.standings_player}</th>
+              <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>{t.standings_wins}</th>
+              <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>{t.standings_losses}</th>
+              <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>{t.standings_sets_header}</th>
+              <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>{t.standings_points}</th>
             </tr>
           </thead>
           <tbody>
@@ -79,7 +81,7 @@ export default function RanglisteTab({
                   colSpan={6}
                   className={`px-3 py-6 text-center ${theme.textMuted}`}
                 >
-                  Noch keine Ergebnisse
+                  {t.standings_no_results}
                 </td>
               </tr>
             )}

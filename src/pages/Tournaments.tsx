@@ -4,9 +4,11 @@ import { getTournaments, deleteTournament, updateTournamentStatus } from "../lib
 import type { Tournament } from "../lib/types";
 import { MODE_LABELS, FORMAT_LABELS, STATUS_LABELS } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
+import { useT } from "../lib/I18nContext";
 
 export default function Tournaments() {
   const { theme } = useTheme();
+  const { t } = useT();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [showArchive, setShowArchive] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Tournament | null>(null);
@@ -19,7 +21,7 @@ export default function Tournaments() {
   }, []);
 
   const handleDeleteConfirm = async () => {
-    if (!deleteTarget || deleteConfirmText !== "LOESCHEN") return;
+    if (!deleteTarget || deleteConfirmText !== t.tournaments_delete_confirm_word) return;
     await deleteTournament(deleteTarget.id);
     setDeleteTarget(null);
     setDeleteConfirmText("");
@@ -37,10 +39,10 @@ export default function Tournaments() {
   };
 
   const activeTournaments = tournaments.filter(
-    (t) => t.status !== "archived"
+    (tr) => tr.status !== "archived"
   );
   const archivedTournaments = tournaments.filter(
-    (t) => t.status === "archived"
+    (tr) => tr.status === "archived"
   );
 
   const statusStyle = (status: string) => {
@@ -56,48 +58,48 @@ export default function Tournaments() {
     }
   };
 
-  const renderTournamentCard = (t: Tournament, isArchived: boolean) => (
+  const renderTournamentCard = (tr: Tournament, isArchived: boolean) => (
     <div
-      key={t.id}
+      key={tr.id}
       className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-5 flex justify-between items-center hover:shadow-md transition-all duration-200 ${
         isArchived ? "opacity-70 hover:opacity-100" : theme.cardHoverBorder
       }`}
     >
-      <Link to={`/tournaments/${t.id}`} className="flex-1">
-        <div className={`font-semibold ${theme.textPrimary}`}>{t.name}</div>
+      <Link to={`/tournaments/${tr.id}`} className="flex-1">
+        <div className={`font-semibold ${theme.textPrimary}`}>{tr.name}</div>
         <div className={`text-sm ${theme.textSecondary} mt-0.5`}>
-          {MODE_LABELS[t.mode]} &middot; {FORMAT_LABELS[t.format]} &middot;
-          Best of {t.sets_to_win * 2 - 1} (bis {t.points_per_set})
+          {MODE_LABELS[tr.mode]} &middot; {FORMAT_LABELS[tr.format]} &middot;{" "}
+          {t.tournaments_best_of.replace("{count}", String(tr.sets_to_win * 2 - 1))} ({t.tournaments_up_to.replace("{points}", String(tr.points_per_set))})
         </div>
       </Link>
       <div className="flex items-center gap-3">
         <span
-          className={`text-xs font-medium px-3 py-1 rounded-full ${statusStyle(t.status)}`}
+          className={`text-xs font-medium px-3 py-1 rounded-full ${statusStyle(tr.status)}`}
         >
-          {STATUS_LABELS[t.status]}
+          {STATUS_LABELS[tr.status]}
         </span>
-        {t.status === "completed" && (
+        {tr.status === "completed" && (
           <button
-            onClick={() => handleArchive(t.id)}
+            onClick={() => handleArchive(tr.id)}
             className="text-gray-400 hover:text-violet-600 text-sm transition-colors"
-            title="Turnier archivieren"
+            title={t.tournaments_archive_button}
           >
-            📦 Archivieren
+            📦 {t.tournaments_archive_button}
           </button>
         )}
-        {t.status === "archived" && (
+        {tr.status === "archived" && (
           <button
-            onClick={() => handleUnarchive(t.id)}
+            onClick={() => handleUnarchive(tr.id)}
             className="text-gray-400 hover:text-emerald-600 text-sm transition-colors"
-            title="Aus dem Archiv wiederherstellen"
+            title={t.tournaments_unarchive}
           >
-            ↩ Wiederherstellen
+            ↩ {t.tournaments_unarchive}
           </button>
         )}
         <button
-          onClick={() => { setDeleteTarget(t); setDeleteConfirmText(""); }}
+          onClick={() => { setDeleteTarget(tr); setDeleteConfirmText(""); }}
           className="text-gray-400 hover:text-rose-600 text-sm transition-colors"
-          title="Turnier loeschen"
+          title={t.tournaments_delete_title}
         >
           🗑
         </button>
@@ -110,12 +112,12 @@ export default function Tournaments() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className={`text-2xl font-extrabold ${theme.textPrimary} tracking-tight`}>
-            Turniere
+            {t.tournaments_title}
           </h1>
           <p className={`text-sm ${theme.textSecondary} mt-0.5`}>
-            {activeTournaments.length} aktiv
+            {t.tournaments_active_count.replace("{count}", String(activeTournaments.length))}
             {archivedTournaments.length > 0 && (
-              <span> &middot; {archivedTournaments.length} archiviert</span>
+              <span> &middot; {t.tournaments_archived_count.replace("{count}", String(archivedTournaments.length))}</span>
             )}
           </p>
         </div>
@@ -129,14 +131,14 @@ export default function Tournaments() {
                   : `${theme.cardBg} ${theme.cardBorder} ${theme.textSecondary} hover:border-violet-200`
               }`}
             >
-              📦 Archiv ({archivedTournaments.length})
+              📦 {t.tournaments_archive} ({archivedTournaments.length})
             </button>
           )}
           <Link
             to="/tournaments/new"
             className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium`}
           >
-            🏆 Neues Turnier
+            🏆 {t.tournaments_new}
           </Link>
         </div>
       </div>
@@ -145,11 +147,11 @@ export default function Tournaments() {
       {activeTournaments.length === 0 && !showArchive ? (
         <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-12 text-center`}>
           <div className="text-4xl mb-3">🏸</div>
-          <div className="text-gray-400">Noch keine Turniere vorhanden.</div>
+          <div className="text-gray-400">{t.tournaments_none_yet}</div>
         </div>
       ) : (
         <div className="space-y-3">
-          {activeTournaments.map((t) => renderTournamentCard(t, false))}
+          {activeTournaments.map((tr) => renderTournamentCard(tr, false))}
         </div>
       )}
 
@@ -157,10 +159,10 @@ export default function Tournaments() {
       {showArchive && archivedTournaments.length > 0 && (
         <div className="mt-8">
           <h2 className={`text-lg font-bold ${theme.textPrimary} mb-3 flex items-center gap-2`}>
-            📦 Archiv
+            📦 {t.tournaments_archive}
           </h2>
           <div className="space-y-3">
-            {archivedTournaments.map((t) => renderTournamentCard(t, true))}
+            {archivedTournaments.map((tr) => renderTournamentCard(tr, true))}
           </div>
         </div>
       )}
@@ -172,23 +174,23 @@ export default function Tournaments() {
             <div className="text-center mb-5">
               <div className="text-4xl mb-3">⚠️</div>
               <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
-                Turnier loeschen?
+                {t.tournaments_delete_title}
               </h3>
               <p className={`text-sm ${theme.textSecondary} mt-2`}>
-                <span className={`font-semibold ${theme.textPrimary}`}>"{deleteTarget.name}"</span> wird
-                mit allen Runden, Spielen und Ergebnissen unwiderruflich geloescht.
+                <span className={`font-semibold ${theme.textPrimary}`}>"{deleteTarget.name}"</span>{" "}
+                {t.tournaments_delete_message.replace(`"{name}"`, "").trim()}
               </p>
             </div>
             <div className="mb-5">
               <label className={`block text-xs font-medium ${theme.textSecondary} mb-1.5`}>
-                Tippe <span className="font-bold text-rose-600">LOESCHEN</span> zur Bestaetigung:
+                {t.tournaments_delete_confirm_label.replace("{word}", "")} <span className="font-bold text-rose-600">{t.tournaments_delete_confirm_word}</span>
               </label>
               <input
                 type="text"
                 value={deleteConfirmText}
                 onChange={(e) => setDeleteConfirmText(e.target.value)}
                 className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none transition-all text-center font-mono tracking-widest`}
-                placeholder="LOESCHEN"
+                placeholder={t.tournaments_delete_confirm_word}
                 autoFocus
               />
             </div>
@@ -197,14 +199,14 @@ export default function Tournaments() {
                 onClick={() => { setDeleteTarget(null); setDeleteConfirmText(""); }}
                 className={`flex-1 ${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
               >
-                Abbrechen
+                {t.common_cancel}
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                disabled={deleteConfirmText !== "LOESCHEN"}
+                disabled={deleteConfirmText !== t.tournaments_delete_confirm_word}
                 className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-all text-sm font-medium disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
-                Endgueltig loeschen
+                {t.common_delete_permanently}
               </button>
             </div>
           </div>

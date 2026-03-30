@@ -1,5 +1,6 @@
 import type { ThemeColors } from "../../lib/theme";
 import type { Player } from "../../lib/types";
+import { useT } from "../../lib/I18nContext";
 
 interface RetirePlayerModalProps {
   retireTarget: { player: Player; partnerNote: string } | null;
@@ -14,6 +15,7 @@ export default function RetirePlayerModal({
   onClose,
   onConfirm,
 }: RetirePlayerModalProps) {
+  const { t } = useT();
   if (!retireTarget) return null;
 
   return (
@@ -22,15 +24,14 @@ export default function RetirePlayerModal({
         <div className="text-center mb-5">
           <div className="text-4xl mb-3">🏥</div>
           <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
-            Verletzt / Aufgabe
+            {t.retire_title}
           </h3>
           <p className={`text-sm ${theme.textSecondary} mt-2`}>
-            <span className={`font-semibold ${theme.textPrimary}`}>{retireTarget.player.name}</span> als
-            verletzt oder aufgegeben markieren?
+            <span className={`font-semibold ${theme.textPrimary}`}>{retireTarget.player.name}</span>{" "}
+            {t.retire_message.replace("{name}", "").trim()}
           </p>
           <p className={`text-xs ${theme.textMuted} mt-2`}>
-            Der Spieler scheidet fuer das gesamte restliche Turnier aus.
-            Alle offenen Spiele werden als Freilos fuer den Gegner gewertet.
+            {t.retire_details}
           </p>
           {retireTarget.partnerNote && (
             <p className="text-xs text-amber-500 mt-2 font-medium">
@@ -43,7 +44,7 @@ export default function RetirePlayerModal({
             onClick={onClose}
             className={`flex-1 ${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
           >
-            Abbrechen
+            {t.common_cancel}
           </button>
           <button
             onClick={() => {
@@ -52,7 +53,7 @@ export default function RetirePlayerModal({
             }}
             className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-all text-sm font-medium"
           >
-            🏥 Als verletzt markieren
+            🏥 {t.retire_confirm}
           </button>
         </div>
       </div>

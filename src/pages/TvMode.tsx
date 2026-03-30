@@ -17,6 +17,7 @@ import type {
 } from "../lib/types";
 import { MODE_LABELS, FORMAT_LABELS } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
+import { useT } from "../lib/I18nContext";
 import { getCustomLogo } from "./Settings";
 
 interface Announcement {
@@ -37,6 +38,7 @@ const TV_ACCENTS: Record<string, { primary: string; primaryBg: string; gradient:
 
 export default function TvMode() {
   const { themeId } = useTheme();
+  const { t } = useT();
   const tv = TV_ACCENTS[themeId] || TV_ACCENTS.green;
   const { id } = useParams<{ id: string }>();
   const tournamentId = Number(id);
@@ -186,7 +188,7 @@ export default function TvMode() {
   if (!tournament) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="text-white text-2xl">Laden...</div>
+        <div className="text-white text-2xl">{t.common_loading}</div>
       </div>
     );
   }
@@ -211,7 +213,7 @@ export default function TvMode() {
             {new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
           </div>
           <div className="text-gray-400 text-sm">
-            {players.length} Spieler &middot; Runde {rounds.length}
+            {t.tv_players_round.replace("{players}", String(players.length)).replace("{round}", String(rounds.length))}
           </div>
         </div>
       </div>
@@ -225,12 +227,12 @@ export default function TvMode() {
               className="px-8 py-3 flex items-center gap-4 text-lg font-bold animate-pulse border-b border-amber-600 last:border-0"
             >
               <span className="text-2xl">📢</span>
-              <span>Feld {a.court}:</span>
+              <span>{t.tv_court_label.replace("{n}", String(a.court))}:</span>
               <span className="flex-1">
-                {a.team1} <span className="font-normal mx-2">vs</span> {a.team2}
+                {a.team1} <span className="font-normal mx-2">{t.common_vs}</span> {a.team2}
               </span>
               <span className="text-amber-800 text-sm font-normal">
-                Bitte zum Feld!
+                {t.tv_please_go_to_court}
               </span>
             </div>
           ))}
@@ -241,7 +243,7 @@ export default function TvMode() {
         {/* LEFT: Courts */}
         <div className="col-span-2 space-y-4">
           <h2 className={`text-lg font-bold ${tv.primary} uppercase tracking-wider mb-2`}>
-            Spielfelder
+            {t.tv_courts}
           </h2>
           <div
             className="grid gap-4"
@@ -258,9 +260,9 @@ export default function TvMode() {
                     className="rounded-2xl border-2 border-dashed border-gray-700 bg-gray-900/50 p-6 flex flex-col items-center justify-center min-h-[180px]"
                   >
                     <div className="text-2xl font-bold text-gray-600 mb-2">
-                      Feld {courtNum}
+                      {t.tv_court_label.replace("{n}", String(courtNum))}
                     </div>
-                    <div className="text-gray-600 text-lg">Frei</div>
+                    <div className="text-gray-600 text-lg">{t.tv_free}</div>
                   </div>
                 );
               }
@@ -283,7 +285,7 @@ export default function TvMode() {
                   {/* Court header */}
                   <div className="flex justify-between items-center mb-4">
                     <span className={`text-sm font-bold ${tv.courtBadge} text-white px-3 py-1 rounded-full`}>
-                      Feld {courtNum}
+                      {t.tv_court_label.replace("{n}", String(courtNum))}
                     </span>
                     <span className="text-lg font-mono font-bold text-amber-400">
                       ⏱ {formatTimer(match.court_assigned_at)}
@@ -295,7 +297,7 @@ export default function TvMode() {
                     <div className="text-xl font-bold text-white leading-tight mb-1">
                       {team1}
                     </div>
-                    <div className="text-gray-500 text-sm my-1">vs</div>
+                    <div className="text-gray-500 text-sm my-1">{t.common_vs}</div>
                     <div className="text-xl font-bold text-white leading-tight">
                       {team2}
                     </div>
@@ -334,7 +336,7 @@ export default function TvMode() {
           {completedMatches.length > 0 && (
             <div className="mt-4">
               <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">
-                Letzte Ergebnisse
+                {t.tv_recent_results}
               </h3>
               <div className="grid grid-cols-2 gap-2">
                 {completedMatches.slice().reverse().slice(0, 4).map((m) => {
@@ -377,14 +379,14 @@ export default function TvMode() {
         {/* RIGHT: Queue */}
         <div className="flex flex-col">
           <h2 className="text-lg font-bold text-amber-400 uppercase tracking-wider mb-3">
-            Warteschlange
+            {t.tv_queue}
           </h2>
 
           {waitingMatches.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-gray-600 text-lg text-center">
                 <div className="text-4xl mb-2">✅</div>
-                Keine wartenden Spiele
+                {t.tv_no_waiting}
               </div>
             </div>
           ) : (
@@ -402,12 +404,12 @@ export default function TvMode() {
                   >
                     {i === 0 && (
                       <div className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-1">
-                        Als naechstes
+                        {t.tv_next_up}
                       </div>
                     )}
                     <div className="text-sm">
                       <div className="font-semibold text-white">{team1}</div>
-                      <div className="text-gray-500 text-xs my-0.5">vs</div>
+                      <div className="text-gray-500 text-xs my-0.5">{t.common_vs}</div>
                       <div className="font-semibold text-white">{team2}</div>
                     </div>
                   </div>
@@ -415,7 +417,7 @@ export default function TvMode() {
               })}
               {waitingMatches.length > 12 && (
                 <div className="text-center text-gray-600 text-sm py-2">
-                  +{waitingMatches.length - 12} weitere
+                  {t.tv_more.replace("{count}", String(waitingMatches.length - 12))}
                 </div>
               )}
             </div>
@@ -425,7 +427,7 @@ export default function TvMode() {
 
       {/* Keyboard hint - fades after 5 seconds */}
       <div className="fixed bottom-2 right-3 text-[10px] text-gray-600 opacity-60">
-        ESC = Schliessen &middot; F11 = Vollbild
+        {t.tv_keyboard_hint}
       </div>
     </div>
   );

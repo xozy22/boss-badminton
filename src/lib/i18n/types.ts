@@ -1,0 +1,523 @@
+export interface Translations {
+  // ===== Navigation / Sidebar =====
+  nav_home: string;
+  nav_venues: string;
+  nav_players: string;
+  nav_tournaments: string;
+  nav_settings: string;
+  nav_collapse: string;
+  nav_expand_sidebar: string;
+  nav_collapse_sidebar: string;
+
+  // ===== Common / Shared =====
+  common_cancel: string;
+  common_save: string;
+  common_delete: string;
+  common_edit: string;
+  common_add: string;
+  common_close: string;
+  common_back: string;
+  common_next: string;
+  common_export: string;
+  common_import: string;
+  common_search: string;
+  common_all: string;
+  common_name: string;
+  common_actions: string;
+  common_loading: string;
+  common_done: string;
+  common_none: string;
+  common_yes: string;
+  common_no: string;
+  common_ok: string;
+  common_field: string;
+  common_fields: string;
+  common_court: string;
+  common_courts: string;
+  common_round: string;
+  common_vs: string;
+  common_set: string;
+  common_sets: string;
+  common_points: string;
+  common_wins_abbr: string;
+  common_losses_abbr: string;
+  common_points_abbr: string;
+  common_gender_male: string;
+  common_gender_female: string;
+  common_gender_male_short: string;
+  common_gender_female_short: string;
+  common_gender: string;
+  common_age: string;
+  common_club: string;
+  common_action_irreversible: string;
+  common_confirm_type: string;
+  common_delete_permanently: string;
+  common_selected: string;
+  common_of: string;
+  common_and_more: string;
+  common_free: string;
+  common_occupied: string;
+
+  // ===== Home Page =====
+  home_welcome: string;
+  home_subtitle: string;
+  home_players_registered: string;
+  home_active_tournaments: string;
+  home_total_tournaments: string;
+  home_running_tournaments: string;
+  home_manage_players: string;
+  home_new_tournament: string;
+
+  // ===== Players Page =====
+  players_title: string;
+  players_count: string;
+  players_new_player: string;
+  players_name_placeholder: string;
+  players_club_placeholder: string;
+  players_search_placeholder: string;
+  players_filter_all: string;
+  players_filter_men: string;
+  players_filter_women: string;
+  players_delete_selected: string;
+  players_clear_selection: string;
+  players_shown_of_total: string;
+  players_select_all: string;
+  players_none_yet: string;
+  players_no_filter_results: string;
+  players_delete_confirm_single: string;
+  players_delete_confirm_multi: string;
+
+  // ===== Tournaments Page =====
+  tournaments_title: string;
+  tournaments_active_count: string;
+  tournaments_archived_count: string;
+  tournaments_archive: string;
+  tournaments_archive_button: string;
+  tournaments_unarchive: string;
+  tournaments_new: string;
+  tournaments_none_yet: string;
+  tournaments_delete_title: string;
+  tournaments_delete_message: string;
+  tournaments_delete_confirm_label: string;
+  tournaments_delete_confirm_word: string;
+  tournaments_best_of: string;
+  tournaments_up_to: string;
+
+  // ===== Tournament Create / Edit =====
+  tournament_create_title: string;
+  tournament_edit_title: string;
+  tournament_name: string;
+  tournament_name_placeholder: string;
+  tournament_mode: string;
+  tournament_format: string;
+  tournament_sets_to_win: string;
+  tournament_points_per_set: string;
+  tournament_venue: string;
+  tournament_venue_none: string;
+  tournament_halls_courts: string;
+  tournament_courts_selected: string;
+  tournament_num_groups: string;
+  tournament_qualify_per_group: string;
+  tournament_qualify_ko_count: string;
+  tournament_seeding_enable: string;
+  tournament_seeding_hint: string;
+  tournament_entry_fee_enable: string;
+  tournament_entry_fee_hint: string;
+  tournament_entry_fee_single: string;
+  tournament_entry_fee_double: string;
+  tournament_load_template: string;
+  tournament_step_settings: string;
+  tournament_step_players: string;
+  tournament_step_teams: string;
+  tournament_step_seeding: string;
+  tournament_step_create: string;
+  tournament_select_players: string;
+  tournament_select_all: string;
+  tournament_select_filtered: string;
+  tournament_deselect_all: string;
+  tournament_deselect_filtered: string;
+  tournament_players_shown: string;
+  tournament_players_selected_of: string;
+  tournament_no_players_yet: string;
+  tournament_no_players_hint: string;
+  tournament_no_filter_results: string;
+  tournament_continue_to: string;
+  tournament_summary: string;
+  tournament_summary_name: string;
+  tournament_summary_mode: string;
+  tournament_summary_rules: string;
+  tournament_summary_players: string;
+  tournament_summary_teams: string;
+  tournament_summary_entry_fee: string;
+  tournament_min_players: string;
+  tournament_teams_open: string;
+  tournament_create_button: string;
+  tournament_save_changes: string;
+  tournament_restore_suggestion: string;
+
+  // Mode labels
+  mode_singles: string;
+  mode_doubles: string;
+  mode_mixed: string;
+
+  // Format labels
+  format_round_robin: string;
+  format_elimination: string;
+  format_random_doubles: string;
+  format_group_ko: string;
+
+  // Status labels
+  status_draft: string;
+  status_active: string;
+  status_completed: string;
+  status_archived: string;
+
+  // Best of labels
+  best_of_1: string;
+  best_of_3: string;
+  best_of_5: string;
+
+  // Groups count
+  groups_count: string;
+
+  // Top N
+  top_n: string;
+
+  // ===== Tournament View =====
+  tournament_view_edit: string;
+  tournament_view_template: string;
+  tournament_view_delete: string;
+  tournament_view_start: string;
+  tournament_view_next_round: string;
+  tournament_view_start_ko: string;
+  tournament_view_next_ko_round: string;
+  tournament_view_end: string;
+  tournament_view_archive: string;
+  tournament_view_print: string;
+  tournament_view_tv_mode: string;
+  tournament_view_not_started: string;
+  tournament_view_not_started_hint: string;
+  tournament_view_has_open_matches: string;
+  tournament_view_ko_phase: string;
+  tournament_view_groups_label: string;
+  tournament_view_tab_matches: string;
+  tournament_view_tab_groups: string;
+  tournament_view_tab_bracket: string;
+  tournament_view_tab_standings: string;
+  tournament_view_tab_management: string;
+  tournament_view_all_groups: string;
+  tournament_view_on_court: string;
+  tournament_view_completed_matches: string;
+  tournament_view_assign_court_first: string;
+  tournament_view_court_question: string;
+  tournament_view_match_completed: string;
+  tournament_view_round_label: string;
+  tournament_view_announce_title: string;
+  tournament_view_edit_results: string;
+
+  // ===== Edit Tournament Modal =====
+  edit_tournament_title: string;
+  edit_tournament_win_sets: string;
+  edit_tournament_points_set: string;
+  edit_tournament_courts_label: string;
+  edit_tournament_groups_count: string;
+  edit_tournament_qualify_group: string;
+  edit_tournament_fee_single: string;
+  edit_tournament_fee_double: string;
+
+  // ===== Delete Tournament Modal =====
+  delete_tournament_title: string;
+  delete_tournament_message: string;
+  delete_tournament_details: string;
+
+  // ===== Retire Player Modal =====
+  retire_title: string;
+  retire_message: string;
+  retire_details: string;
+  retire_confirm: string;
+
+  // ===== Template Export Modal =====
+  template_export_title: string;
+  template_export_description: string;
+  template_settings: string;
+  template_settings_desc: string;
+  template_players: string;
+  template_players_desc: string;
+  template_teams: string;
+  template_teams_desc: string;
+  template_export_button: string;
+
+  // ===== Seeding Step =====
+  seeding_title: string;
+  seeding_description: string;
+  seeding_move_up: string;
+  seeding_move_down: string;
+
+  // ===== Team Pairing Step =====
+  teams_title: string;
+  teams_count_info: string;
+  teams_players_available: string;
+  teams_auto_assign: string;
+  teams_clear_all: string;
+  teams_available: string;
+  teams_choose_partner: string;
+  teams_women: string;
+  teams_men: string;
+  teams_label: string;
+  teams_remove_title: string;
+  teams_player_leftover: string;
+  teams_all_assigned: string;
+
+  // ===== Groups Tab =====
+  groups_group: string;
+  groups_all: string;
+  groups_teams_count: string;
+  groups_players_count: string;
+  groups_player: string;
+  groups_team: string;
+
+  // ===== Standings / Rangliste =====
+  standings_title: string;
+  standings_player: string;
+  standings_wins: string;
+  standings_losses: string;
+  standings_sets_header: string;
+  standings_points: string;
+  standings_no_results: string;
+
+  // ===== Bracket View =====
+  bracket_final: string;
+  bracket_semifinal: string;
+  bracket_quarterfinal: string;
+  bracket_round_of_16: string;
+  bracket_round: string;
+  bracket_winner: string;
+
+  // ===== Court Overview =====
+  court_field: string;
+  court_free_drag: string;
+  court_waiting: string;
+  court_choose_court: string;
+  court_drag_or_double_click: string;
+  court_double_click_jump: string;
+
+  // ===== Court Timer =====
+  court_timer_started: string;
+  court_timer_critical: string;
+  court_timer_warning: string;
+
+  // ===== Verwaltung Tab =====
+  management_participants: string;
+  management_paid_count: string;
+  management_add_player: string;
+  management_done: string;
+  management_add_player_label: string;
+  management_all_players_added: string;
+  management_search_placeholder: string;
+  management_filter_all: string;
+  management_filter_paid: string;
+  management_filter_open: string;
+  management_shown_of_total: string;
+  management_entry_fee: string;
+  management_payment_method: string;
+  management_payment_date: string;
+  management_no_club: string;
+  management_paid_count_label: string;
+  management_open: string;
+  management_remove_from_tournament: string;
+  management_retire_title: string;
+  management_partner_also_retires: string;
+  management_date_placeholder: string;
+
+  // Payment methods
+  payment_cash: string;
+  payment_transfer: string;
+  payment_paypal: string;
+
+  // ===== Excel Import =====
+  import_title: string;
+  import_step_file: string;
+  import_step_mapping: string;
+  import_step_preview: string;
+  import_step_done: string;
+  import_select_file: string;
+  import_file_hint: string;
+  import_choose_file: string;
+  import_sheet: string;
+  import_rows_found: string;
+  import_column_name: string;
+  import_column_gender: string;
+  import_column_age: string;
+  import_column_club: string;
+  import_please_select: string;
+  import_not_available: string;
+  import_default_gender: string;
+  import_preview_first_rows: string;
+  import_empty: string;
+  import_will_import: string;
+  import_no_name: string;
+  import_duplicate: string;
+  import_continue_preview: string;
+  import_importing: string;
+  import_import_button: string;
+  import_players_imported: string;
+
+  // ===== Print Dialog =====
+  print_title: string;
+  print_report: string;
+  print_report_desc: string;
+  print_full: string;
+  print_full_desc: string;
+  print_schedule: string;
+  print_schedule_desc: string;
+  print_current_round: string;
+  print_current_round_desc: string;
+  print_standings: string;
+  print_standings_desc: string;
+  print_button: string;
+
+  // ===== Print View =====
+  print_participants: string;
+  print_all_results: string;
+  print_group_phase: string;
+  print_ko_phase: string;
+  print_group_tables: string;
+  print_group: string;
+  print_round: string;
+  print_ko_round: string;
+  print_standings_label: string;
+  print_rank: string;
+  print_team1: string;
+  print_team2: string;
+  print_set_n: string;
+  print_sets_label: string;
+  print_defeats: string;
+  print_highlights: string;
+  print_most_wins: string;
+  print_most_points: string;
+  print_closest_match: string;
+  print_biggest_win: string;
+  print_highest_scoring: string;
+  print_longest_match: string;
+  print_matches_completed: string;
+  print_sets_played: string;
+  print_total_points: string;
+  print_footer: string;
+  print_created_on: string;
+
+  // ===== Settings Page =====
+  settings_title: string;
+  settings_subtitle: string;
+  settings_updates: string;
+  settings_design: string;
+  settings_defaults: string;
+  settings_database: string;
+  settings_color_scheme: string;
+  settings_font_size: string;
+  settings_language: string;
+  settings_club_logo: string;
+  settings_logo_upload: string;
+  settings_logo_change: string;
+  settings_logo_remove: string;
+  settings_logo_hint: string;
+  settings_logo_crop_title: string;
+  settings_logo_crop_hint: string;
+  settings_logo_crop_save: string;
+  settings_logo_too_large: string;
+  settings_default_halls: string;
+  settings_add_hall: string;
+  settings_hall_name_placeholder: string;
+  settings_total_courts_in_halls: string;
+  settings_default_hint: string;
+  settings_timer_thresholds: string;
+  settings_timer_warning: string;
+  settings_timer_critical: string;
+  settings_timer_minutes: string;
+  settings_timer_hint: string;
+  settings_db_location: string;
+  settings_db_open: string;
+  settings_db_change: string;
+  settings_db_changing: string;
+  settings_db_reset_default: string;
+  settings_db_browser_mode: string;
+  settings_db_path_error: string;
+  settings_db_choose_title: string;
+  settings_db_copied_message: string;
+  settings_db_reset_message: string;
+  settings_backup_title: string;
+  settings_backup_create: string;
+  settings_backup_restore: string;
+  settings_backup_hint: string;
+  settings_backup_success: string;
+  settings_backup_restore_confirm: string;
+  settings_backup_restored: string;
+  settings_danger_zone: string;
+  settings_delete_all_players: string;
+  settings_delete_all_players_hint: string;
+  settings_delete_all_tournaments: string;
+  settings_delete_all_tournaments_hint: string;
+  settings_confirm_title: string;
+  settings_confirm_players: string;
+  settings_confirm_tournaments: string;
+  settings_confirm_word_players: string;
+  settings_confirm_word_tournaments: string;
+  settings_players_deleted: string;
+  settings_tournaments_deleted: string;
+  settings_current_version: string;
+  settings_check_updates_hint: string;
+  settings_checking: string;
+  settings_check_updates: string;
+  settings_up_to_date: string;
+  settings_new_version: string;
+  settings_downloading: string;
+  settings_install_update: string;
+  settings_update_failed: string;
+
+  // Theme names
+  theme_emerald: string;
+  theme_sapphire: string;
+  theme_amber: string;
+  theme_night: string;
+
+  // ===== Sportstaetten (Venues) Page =====
+  venues_title: string;
+  venues_count_singular: string;
+  venues_count_plural: string;
+  venues_registered: string;
+  venues_new: string;
+  venues_name_placeholder: string;
+  venues_address: string;
+  venues_address_placeholder: string;
+  venues_zip: string;
+  venues_city: string;
+  venues_city_placeholder: string;
+  venues_halls: string;
+  venues_halls_courts: string;
+  venues_hall: string;
+  venues_add_hall: string;
+  venues_search_placeholder: string;
+  venues_shown_of_total: string;
+  venues_none_yet: string;
+  venues_no_filter_results: string;
+  venues_delete_title: string;
+  venues_hall_singular: string;
+  venues_hall_plural: string;
+  venues_field_singular: string;
+  venues_field_plural: string;
+
+  // ===== TV Mode =====
+  tv_courts: string;
+  tv_free: string;
+  tv_court_label: string;
+  tv_recent_results: string;
+  tv_queue: string;
+  tv_no_waiting: string;
+  tv_next_up: string;
+  tv_more: string;
+  tv_players_round: string;
+  tv_please_go_to_court: string;
+  tv_keyboard_hint: string;
+
+  // ===== Sportstaetten Hall summary =====
+  hall_summary: string;
+}

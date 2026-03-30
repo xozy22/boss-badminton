@@ -17,6 +17,7 @@ import { MODE_LABELS, FORMAT_LABELS, parseHallConfig, hallConfigTotalCourts } fr
 import { formFixedDoubleTeams, formFixedMixedTeams } from "../lib/draw";
 import { loadSettings } from "./Settings";
 import { useTheme } from "../lib/ThemeContext";
+import { useT } from "../lib/I18nContext";
 import TeamPairingStep from "../components/tournament/TeamPairingStep";
 import SeedingStep from "../components/tournament/SeedingStep";
 
@@ -30,6 +31,7 @@ type GenderFilter = "all" | "m" | "f";
 
 export default function TournamentCreate() {
   const { theme } = useTheme();
+  const { t } = useT();
   const navigate = useNavigate();
   const { id: editId } = useParams<{ id: string }>();
   const isEditMode = !!editId;
@@ -98,37 +100,37 @@ export default function TournamentCreate() {
   useEffect(() => {
     if (!isEditMode || editLoaded) return;
     const loadTournament = async () => {
-      const t = await getTournament(Number(editId));
+      const td = await getTournament(Number(editId));
       const tp = await getTournamentPlayers(Number(editId));
-      setName(t.name);
+      setName(td.name);
       setNameManuallyEdited(true);
-      setMode(t.mode);
-      setFormat(t.format);
-      setSetsToWin(t.sets_to_win);
-      setPointsPerSet(t.points_per_set);
+      setMode(td.mode);
+      setFormat(td.format);
+      setSetsToWin(td.sets_to_win);
+      setPointsPerSet(td.points_per_set);
       // Load hall config from tournament
-      if (t.hall_config) {
-        const halls = parseHallConfig(t.hall_config);
+      if (td.hall_config) {
+        const halls = parseHallConfig(td.hall_config);
         if (halls.length > 0) {
           setHallConfig(halls);
           setSelectedHallIndices(new Set(halls.map((_, i) => i)));
         }
       } else {
         // Fallback: single hall with tournament court count
-        setHallConfig([{ name: "Halle 1", courts: t.courts }]);
+        setHallConfig([{ name: "Halle 1", courts: td.courts }]);
         setSelectedHallIndices(new Set([0]));
       }
-      setNumGroups(t.num_groups || 2);
-      setQualifyPerGroup(t.qualify_per_group || 2);
-      if (t.entry_fee_single > 0 || t.entry_fee_double > 0) {
+      setNumGroups(td.num_groups || 2);
+      setQualifyPerGroup(td.qualify_per_group || 2);
+      if (td.entry_fee_single > 0 || td.entry_fee_double > 0) {
         setUseEntryFee(true);
-        setEntryFeeSingle(String(t.entry_fee_single));
-        setEntryFeeDouble(String(t.entry_fee_double));
+        setEntryFeeSingle(String(td.entry_fee_single));
+        setEntryFeeDouble(String(td.entry_fee_double));
       }
       setSelectedPlayerIds(new Set(tp.map((p) => p.id)));
-      if (t.team_config) {
+      if (td.team_config) {
         try {
-          const teams = JSON.parse(t.team_config) as [number, number][];
+          const teams = JSON.parse(td.team_config) as [number, number][];
           setManualTeams(teams);
         } catch {}
       }
@@ -340,11 +342,11 @@ export default function TournamentCreate() {
   const seedingValid = !showSeedingStep || seedOrder.filter((pid) => selectedPlayerIds.has(pid)).length >= 2;
 
   const steps = [
-    { key: "settings" as const, label: "Einstellungen", icon: "⚙️", valid: settingsValid },
-    { key: "players" as const, label: "Spieler", icon: "👥", valid: playersValid },
-    ...(needsTeamPairing ? [{ key: "teams" as const, label: "Teams", icon: "🤝", valid: teamsValid }] : []),
-    ...(showSeedingStep ? [{ key: "seeding" as const, label: "Setzliste", icon: "🎯", valid: seedingValid }] : []),
-    { key: "create" as const, label: "Erstellen", icon: "🏆", valid: false },
+    { key: "settings" as const, label: t.tournament_step_settings, icon: "⚙️", valid: settingsValid },
+    { key: "players" as const, label: t.tournament_step_players, icon: "👥", valid: playersValid },
+    ...(needsTeamPairing ? [{ key: "teams" as const, label: t.tournament_step_teams, icon: "🤝", valid: teamsValid }] : []),
+    ...(showSeedingStep ? [{ key: "seeding" as const, label: t.tournament_step_seeding, icon: "🎯", valid: seedingValid }] : []),
+    { key: "create" as const, label: t.tournament_step_create, icon: "🏆", valid: false },
   ];
 
   const currentStepIdx = steps.findIndex((s) => s.key === createStep);
@@ -355,11 +357,11 @@ export default function TournamentCreate() {
       {/* Header */}
       <div className="mb-2 flex justify-between items-center">
         <h1 className={`text-2xl font-extrabold ${theme.textPrimary} tracking-tight`}>
-          {isEditMode ? "Turnier bearbeiten" : "Neues Turnier erstellen"}
+          {isEditMode ? t.tournament_edit_title : t.tournament_create_title}
         </h1>
         {!isEditMode && (
           <label className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2 rounded-xl ${theme.cardHoverBorder} hover:shadow-sm transition-all text-sm font-medium cursor-pointer`}>
-            📋 Vorlage laden
+            📋 {t.tournament_load_template}
             <input
               type="file"
               accept=".json"
@@ -454,7 +456,7 @@ export default function TournamentCreate() {
               <div className="space-y-4">
                 <div>
                   <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                    Turniername
+                    {t.tournament_name}
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -462,13 +464,13 @@ export default function TournamentCreate() {
                       value={name}
                       onChange={(e) => { setName(e.target.value); setNameManuallyEdited(true); }}
                       className={`flex-1 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-                      placeholder="Turniername"
+                      placeholder={t.tournament_name_placeholder}
                     />
                     {nameManuallyEdited && (
                       <button
                         onClick={() => { setName(generateName(mode, format)); setNameManuallyEdited(false); }}
                         className={`${theme.textMuted} hover:text-emerald-600 px-3 py-2.5 rounded-xl border ${theme.inputBorder} ${theme.cardHoverBorder} transition-all text-sm`}
-                        title="Vorschlag wiederherstellen"
+                        title={t.tournament_restore_suggestion}
                       >
                         ↻
                       </button>
@@ -479,7 +481,7 @@ export default function TournamentCreate() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                      Modus
+                      {t.tournament_mode}
                     </label>
                     <select
                       value={mode}
@@ -494,7 +496,7 @@ export default function TournamentCreate() {
                       }}
                       className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                     >
-                      {Object.entries(MODE_LABELS).map(([k, v]) => (
+                      {Object.entries({ singles: t.mode_singles, doubles: t.mode_doubles, mixed: t.mode_mixed }).map(([k, v]) => (
                         <option key={k} value={k}>
                           {v}
                         </option>
@@ -503,7 +505,7 @@ export default function TournamentCreate() {
                   </div>
                   <div>
                     <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                      Format
+                      {t.tournament_format}
                     </label>
                     <select
                       value={format}
@@ -515,11 +517,13 @@ export default function TournamentCreate() {
                       }}
                       className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                     >
-                      {VALID_FORMATS[mode].map((f) => (
+                      {VALID_FORMATS[mode].map((f) => {
+                        const fmtLabels: Record<string, string> = { round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko };
+                        return (
                         <option key={f} value={f}>
-                          {FORMAT_LABELS[f]}
+                          {fmtLabels[f]}
                         </option>
-                      ))}
+                      );})}
                     </select>
                   </div>
                 </div>
@@ -527,21 +531,21 @@ export default function TournamentCreate() {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                      Gewinnsaetze (Best of {setsToWin * 2 - 1})
+                      {t.tournament_sets_to_win.replace("{count}", String(setsToWin * 2 - 1))}
                     </label>
                     <select
                       value={setsToWin}
                       onChange={(e) => setSetsToWin(Number(e.target.value))}
                       className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                     >
-                      <option value={1}>1 Satz (Best of 1)</option>
-                      <option value={2}>2 Saetze (Best of 3)</option>
-                      <option value={3}>3 Saetze (Best of 5)</option>
+                      <option value={1}>{t.best_of_1}</option>
+                      <option value={2}>{t.best_of_3}</option>
+                      <option value={3}>{t.best_of_5}</option>
                     </select>
                   </div>
                   <div>
                     <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                      Punkte pro Satz
+                      {t.tournament_points_per_set}
                     </label>
                     <input
                       type="number"
@@ -553,7 +557,7 @@ export default function TournamentCreate() {
                   </div>
                   <div>
                     <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                      Sportstaette
+                      {t.tournament_venue}
                     </label>
                     <select
                       value={selectedVenueId}
@@ -582,17 +586,17 @@ export default function TournamentCreate() {
                       }}
                       className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                     >
-                      <option value="">-- Keine --</option>
+                      <option value="">{t.tournament_venue_none}</option>
                       {sportstaetten.map((s) => (
                         <option key={s.id} value={s.id}>
-                          {s.name} ({s.courts} {s.courts === 1 ? "Feld" : "Felder"})
+                          {s.name} ({s.courts} {s.courts === 1 ? t.common_field : t.common_fields})
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                      Hallen / Spielfelder
+                      {t.tournament_halls_courts}
                     </label>
                     {hallConfig.length > 0 && (
                       <div className={`${theme.inputBg} border ${theme.inputBorder} rounded-xl px-3 py-2 space-y-1`}>
@@ -612,12 +616,12 @@ export default function TournamentCreate() {
                               className="rounded"
                             />
                             <span className={theme.textPrimary}>
-                              {hall.name} ({hall.courts} {hall.courts === 1 ? "Feld" : "Felder"})
+                              {hall.name} ({hall.courts} {hall.courts === 1 ? t.common_field : t.common_fields})
                             </span>
                           </label>
                         ))}
                         <div className={`text-xs ${theme.textMuted} pt-1 border-t ${theme.cardBorder}`}>
-                          {courts} {courts === 1 ? "Feld" : "Felder"} ausgewaehlt
+                          {t.tournament_courts_selected.replace("{count}", String(courts))}
                         </div>
                       </div>
                     )}
@@ -629,7 +633,7 @@ export default function TournamentCreate() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                        Anzahl Gruppen
+                        {t.tournament_num_groups}
                       </label>
                       <select
                         value={numGroups}
@@ -638,14 +642,14 @@ export default function TournamentCreate() {
                       >
                         {[2, 3, 4, 5, 6, 7, 8].map((n) => (
                           <option key={n} value={n}>
-                            {n} Gruppen
+                            {t.groups_count.replace("{count}", String(n))}
                           </option>
                         ))}
                       </select>
                     </div>
                     <div>
                       <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                        Qualifikanten pro Gruppe
+                        {t.tournament_qualify_per_group}
                       </label>
                       <select
                         value={qualifyPerGroup}
@@ -654,12 +658,12 @@ export default function TournamentCreate() {
                       >
                         {[1, 2, 3, 4].map((n) => (
                           <option key={n} value={n}>
-                            Top {n}
+                            {t.top_n.replace("{n}", String(n))}
                           </option>
                         ))}
                       </select>
                       <div className="text-xs text-gray-400 mt-1">
-                        → {numGroups * qualifyPerGroup} Spieler im KO
+                        → {t.tournament_qualify_ko_count.replace("{count}", String(numGroups * qualifyPerGroup))}
                       </div>
                     </div>
                   </div>
@@ -687,8 +691,8 @@ export default function TournamentCreate() {
                   className="rounded accent-emerald-600"
                 />
                 <div>
-                  <span className={`text-sm font-medium ${theme.textPrimary}`}>🎯 Setzliste aktivieren</span>
-                  <p className={`text-xs ${theme.textMuted}`}>Gesetzte Spieler treffen erst in spaeteren Runden aufeinander</p>
+                  <span className={`text-sm font-medium ${theme.textPrimary}`}>🎯 {t.tournament_seeding_enable}</span>
+                  <p className={`text-xs ${theme.textMuted}`}>{t.tournament_seeding_hint}</p>
                 </div>
               </div>
             )}
@@ -702,12 +706,12 @@ export default function TournamentCreate() {
                 className="rounded accent-emerald-600 mt-1"
               />
               <div className="flex-1">
-                <span className={`text-sm font-medium ${theme.textPrimary}`}>💰 Startgeld erheben</span>
-                <p className={`text-xs ${theme.textMuted}`}>Zahlungen pro Teilnehmer verwalten</p>
+                <span className={`text-sm font-medium ${theme.textPrimary}`}>💰 {t.tournament_entry_fee_enable}</span>
+                <p className={`text-xs ${theme.textMuted}`}>{t.tournament_entry_fee_hint}</p>
                 {useEntryFee && (
                   <div className="grid grid-cols-2 gap-3 mt-3">
                     <div>
-                      <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>Einzel (EUR)</label>
+                      <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>{t.tournament_entry_fee_single}</label>
                       <input
                         type="number"
                         value={entryFeeSingle}
@@ -718,7 +722,7 @@ export default function TournamentCreate() {
                       />
                     </div>
                     <div>
-                      <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>Doppel (EUR)</label>
+                      <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>{t.tournament_entry_fee_double}</label>
                       <input
                         type="number"
                         value={entryFeeDouble}
@@ -738,7 +742,7 @@ export default function TournamentCreate() {
                 onClick={() => setCreateStep(nextStep)}
                 className={`w-full ${theme.primaryBg} text-white px-5 py-3 rounded-2xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all font-medium text-sm mt-2`}
               >
-                Weiter zu {steps.find((s) => s.key === nextStep)?.icon} {steps.find((s) => s.key === nextStep)?.label} →
+                {t.tournament_continue_to.replace("{icon}", steps.find((s) => s.key === nextStep)?.icon || "").replace("{label}", steps.find((s) => s.key === nextStep)?.label || "")} →
               </button>
             )}
           </>
@@ -751,9 +755,9 @@ export default function TournamentCreate() {
               {/* Header */}
               <div className="flex justify-between items-center mb-3">
                 <h2 className={`font-semibold ${theme.textPrimary}`}>
-                  Spieler auswaehlen{" "}
+                  {t.tournament_select_players}{" "}
                   <span className={`${theme.activeBadgeText} font-normal`}>
-                    ({selectedCount} ausgewaehlt)
+                    ({t.common_selected.replace("{count}", String(selectedCount))})
                   </span>
                 </h2>
                 <div className="flex gap-2">
@@ -761,13 +765,13 @@ export default function TournamentCreate() {
                     onClick={selectAllFiltered}
                     className={`${theme.activeBadgeText} text-sm font-medium`}
                   >
-                    {genderFilter !== "all" || search ? "Gefilterte" : "Alle"}
+                    {genderFilter !== "all" || search ? t.tournament_select_filtered : t.tournament_select_all}
                   </button>
                   <button
                     onClick={selectNoneFiltered}
                     className="text-gray-400 hover:text-gray-600 text-sm"
                   >
-                    {genderFilter !== "all" || search ? "Gefilterte abw." : "Keine"}
+                    {genderFilter !== "all" || search ? t.tournament_deselect_filtered : t.tournament_deselect_all}
                   </button>
                 </div>
               </div>
@@ -779,7 +783,7 @@ export default function TournamentCreate() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Spieler suchen..."
+                    placeholder={t.players_search_placeholder}
                     className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl pl-9 pr-4 py-2 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                   />
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
@@ -796,9 +800,9 @@ export default function TournamentCreate() {
                 </div>
                 <div className={`flex rounded-xl border ${theme.inputBorder} overflow-hidden text-sm`}>
                   {([
-                    { value: "all", label: "Alle" },
-                    { value: "m", label: "Herren" },
-                    { value: "f", label: "Damen" },
+                    { value: "all", label: t.common_all },
+                    { value: "m", label: t.players_filter_men },
+                    { value: "f", label: t.players_filter_women },
                   ] as { value: GenderFilter; label: string }[]).map((opt) => (
                     <button
                       key={opt.value}
@@ -818,10 +822,10 @@ export default function TournamentCreate() {
               {/* Info bar */}
               {(genderFilter !== "all" || search) && (
                 <div className="text-xs text-gray-400 mb-2">
-                  {filteredPlayers.length} von {players.length} Spielern angezeigt
+                  {t.tournament_players_shown.replace("{shown}", String(filteredPlayers.length)).replace("{total}", String(players.length))}
                   {filteredSelectedCount > 0 && (
                     <span className={`${theme.activeBadgeText} ml-1`}>
-                      ({filteredSelectedCount} davon ausgewaehlt)
+                      {t.tournament_players_selected_of.replace("{count}", String(filteredSelectedCount))}
                     </span>
                   )}
                 </div>
@@ -830,11 +834,11 @@ export default function TournamentCreate() {
               {/* Player List */}
               {players.length === 0 ? (
                 <p className="text-gray-400 text-sm py-4">
-                  Noch keine Spieler vorhanden. Bitte erst Spieler anlegen.
+                  {t.tournament_no_players_yet}
                 </p>
               ) : filteredPlayers.length === 0 ? (
                 <p className="text-gray-400 text-sm py-4">
-                  Keine Spieler fuer diesen Filter gefunden.
+                  {t.tournament_no_filter_results}
                 </p>
               ) : (
                 <div className={`max-h-72 overflow-y-auto rounded-xl border ${theme.cardBorder}`}>
@@ -863,7 +867,7 @@ export default function TournamentCreate() {
                             : "bg-pink-50 text-pink-500"
                         }`}
                       >
-                        {p.gender === "m" ? "Herr" : "Dame"}
+                        {p.gender === "m" ? t.common_gender_male : t.common_gender_female}
                       </span>
                     </label>
                   ))}
@@ -876,7 +880,7 @@ export default function TournamentCreate() {
                 onClick={() => setCreateStep(nextStep)}
                 className={`w-full ${theme.primaryBg} text-white px-5 py-3 rounded-2xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all font-medium text-sm mt-2`}
               >
-                Weiter zu {steps.find((s) => s.key === nextStep)?.icon} {steps.find((s) => s.key === nextStep)?.label} →
+                {t.tournament_continue_to.replace("{icon}", steps.find((s) => s.key === nextStep)?.icon || "").replace("{label}", steps.find((s) => s.key === nextStep)?.label || "")} →
               </button>
             )}
           </>
@@ -903,7 +907,7 @@ export default function TournamentCreate() {
                 onClick={() => setCreateStep(nextStep)}
                 className={`w-full ${theme.primaryBg} text-white px-5 py-3 rounded-2xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all font-medium text-sm mt-4`}
               >
-                Weiter zu {steps.find((s) => s.key === nextStep)?.icon} {steps.find((s) => s.key === nextStep)?.label} →
+                {t.tournament_continue_to.replace("{icon}", steps.find((s) => s.key === nextStep)?.icon || "").replace("{label}", steps.find((s) => s.key === nextStep)?.label || "")} →
               </button>
             )}
           </>
@@ -936,7 +940,7 @@ export default function TournamentCreate() {
                 onClick={() => setCreateStep(nextStep)}
                 className={`w-full ${theme.primaryBg} text-white px-5 py-3 rounded-2xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all font-medium text-sm mt-4`}
               >
-                Weiter zu {steps.find((s) => s.key === nextStep)?.icon} {steps.find((s) => s.key === nextStep)?.label} →
+                {t.tournament_continue_to.replace("{icon}", steps.find((s) => s.key === nextStep)?.icon || "").replace("{label}", steps.find((s) => s.key === nextStep)?.label || "")} →
               </button>
             )}
           </>
@@ -947,17 +951,17 @@ export default function TournamentCreate() {
           <>
             {/* Summary */}
             <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-5`}>
-              <h2 className={`font-semibold ${theme.textPrimary} mb-3`}>Zusammenfassung</h2>
+              <h2 className={`font-semibold ${theme.textPrimary} mb-3`}>{t.tournament_summary}</h2>
               <div className={`text-sm ${theme.textSecondary} space-y-1.5`}>
-                <div><span className={`font-medium ${theme.textPrimary}`}>Name:</span> {name || "—"}</div>
-                <div><span className={`font-medium ${theme.textPrimary}`}>Modus:</span> {MODE_LABELS[mode]} · {FORMAT_LABELS[format]}</div>
-                <div><span className={`font-medium ${theme.textPrimary}`}>Regeln:</span> Best of {setsToWin * 2 - 1} · {pointsPerSet} Punkte · {courts} {courts === 1 ? "Feld" : "Felder"}</div>
-                <div><span className={`font-medium ${theme.textPrimary}`}>Spieler:</span> {selectedPlayerIds.size} ausgewaehlt {selectedPlayerIds.size < minPlayers && <span className="text-orange-500">(mind. {minPlayers})</span>}</div>
+                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_name}</span> {name || "—"}</div>
+                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_mode}</span> {({singles: t.mode_singles, doubles: t.mode_doubles, mixed: t.mode_mixed} as Record<string, string>)[mode]} · {({round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko} as Record<string, string>)[format]}</div>
+                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_rules}</span> Best of {setsToWin * 2 - 1} · {pointsPerSet} {t.common_points} · {courts} {courts === 1 ? t.common_field : t.common_fields}</div>
+                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_players}</span> {t.common_selected.replace("{count}", String(selectedPlayerIds.size))} {selectedPlayerIds.size < minPlayers && <span className="text-orange-500">{t.tournament_min_players.replace("{count}", String(minPlayers))}</span>}</div>
                 {needsTeamPairing && (
-                  <div><span className={`font-medium ${theme.textPrimary}`}>Teams:</span> {manualTeams.length} gebildet {poolPlayers.length > 1 && <span className="text-orange-500">({poolPlayers.length} offen)</span>}</div>
+                  <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_teams}</span> {manualTeams.length} {poolPlayers.length > 1 && <span className="text-orange-500">{t.tournament_teams_open.replace("{count}", String(poolPlayers.length))}</span>}</div>
                 )}
                 {(Number(entryFeeSingle) > 0 || Number(entryFeeDouble) > 0) && (
-                  <div><span className={`font-medium ${theme.textPrimary}`}>Startgeld:</span> Einzel {entryFeeSingle} EUR · Doppel {entryFeeDouble} EUR</div>
+                  <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_entry_fee}</span> {t.tournament_entry_fee_single} {entryFeeSingle} EUR · {t.tournament_entry_fee_double} {entryFeeDouble} EUR</div>
                 )}
               </div>
             </div>
@@ -968,10 +972,10 @@ export default function TournamentCreate() {
               disabled={selectedPlayerIds.size < minPlayers}
               className={`w-full ${theme.primaryBg} text-white px-5 py-3.5 rounded-2xl ${theme.primaryHoverBg} shadow-sm hover:shadow-lg transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none font-semibold text-base`}
             >
-              {isEditMode ? "💾 Aenderungen speichern" : "🏆 Turnier erstellen"}
+              {isEditMode ? `💾 ${t.tournament_save_changes}` : `🏆 ${t.tournament_create_button}`}
               {selectedPlayerIds.size < minPlayers && (
                 <span className="text-sm font-normal ml-2 opacity-70">
-                  (mind. {minPlayers} Spieler)
+                  {t.tournament_min_players.replace("{count}", String(minPlayers))}
                 </span>
               )}
             </button>

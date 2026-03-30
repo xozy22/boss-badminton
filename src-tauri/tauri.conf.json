@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Turnierplaner",
-  "version": "0.9.9",
+  "productName": "BOSS",
+  "version": "1.0.0",
   "identifier": "com.badminton.turnierplaner",
   "build": {
     "frontendDist": "../dist",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Badminton Turnierplaner",
+        "title": "BOSS - Badminton Operating and Scheduling System",
         "width": 1200,
         "height": 800,
         "resizable": true,

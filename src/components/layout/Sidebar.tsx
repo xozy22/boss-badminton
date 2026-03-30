@@ -1,20 +1,15 @@
 import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { useTheme } from "../../lib/ThemeContext";
+import { useT } from "../../lib/I18nContext";
 import { getCustomLogo } from "../../pages/Settings";
 import { getAppSetting } from "../../lib/db";
 
 const COLLAPSED_KEY = "turnierplaner_sidebar_collapsed";
 
-const links = [
-  { to: "/", label: "Start", icon: "🏠" },
-  { to: "/sportstaetten", label: "Sportstaetten", icon: "🏟️" },
-  { to: "/players", label: "Spieler", icon: "👥" },
-  { to: "/tournaments", label: "Turniere", icon: "🏆" },
-];
-
 export default function Sidebar() {
   const { theme } = useTheme();
+  const { t } = useT();
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem(COLLAPSED_KEY) === "true"; } catch { return false; }
   });
@@ -40,6 +35,13 @@ export default function Sidebar() {
     localStorage.setItem(COLLAPSED_KEY, String(next));
   };
 
+  const links = [
+    { to: "/", label: t.nav_home, icon: "🏠" },
+    { to: "/sportstaetten", label: t.nav_venues, icon: "🏟️" },
+    { to: "/players", label: t.nav_players, icon: "👥" },
+    { to: "/tournaments", label: t.nav_tournaments, icon: "🏆" },
+  ];
+
   return (
     <aside
       className={`${collapsed ? "w-16" : "w-60"} ${theme.sidebarBg} text-white min-h-screen flex flex-col shrink-0 transition-all duration-200`}
@@ -55,10 +57,10 @@ export default function Sidebar() {
             <img src={customLogo} alt="Logo" className="w-14 h-14 object-contain shrink-0" />
             <div>
               <div className="text-base font-bold tracking-tight text-white">
-                Badminton
+                BOSS
               </div>
-              <div className={`text-xs font-medium ${theme.sidebarAccent} tracking-wide uppercase`}>
-                Turnierplaner
+              <div className={`text-[8px] font-medium ${theme.sidebarAccent} tracking-wide uppercase leading-tight`}>
+                Badminton Operating<br/>and Scheduling System
               </div>
             </div>
           </div>
@@ -94,7 +96,7 @@ export default function Sidebar() {
       <div className={`p-2 border-t ${theme.sidebarBorder} space-y-1`}>
         <NavLink
           to="/settings"
-          title={collapsed ? "Einstellungen" : undefined}
+          title={collapsed ? t.nav_settings : undefined}
           className={({ isActive }) =>
             `flex items-center ${collapsed ? "justify-center px-2" : "gap-3 px-4"} py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
               isActive
@@ -104,19 +106,19 @@ export default function Sidebar() {
           }
         >
           <span className={collapsed ? "text-xl" : "text-lg"}>⚙️</span>
-          {!collapsed && "Einstellungen"}
+          {!collapsed && t.nav_settings}
         </NavLink>
 
         {/* Collapse toggle */}
         <button
           onClick={toggle}
           className={`w-full flex items-center ${collapsed ? "justify-center px-2" : "gap-3 px-4"} py-2 rounded-lg text-xs transition-all duration-200 ${theme.sidebarText} ${theme.sidebarHoverBg} hover:text-white`}
-          title={collapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
+          title={collapsed ? t.nav_expand_sidebar : t.nav_collapse_sidebar}
         >
           <span className={`transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}>
             «
           </span>
-          {!collapsed && <span>Einklappen</span>}
+          {!collapsed && <span>{t.nav_collapse}</span>}
         </button>
 
         {/* Version */}

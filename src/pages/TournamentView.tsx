@@ -71,7 +71,8 @@ import type {
   TournamentFormat,
   TournamentPlayerInfo,
 } from "../lib/types";
-import { MODE_LABELS, FORMAT_LABELS, STATUS_LABELS, parseHallConfig } from "../lib/types";
+import { parseHallConfig } from "../lib/types";
+import { useT } from "../lib/I18nContext";
 
 const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
   singles: ["round_robin", "elimination", "group_ko"],
@@ -101,6 +102,7 @@ function EditTournamentModal({
     entryFeeDouble: number;
   }) => void;
 }) {
+  const { t } = useT();
   const [name, setName] = useState(tournament.name);
   const [mode, setMode] = useState<TournamentMode>(tournament.mode);
   const [format, setFormat] = useState<TournamentFormat>(tournament.format);
@@ -126,7 +128,7 @@ function EditTournamentModal({
       <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-lg p-6 border ${theme.cardBorder}`}>
         <div className="flex justify-between items-center mb-5">
           <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
-            ✏️ Turnier bearbeiten
+            ✏️ {t.edit_tournament_title}
           </h3>
           <button
             onClick={onClose}
@@ -138,7 +140,7 @@ function EditTournamentModal({
 
         <div className="space-y-4">
           <div>
-            <label className={labelClass}>Turniername</label>
+            <label className={labelClass}>{t.tournament_name}</label>
             <input
               type="text"
               value={name}
@@ -149,41 +151,42 @@ function EditTournamentModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>Modus</label>
+              <label className={labelClass}>{t.tournament_mode}</label>
               <select value={mode} onChange={(e) => setMode(e.target.value as TournamentMode)} className={inputClass}>
-                {Object.entries(MODE_LABELS).map(([k, v]) => (
+                {Object.entries({ singles: t.mode_singles, doubles: t.mode_doubles, mixed: t.mode_mixed }).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Format</label>
+              <label className={labelClass}>{t.tournament_format}</label>
               <select value={format} onChange={(e) => setFormat(e.target.value as TournamentFormat)} className={inputClass}>
-                {VALID_FORMATS[mode].map((f) => (
-                  <option key={f} value={f}>{FORMAT_LABELS[f]}</option>
-                ))}
+                {VALID_FORMATS[mode].map((f) => {
+                  const fmtLabels: Record<string, string> = { round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko };
+                  return <option key={f} value={f}>{fmtLabels[f]}</option>;
+                })}
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className={labelClass}>Gewinnsaetze</label>
+              <label className={labelClass}>{t.edit_tournament_win_sets}</label>
               <select value={setsToWin} onChange={(e) => setSetsToWin(Number(e.target.value))} className={inputClass}>
-                <option value={1}>Best of 1</option>
-                <option value={2}>Best of 3</option>
-                <option value={3}>Best of 5</option>
+                <option value={1}>{t.best_of_1}</option>
+                <option value={2}>{t.best_of_3}</option>
+                <option value={3}>{t.best_of_5}</option>
               </select>
             </div>
             <div>
-              <label className={labelClass}>Punkte/Satz</label>
+              <label className={labelClass}>{t.edit_tournament_points_set}</label>
               <input type="number" value={pointsPerSet} onChange={(e) => setPointsPerSet(Number(e.target.value))} className={inputClass} min={1} />
             </div>
             <div>
-              <label className={labelClass}>Spielfelder</label>
+              <label className={labelClass}>{t.edit_tournament_courts_label}</label>
               <select value={courts} onChange={(e) => setCourts(Number(e.target.value))} className={inputClass}>
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                  <option key={n} value={n}>{n} {n === 1 ? "Feld" : "Felder"}</option>
+                  <option key={n} value={n}>{n} {n === 1 ? t.common_field : t.common_fields}</option>
                 ))}
               </select>
             </div>
@@ -192,18 +195,18 @@ function EditTournamentModal({
           {format === "group_ko" && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>Anzahl Gruppen</label>
+                <label className={labelClass}>{t.edit_tournament_groups_count}</label>
                 <select value={numGroups} onChange={(e) => setNumGroups(Number(e.target.value))} className={inputClass}>
                   {[2, 3, 4, 5, 6, 7, 8].map((n) => (
-                    <option key={n} value={n}>{n} Gruppen</option>
+                    <option key={n} value={n}>{t.groups_count.replace("{count}", String(n))}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className={labelClass}>Qualifikanten/Gruppe</label>
+                <label className={labelClass}>{t.edit_tournament_qualify_group}</label>
                 <select value={qualifyPerGroup} onChange={(e) => setQualifyPerGroup(Number(e.target.value))} className={inputClass}>
                   {[1, 2, 3, 4].map((n) => (
-                    <option key={n} value={n}>Top {n}</option>
+                    <option key={n} value={n}>{t.top_n.replace("{n}", String(n))}</option>
                   ))}
                 </select>
               </div>
@@ -212,11 +215,11 @@ function EditTournamentModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>Startgeld Einzel (EUR)</label>
+              <label className={labelClass}>{t.edit_tournament_fee_single}</label>
               <input type="number" value={entryFeeSingle} onChange={(e) => setEntryFeeSingle(e.target.value)} className={inputClass} min={0} step="0.5" />
             </div>
             <div>
-              <label className={labelClass}>Startgeld Doppel (EUR)</label>
+              <label className={labelClass}>{t.edit_tournament_fee_double}</label>
               <input type="number" value={entryFeeDouble} onChange={(e) => setEntryFeeDouble(e.target.value)} className={inputClass} min={0} step="0.5" />
             </div>
           </div>
@@ -227,13 +230,13 @@ function EditTournamentModal({
             onClick={onClose}
             className={`flex-1 ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
           >
-            Abbrechen
+            {t.common_cancel}
           </button>
           <button
             onClick={() => onSave({ name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, entryFeeSingle: Number(entryFeeSingle) || 0, entryFeeDouble: Number(entryFeeDouble) || 0 })}
             className={`flex-1 ${theme.primaryBg} text-white px-4 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm transition-all text-sm font-medium`}
           >
-            Speichern
+            {t.common_save}
           </button>
         </div>
       </div>
@@ -243,6 +246,7 @@ function EditTournamentModal({
 
 export default function TournamentView() {
   const { theme } = useTheme();
+  const { t } = useT();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -287,8 +291,8 @@ export default function TournamentView() {
   const tournamentId = Number(id);
 
   const loadAll = useCallback(async () => {
-    const t = await getTournament(tournamentId);
-    setTournament(t);
+    const td = await getTournament(tournamentId);
+    setTournament(td);
 
     const ap = await getPlayers();
     setAllPlayers(ap);
@@ -328,7 +332,7 @@ export default function TournamentView() {
 
     if (r.length > 0) {
       // Bei group_ko: standardmaessig "Alle Gruppen" anzeigen
-      if (t.format === "group_ko" && r.some((rr) => rr.phase === "group")) {
+      if (td.format === "group_ko" && r.some((rr) => rr.phase === "group")) {
         setShowAllGroups(true);
       } else {
         setActiveRound((prev) => prev ?? r[0].id);
@@ -881,7 +885,7 @@ export default function TournamentView() {
     return false;
   })();
 
-  if (!tournament) return <div>Laden...</div>;
+  if (!tournament) return <div>{t.common_loading}</div>;
 
   const handleArchive = async () => {
     await updateTournamentStatus(tournamentId, "archived");
@@ -907,10 +911,10 @@ export default function TournamentView() {
           </h1>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             <span className={`text-xs font-medium ${theme.cardBg} ${theme.textSecondary} border ${theme.cardBorder} px-2.5 py-1 rounded-full`}>
-              {MODE_LABELS[tournament.mode]}
+              {({singles: t.mode_singles, doubles: t.mode_doubles, mixed: t.mode_mixed} as Record<string, string>)[tournament.mode]}
             </span>
             <span className={`text-xs font-medium ${theme.cardBg} ${theme.textSecondary} border ${theme.cardBorder} px-2.5 py-1 rounded-full`}>
-              {FORMAT_LABELS[tournament.format]}
+              {({round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko} as Record<string, string>)[tournament.format]}
             </span>
             <span className={`text-xs font-medium ${theme.cardBg} ${theme.textSecondary} border ${theme.cardBorder} px-2.5 py-1 rounded-full`}>
               Best of {tournament.sets_to_win * 2 - 1}
@@ -920,7 +924,7 @@ export default function TournamentView() {
             </span>
             {tournament.courts > 1 && (
               <span className="text-xs font-medium bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full">
-                {tournament.courts} Felder
+                {tournament.courts} {t.common_fields}
               </span>
             )}
             {isGroupKo && (
@@ -929,13 +933,13 @@ export default function TournamentView() {
                   ? "bg-violet-100 text-violet-700"
                   : `${theme.activeBadgeBg} ${theme.activeBadgeText}`
               }`}>
-                {tournament.current_phase === "ko" ? "KO-Phase" : `${tournament.num_groups} Gruppen`}
+                {tournament.current_phase === "ko" ? t.tournament_view_ko_phase : t.tournament_view_groups_label.replace("{count}", String(tournament.num_groups))}
               </span>
             )}
             <span
               className={`text-xs font-medium px-2.5 py-1 rounded-full ${statusStyle}`}
             >
-              {STATUS_LABELS[tournament.status]}
+              {({draft: t.status_draft, active: t.status_active, completed: t.status_completed, archived: t.status_archived} as Record<string, string>)[tournament.status]}
             </span>
           </div>
         </div>
@@ -946,25 +950,25 @@ export default function TournamentView() {
                 onClick={() => navigate(`/tournaments/${tournament.id}/edit`)}
                 className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl ${theme.cardHoverBorder} transition-all text-sm font-medium`}
               >
-                ✏️ Bearbeiten
+                ✏️ {t.tournament_view_edit}
               </button>
               <button
                 onClick={() => setShowTemplateExport(true)}
                 className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl ${theme.cardHoverBorder} transition-all text-sm font-medium`}
               >
-                📋 Vorlage
+                📋 {t.tournament_view_template}
               </button>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:border-rose-300 hover:text-rose-600 transition-all text-sm font-medium`}
               >
-                🗑️ Loeschen
+                🗑️ {t.tournament_view_delete}
               </button>
               <button
                 onClick={handleStartTournament}
                 className={`${theme.primaryBg} ${theme.primaryText} px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium`}
               >
-                🚀 Turnier starten
+                🚀 {t.tournament_view_start}
               </button>
             </>
           )}
@@ -973,7 +977,7 @@ export default function TournamentView() {
               onClick={generateNextRound}
               className="bg-amber-500 text-white px-5 py-2.5 rounded-xl hover:bg-amber-600 shadow-sm hover:shadow-md transition-all text-sm font-medium"
             >
-              🎲 Naechste Runde
+              🎲 {t.tournament_view_next_round}
             </button>
           )}
           {canStartKo && (
@@ -981,7 +985,7 @@ export default function TournamentView() {
               onClick={startKoPhase}
               className="bg-violet-600 text-white px-5 py-2.5 rounded-xl hover:bg-violet-700 shadow-sm hover:shadow-md transition-all text-sm font-medium"
             >
-              🏆 KO-Phase starten
+              🏆 {t.tournament_view_start_ko}
             </button>
           )}
           {needsNextKoRound && tournament.status === "active" && (
@@ -989,21 +993,21 @@ export default function TournamentView() {
               onClick={generateNextKoRound}
               className="bg-violet-600 text-white px-5 py-2.5 rounded-xl hover:bg-violet-700 shadow-sm hover:shadow-md transition-all text-sm font-medium"
             >
-              ➡️ Naechste KO-Runde
+              ➡️ {t.tournament_view_next_ko_round}
             </button>
           )}
           {tournament.status === "active" && (
             <button
               onClick={handleCompleteTournament}
               disabled={hasOpenMatches}
-              title={hasOpenMatches ? "Es gibt noch offene Spiele" : "Turnier abschliessen"}
+              title={hasOpenMatches ? t.tournament_view_has_open_matches : t.tournament_view_end}
               className={`px-4 py-2.5 rounded-xl transition-all text-sm font-medium ${
                 hasOpenMatches
                   ? `${theme.cardBg} border ${theme.cardBorder} ${theme.textMuted} cursor-not-allowed opacity-50`
                   : `${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} hover:border-rose-300 hover:text-rose-600`
               }`}
             >
-              Turnier beenden
+              {t.tournament_view_end}
             </button>
           )}
           {tournament.status === "completed" && (
@@ -1011,7 +1015,7 @@ export default function TournamentView() {
               onClick={handleArchive}
               className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:border-violet-300 hover:text-violet-600 transition-all text-sm font-medium`}
             >
-              📦 Archivieren
+              📦 {t.tournament_view_archive}
             </button>
           )}
           {rounds.length > 0 && (
@@ -1019,7 +1023,7 @@ export default function TournamentView() {
               onClick={() => setShowPrint(true)}
               className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl ${theme.cardHoverBorder} transition-all text-sm font-medium`}
             >
-              🖨️ Drucken
+              🖨️ {t.tournament_view_print}
             </button>
           )}
           {tournament.status === "active" && (
@@ -1030,7 +1034,7 @@ export default function TournamentView() {
                     const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
                     const tvWin = new WebviewWindow(`tv-${tournamentId}`, {
                       url: `/tv/${tournamentId}`,
-                      title: `TV-Modus: ${tournament.name}`,
+                      title: `${t.tournament_view_tv_mode}: ${tournament.name}`,
                       width: 1920,
                       height: 1080,
                       fullscreen: false,
@@ -1051,7 +1055,7 @@ export default function TournamentView() {
               }}
               className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl ${theme.cardHoverBorder} transition-all text-sm font-medium`}
             >
-              📺 TV-Modus
+              📺 {t.tournament_view_tv_mode}
             </button>
           )}
         </div>
@@ -1135,10 +1139,10 @@ export default function TournamentView() {
         <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-12 text-center mb-6`}>
           <div className="text-4xl mb-3">🏸</div>
           <div className="text-gray-400">
-            Turnier noch nicht gestartet.
+            {t.tournament_view_not_started}
           </div>
           <div className="text-gray-400 text-sm">
-            Klicke "Turnier starten" um die Auslosung zu beginnen.
+            {t.tournament_view_not_started_hint}
           </div>
         </div>
       )}
@@ -1149,11 +1153,11 @@ export default function TournamentView() {
           {(() => {
             const hasBracket = koRoundsForBracket.length > 0 && (isElimination || (isGroupKo && tournament.current_phase === "ko"));
             const viewTabs = [
-              { key: "spiele" as const, label: "Spiele", icon: "🏸" },
-              ...(isGroupKo && groupRounds.length > 0 ? [{ key: "gruppen" as const, label: "Gruppentabellen", icon: "📋" }] : []),
-              ...(hasBracket ? [{ key: "bracket" as const, label: "Bracket", icon: "🏆" }] : []),
-              ...(!isGroupKo || koRounds.length > 0 ? [{ key: "rangliste" as const, label: "Rangliste", icon: "📊" }] : []),
-              { key: "verwaltung" as const, label: "Verwaltung", icon: "👥" },
+              { key: "spiele" as const, label: t.tournament_view_tab_matches, icon: "🏸" },
+              ...(isGroupKo && groupRounds.length > 0 ? [{ key: "gruppen" as const, label: t.tournament_view_tab_groups, icon: "📋" }] : []),
+              ...(hasBracket ? [{ key: "bracket" as const, label: t.tournament_view_tab_bracket, icon: "🏆" }] : []),
+              ...(!isGroupKo || koRounds.length > 0 ? [{ key: "rangliste" as const, label: t.tournament_view_tab_standings, icon: "📊" }] : []),
+              { key: "verwaltung" as const, label: t.tournament_view_tab_management, icon: "👥" },
             ];
             return viewTabs;
           })().map((tab) => (
@@ -1197,7 +1201,7 @@ export default function TournamentView() {
                             : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`
                         }`}
                       >
-                        Alle Gruppen
+                        {t.tournament_view_all_groups}
                       </button>
                     </div>
                     {Array.from({ length: numGroups }, (_, g) => g + 1).map((groupNum) => {
@@ -1255,7 +1259,7 @@ export default function TournamentView() {
               {!isGroupKo && (
                 <div className="flex gap-2 flex-wrap">
               {rounds.map((r) => {
-                const label = `Runde ${r.round_number}`;
+                const label = t.tournament_view_round_label.replace("{n}", String(r.round_number));
                 const colorClass = activeRound === r.id
                   ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
                   : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`;
@@ -1325,7 +1329,7 @@ export default function TournamentView() {
                     <>
                       {onCourt.length > 0 && (
                         <div className={`text-xs font-bold ${theme.textMuted} uppercase tracking-wider mb-2`}>
-                          Auf dem Feld ({onCourt.length})
+                          {t.tournament_view_on_court.replace("{count}", String(onCourt.length))}
                         </div>
                       )}
                       {onCourt.map((match) => (
@@ -1466,6 +1470,7 @@ function CompletedMatchesSection({
   hasOtherMatches: boolean;
   editingMatchIds: Set<number>;
 }) {
+  const { t } = useT();
   const [expanded, setExpanded] = useState(false);
 
   const teamLabel = (m: Match) => {
@@ -1487,7 +1492,7 @@ function CompletedMatchesSection({
         <span className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}>
           ▾
         </span>
-        Beendet ({matches.length})
+        {t.tournament_view_completed_matches.replace("{count}", String(matches.length))}
       </button>
 
       {/* Editing matches: always show as full MatchCard */}
@@ -1542,7 +1547,7 @@ function CompletedMatchesSection({
                     }`}>
                       {t1}
                     </span>
-                    <span className={`${theme.textMuted} text-xs shrink-0`}>vs</span>
+                    <span className={`${theme.textMuted} text-xs shrink-0`}>{t.common_vs}</span>
                     <span className={`font-medium truncate ${
                       m.winner_team === 2 ? theme.activeBadgeText : theme.textSecondary
                     }`}>
@@ -1561,7 +1566,7 @@ function CompletedMatchesSection({
                         onClick={() => onReset(m.id)}
                         className="text-xs text-amber-500 hover:text-amber-700 transition-colors"
                       >
-                        Bearbeiten
+                        {t.tournament_view_edit_results}
                       </button>
                     )}
                   </div>
@@ -1636,6 +1641,7 @@ function MatchCard({
   isActive: boolean;
   theme: ThemeColors;
 }) {
+  const { t } = useT();
   const maxSets = setsToWin * 2 - 1;
   const maxScore = getMaxScore(pointsPerSet);
   const team1Label = match.team1_p2
@@ -1695,21 +1701,21 @@ function MatchCard({
                     onCourtChange(match.id, e.target.value ? Number(e.target.value) : null)
                   }
                   className="text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-2 py-1 outline-none cursor-pointer hover:bg-amber-100 transition-colors"
-                  title="Feld zuweisen"
+                  title={t.court_choose_court}
                 >
-                  <option value="">Feld?</option>
+                  <option value="">{t.tournament_view_court_question}</option>
                   {Array.from({ length: courts }, (_, i) => i + 1).map((c) => {
                     const busy = occupiedCourts.has(c) && match.court !== c;
                     return (
                       <option key={c} value={c} disabled={busy}>
-                        Feld {c}{busy ? " (belegt)" : ""}
+                        {t.common_field} {c}{busy ? ` (${t.common_occupied})` : ""}
                       </option>
                     );
                   })}
                 </select>
               ) : match.court ? (
                 <span className="text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-lg">
-                  Feld {match.court}
+                  {t.common_field} {match.court}
                 </span>
               ) : null}
               {match.court && (
@@ -1728,7 +1734,7 @@ function MatchCard({
             >
               {team1Label}
             </span>
-            <span className="text-gray-300 mx-3 font-light">vs</span>
+            <span className="text-gray-300 mx-3 font-light">{t.common_vs}</span>
             <span
               className={`font-semibold ${
                 match.winner_team === 2 ? "text-emerald-600" : theme.textPrimary
@@ -1746,16 +1752,16 @@ function MatchCard({
           )}
           {match.status === "completed" && (
             <span className={`text-xs font-medium ${theme.activeBadgeBg} ${theme.activeBadgeText} px-2.5 py-1 rounded-full`}>
-              Beendet
+              {t.tournament_view_match_completed}
             </span>
           )}
           {isActive && match.status === "completed" && (
             <button
               onClick={() => onReset(match.id)}
               className="text-xs text-amber-500 hover:text-amber-700 font-medium transition-colors"
-              title="Ergebnisse bearbeiten"
+              title={t.tournament_view_edit_results}
             >
-              Bearbeiten
+              {t.tournament_view_edit_results}
             </button>
           )}
           {/* Announce to TV */}
@@ -1763,7 +1769,7 @@ function MatchCard({
             <button
               onClick={() => onAnnounce(match.court!, team1Label, team2Label)}
               className="text-xs text-gray-400 hover:text-amber-600 font-medium transition-colors"
-              title="Spieler am TV/Beamer aufrufen"
+              title={t.tournament_view_announce_title}
             >
               📢
             </button>
@@ -1774,7 +1780,7 @@ function MatchCard({
       {/* Not started hint */}
       {notStarted && (
         <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-3 inline-block">
-          ⏳ Bitte zuerst einem Feld zuweisen
+          ⏳ {t.tournament_view_assign_court_first}
         </div>
       )}
 
@@ -1829,7 +1835,7 @@ function MatchCard({
           return (
             <div key={setNum} className="text-center">
               <div className="text-[11px] font-medium text-gray-400 mb-1.5 uppercase tracking-wide">
-                Satz {setNum}
+                {t.common_set} {setNum}
                 {complete && (
                   <span className="text-emerald-500 ml-1">✓</span>
                 )}

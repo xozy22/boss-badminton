@@ -1,5 +1,6 @@
 import type { ThemeColors } from "../../lib/theme";
 import type { Player } from "../../lib/types";
+import { useT } from "../../lib/I18nContext";
 
 interface SeedingStepProps {
   seedOrder: number[];
@@ -30,16 +31,16 @@ export default function SeedingStep({
   onDragOver,
   onDragLeave,
 }: SeedingStepProps) {
+  const { t } = useT();
   const filteredSeedOrder = seedOrder.filter((pid) => selectedPlayerIds.has(pid));
 
   return (
     <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-5`}>
       <h2 className={`font-semibold ${theme.textPrimary} mb-3`}>
-        🎯 Setzliste
+        🎯 {t.seeding_title}
       </h2>
       <p className={`text-xs ${theme.textMuted} mb-3`}>
-        Ordne die Spieler nach Staerke per Drag &amp; Drop oder mit den Pfeilen
-        (Platz 1 = staerkster Spieler).
+        {t.seeding_description}
       </p>
       <div className={`rounded-xl border ${theme.cardBorder} overflow-hidden`}>
         {filteredSeedOrder.map((pid, idx) => {
@@ -84,7 +85,7 @@ export default function SeedingStep({
                     : "bg-pink-50 text-pink-500"
                 }`}
               >
-                {p.gender === "m" ? "H" : "D"}
+                {p.gender === "m" ? t.common_gender_male_short : t.common_gender_female_short}
               </span>
               <div className="flex flex-col gap-0.5" draggable={false}>
                 <button
@@ -92,7 +93,7 @@ export default function SeedingStep({
                   onClick={() => onMoveSeed(idx, -1)}
                   disabled={idx === 0}
                   className="text-gray-400 hover:text-emerald-600 disabled:opacity-20 disabled:cursor-default text-xs leading-none"
-                  title="Nach oben"
+                  title={t.seeding_move_up}
                 >
                   ▲
                 </button>
@@ -101,7 +102,7 @@ export default function SeedingStep({
                   onClick={() => onMoveSeed(idx, 1)}
                   disabled={idx === filteredSeedOrder.length - 1}
                   className="text-gray-400 hover:text-emerald-600 disabled:opacity-20 disabled:cursor-default text-xs leading-none"
-                  title="Nach unten"
+                  title={t.seeding_move_down}
                 >
                   ▼
                 </button>

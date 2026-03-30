@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import { useT } from "../../lib/I18nContext";
 import type {
   Tournament,
   Player,
@@ -44,6 +45,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
     ref
   ) => {
     const c: PrintColors = PRINT_COLORS[themeId];
+    const { t } = useT();
 
     const playerName = (id: number | null): string => {
       if (!id) return "-";
@@ -81,8 +83,8 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
           <div style={{ fontSize: 10, color: "#999", textAlign: "right" }}>
             {now}
             <br />
-            {players.length} Teilnehmer &middot; {rounds.length} Runden
-            {tournament.courts > 1 && <><br />{tournament.courts} Felder</>}
+            {t.print_participants.replace("{count}", String(players.length))} &middot; {rounds.length} {t.common_round}
+            {tournament.courts > 1 && <><br />{tournament.courts} {t.common_fields}</>}
           </div>
         </div>
       </div>
@@ -108,7 +110,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
           </td>
           {tournament.courts > 1 && (
             <td style={{ padding: "6px 8px", fontSize: 10, fontWeight: 700, color: "#b45309", textAlign: "center", width: 50 }}>
-              {m.court ? `Feld ${m.court}` : ""}
+              {m.court ? t.court_field.replace("{n}", String(m.court)) : ""}
             </td>
           )}
           <td
@@ -176,10 +178,10 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
       const maxSets = tournament.sets_to_win * 2 - 1;
 
       const roundLabel = round.phase === "group" && round.group_number
-        ? `Gruppe ${round.group_number} - Runde ${rounds.filter((rr) => rr.phase === "group" && rr.group_number === round.group_number).indexOf(round) + 1}`
+        ? `${t.print_group.replace("{n}", String(round.group_number))} - ${t.print_round.replace("{n}", String(rounds.filter((rr) => rr.phase === "group" && rr.group_number === round.group_number).indexOf(round) + 1))}`
         : round.phase === "ko"
-        ? `KO-Runde ${rounds.filter((rr) => rr.phase === "ko").indexOf(round) + 1}`
-        : `Runde ${round.round_number}`;
+        ? t.print_ko_round.replace("{n}", String(rounds.filter((rr) => rr.phase === "ko").indexOf(round) + 1))
+        : t.print_round.replace("{n}", String(round.round_number));
 
       return (
         <div key={round.id} style={{ marginBottom: 20 }}>
@@ -198,18 +200,18 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
               <tr style={{ backgroundColor: c.accentLight, borderBottom: "2px solid #d1d5db" }}>
                 <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 10, fontWeight: 600 }}>#</th>
                 {tournament.courts > 1 && (
-                  <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 50 }}>Feld</th>
+                  <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 50 }}>{t.common_field}</th>
                 )}
-                <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 10, fontWeight: 600 }}>Team 1</th>
+                <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 10, fontWeight: 600 }}>{t.print_team1}</th>
                 <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, width: 30 }}></th>
-                <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 10, fontWeight: 600 }}>Team 2</th>
+                <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 10, fontWeight: 600 }}>{t.print_team2}</th>
                 {Array.from({ length: maxSets }, (_, i) => (
                   <th key={i} style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 60 }}>
-                    Satz {i + 1}
+                    {t.print_set_n.replace("{n}", String(i + 1))}
                   </th>
                 ))}
                 <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 50 }}>
-                  Saetze
+                  {t.print_sets_label}
                 </th>
               </tr>
             </thead>
@@ -224,7 +226,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
     const renderStandings = () => (
       <div style={{ marginBottom: 20 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 6, color: c.accent }}>
-          Rangliste
+          {t.print_standings_label}
         </h3>
         <table
           style={{
@@ -236,12 +238,12 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
         >
           <thead>
             <tr style={{ backgroundColor: c.accentLight, borderBottom: "2px solid #d1d5db" }}>
-              <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 40 }}>Platz</th>
-              <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 10, fontWeight: 600 }}>Spieler</th>
-              <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 50 }}>Siege</th>
-              <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 60 }}>Niederl.</th>
-              <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 70 }}>Saetze</th>
-              <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 80 }}>Punkte</th>
+              <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 40 }}>{t.print_rank}</th>
+              <th style={{ padding: "6px 8px", textAlign: "left", fontSize: 10, fontWeight: 600 }}>{t.standings_player}</th>
+              <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 50 }}>{t.standings_wins}</th>
+              <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 60 }}>{t.print_defeats}</th>
+              <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 70 }}>{t.print_sets_label}</th>
+              <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 10, fontWeight: 600, width: 80 }}>{t.common_points}</th>
             </tr>
           </thead>
           <tbody>
@@ -289,7 +291,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
       return (
         <div style={{ marginBottom: 20 }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: c.accent }}>
-            Gruppentabellen
+            {t.print_group_tables}
           </h3>
           {Array.from({ length: numGroups }, (_, g) => g + 1).map((groupNum) => {
             const gRounds = rounds.filter((r) => r.phase === "group" && r.group_number === groupNum);
@@ -313,16 +315,16 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
               return (
                 <div key={groupNum} style={{ marginBottom: 12 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
-                    Gruppe {groupNum} <span style={{ fontWeight: 400, color: "#999", fontSize: 10 }}>({teamStandings.length} Teams, Top {qualifyCount})</span>
+                    {t.print_group.replace("{n}", String(groupNum))} <span style={{ fontWeight: 400, color: "#999", fontSize: 10 }}>({teamStandings.length} Teams, Top {qualifyCount})</span>
                   </div>
                   <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #d1d5db", fontSize: 11, marginBottom: 4 }}>
                     <thead>
                       <tr style={{ backgroundColor: c.accentLight, borderBottom: "2px solid #d1d5db" }}>
                         <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 10, width: 30 }}>#</th>
-                        <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 10 }}>Team</th>
-                        <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 40 }}>S</th>
-                        <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 40 }}>N</th>
-                        <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 60 }}>Punkte</th>
+                        <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 10 }}>{t.groups_team}</th>
+                        <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 40 }}>{t.common_wins_abbr}</th>
+                        <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 40 }}>{t.common_losses_abbr}</th>
+                        <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 60 }}>{t.common_points}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -348,16 +350,16 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
             return (
               <div key={groupNum} style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
-                  Gruppe {groupNum} <span style={{ fontWeight: 400, color: "#999", fontSize: 10 }}>({gPlayers.length} Spieler, Top {qualifyCount})</span>
+                  {t.print_group.replace("{n}", String(groupNum))} <span style={{ fontWeight: 400, color: "#999", fontSize: 10 }}>({gPlayers.length} {t.groups_player}, Top {qualifyCount})</span>
                 </div>
                 <table style={{ width: "100%", borderCollapse: "collapse", border: "1px solid #d1d5db", fontSize: 11, marginBottom: 4 }}>
                   <thead>
                     <tr style={{ backgroundColor: c.accentLight, borderBottom: "2px solid #d1d5db" }}>
                       <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 10, width: 30 }}>#</th>
-                      <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 10 }}>Spieler</th>
-                      <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 40 }}>S</th>
-                      <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 40 }}>N</th>
-                      <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 60 }}>Punkte</th>
+                      <th style={{ padding: "4px 8px", textAlign: "left", fontSize: 10 }}>{t.groups_player}</th>
+                      <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 40 }}>{t.common_wins_abbr}</th>
+                      <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 40 }}>{t.common_losses_abbr}</th>
+                      <th style={{ padding: "4px 8px", textAlign: "center", fontSize: 10, width: 60 }}>{t.common_points}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -402,42 +404,42 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
       if (highlights.mostWins) {
         highlightItems.push({
           icon: "🏆",
-          label: "Meiste Siege",
-          value: `${highlights.mostWins.player.name} (${highlights.mostWins.wins} Siege)`,
+          label: t.print_most_wins,
+          value: `${highlights.mostWins.player.name} (${highlights.mostWins.wins} ${t.standings_wins})`,
         });
       }
       if (highlights.topScorer) {
         highlightItems.push({
           icon: "🎯",
-          label: "Meiste Punkte",
-          value: `${highlights.topScorer.player.name} (${highlights.topScorer.totalPoints} Punkte)`,
+          label: t.print_most_points,
+          value: `${highlights.topScorer.player.name} (${highlights.topScorer.totalPoints} ${t.common_points})`,
         });
       }
       if (highlights.closestMatch) {
         highlightItems.push({
           icon: "🔥",
-          label: "Knappstes Spiel",
+          label: t.print_closest_match,
           value: highlights.closestMatch.description,
         });
       }
       if (highlights.biggestWin) {
         highlightItems.push({
           icon: "💪",
-          label: "Deutlichster Sieg",
+          label: t.print_biggest_win,
           value: highlights.biggestWin.description,
         });
       }
       if (highlights.highestScoringMatch) {
         highlightItems.push({
           icon: "📈",
-          label: "Punktreichstes Spiel",
+          label: t.print_highest_scoring,
           value: highlights.highestScoringMatch.description,
         });
       }
       if (highlights.mostSetsMatch && tournament.sets_to_win > 1) {
         highlightItems.push({
           icon: "⏱️",
-          label: "Laengstes Spiel",
+          label: t.print_longest_match,
           value: highlights.mostSetsMatch.description,
         });
       }
@@ -445,7 +447,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
       return (
         <div style={{ marginBottom: 24 }}>
           <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: c.accent }}>
-            Highlights
+            {t.print_highlights}
           </h3>
           <div style={{
             display: "grid",
@@ -482,9 +484,9 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
             borderTop: "1px solid #e5e7eb",
             paddingTop: 8,
           }}>
-            <span>{highlights.completedMatches} von {highlights.totalMatches} Spielen abgeschlossen</span>
-            <span>{highlights.totalSets} Saetze gespielt</span>
-            <span>{highlights.totalPoints} Punkte gesamt</span>
+            <span>{t.print_matches_completed.replace("{completed}", String(highlights.completedMatches)).replace("{total}", String(highlights.totalMatches))}</span>
+            <span>{t.print_sets_played.replace("{count}", String(highlights.totalSets))}</span>
+            <span>{t.print_total_points.replace("{count}", String(highlights.totalPoints))}</span>
           </div>
         </div>
       );

@@ -1,5 +1,6 @@
 import type { ThemeColors } from "../../lib/theme";
 import type { Player, TournamentMode } from "../../lib/types";
+import { useT } from "../../lib/I18nContext";
 
 interface TeamPairingStepProps {
   mode: TournamentMode;
@@ -26,6 +27,7 @@ export default function TeamPairingStep({
   onRemoveTeam,
   onClearAll,
 }: TeamPairingStepProps) {
+  const { t } = useT();
   const firstPickGender = firstPick !== null ? players.find((pl) => pl.id === firstPick)?.gender : null;
   const isMixed = mode === "mixed";
   const poolMale = poolPlayers.filter((p) => p.gender === "m").sort((a, b) => a.name.localeCompare(b.name));
@@ -53,7 +55,7 @@ export default function TeamPairingStep({
           <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${
             p.gender === "m" ? "bg-blue-500/10 text-blue-500" : "bg-pink-500/10 text-pink-500"
           }`}>
-            {p.gender === "m" ? "H" : "D"}
+            {p.gender === "m" ? t.common_gender_male_short : t.common_gender_female_short}
           </span>
         )}
       </button>
@@ -64,11 +66,11 @@ export default function TeamPairingStep({
     <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-5`}>
       <div className="flex items-center justify-between mb-4">
         <h2 className={`font-semibold ${theme.textPrimary}`}>
-          🤝 Teams bilden
+          🤝 {t.teams_title}
           <span className={`ml-2 text-xs font-normal ${theme.textSecondary}`}>
             {manualTeams.length > 0
-              ? `${manualTeams.length} Teams · ${poolPlayers.length} offen`
-              : `${poolPlayers.length} Spieler verfuegbar`}
+              ? t.teams_count_info.replace("{teams}", String(manualTeams.length)).replace("{open}", String(poolPlayers.length))
+              : t.teams_players_available.replace("{count}", String(poolPlayers.length))}
           </span>
         </h2>
         <div className="flex gap-2">
@@ -77,7 +79,7 @@ export default function TeamPairingStep({
               onClick={onAutoAssign}
               className={`text-xs font-medium ${theme.activeBadgeText} ${theme.activeBadgeBg} px-3 py-1.5 rounded-lg transition-colors`}
             >
-              Restliche automatisch zuordnen
+              {t.teams_auto_assign}
             </button>
           )}
           {manualTeams.length > 0 && (
@@ -85,7 +87,7 @@ export default function TeamPairingStep({
               onClick={onClearAll}
               className={`text-xs ${theme.textMuted} hover:text-rose-600 transition-colors`}
             >
-              Alle aufloesen
+              {t.teams_clear_all}
             </button>
           )}
         </div>
@@ -95,13 +97,13 @@ export default function TeamPairingStep({
       {poolPlayers.length > 0 && (
         <div className="mb-4">
           <div className={`text-xs font-medium ${theme.textMuted} uppercase tracking-wide mb-2`}>
-            Verfuegbar ({poolPlayers.length}) {firstPick !== null && "— Waehle den Partner"}
+            {t.teams_available.replace("{count}", String(poolPlayers.length))} {firstPick !== null && `— ${t.teams_choose_partner}`}
           </div>
           {isMixed ? (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className={`text-[10px] font-bold uppercase tracking-wide mb-1.5 px-1 ${firstPickGender === "f" ? theme.textMuted + " opacity-40" : "text-pink-500"}`}>
-                  Damen ({poolFemale.length})
+                  {t.teams_women.replace("{count}", String(poolFemale.length))}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {poolFemale.map(renderPlayer)}
@@ -109,7 +111,7 @@ export default function TeamPairingStep({
               </div>
               <div>
                 <div className={`text-[10px] font-bold uppercase tracking-wide mb-1.5 px-1 ${firstPickGender === "m" ? theme.textMuted + " opacity-40" : "text-blue-500"}`}>
-                  Herren ({poolMale.length})
+                  {t.teams_men.replace("{count}", String(poolMale.length))}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {poolMale.map(renderPlayer)}
@@ -128,7 +130,7 @@ export default function TeamPairingStep({
       {manualTeams.length > 0 && (
         <div>
           <div className={`text-xs font-medium ${theme.textMuted} uppercase tracking-wide mb-2`}>
-            Teams ({manualTeams.length})
+            {t.teams_label.replace("{count}", String(manualTeams.length))}
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
             {manualTeams.map(([id1, id2], idx) => {
@@ -147,7 +149,7 @@ export default function TeamPairingStep({
                   <button
                     onClick={() => onRemoveTeam(idx)}
                     className="opacity-0 group-hover:opacity-100 text-xs text-rose-400 hover:text-rose-600 transition-all ml-2"
-                    title="Team aufloesen"
+                    title={t.teams_remove_title}
                   >
                     ✕
                   </button>
@@ -161,12 +163,12 @@ export default function TeamPairingStep({
       {/* Status */}
       {poolPlayers.length > 0 && poolPlayers.length < 2 && (
         <div className={`text-xs ${theme.textMuted} mt-3`}>
-          ⚠️ 1 Spieler uebrig - ungerade Anzahl. Spieler wird nicht zugeteilt.
+          ⚠️ {t.teams_player_leftover}
         </div>
       )}
       {poolPlayers.length === 0 && manualTeams.length > 0 && (
         <div className={`text-xs text-green-600 mt-3`}>
-          ✓ Alle Spieler sind Teams zugeteilt.
+          ✓ {t.teams_all_assigned}
         </div>
       )}
     </div>

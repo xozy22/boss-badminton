@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="public/logo.png" alt="Badminton Turnierplaner" width="300" />
+  <img src="public/logo.png" alt="BOSS - Badminton Operating and Scheduling System" width="300" />
 </p>
 
-<h1 align="center">Badminton Turnierplaner</h1>
+<h1 align="center">BOSS - Badminton Operating &amp; Scheduling System</h1>
 
 <p align="center">
-  Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turniere.<br/>
-  Gebaut mit <a href="https://tauri.app/">Tauri</a>, React und SQLite.
+  A desktop app for planning and running badminton tournaments.<br/>
+  Built with <a href="https://tauri.app/">Tauri</a>, React and SQLite. Available in English and German.
 </p>
 
 ## Screenshots
@@ -112,6 +112,11 @@
 - **Turnierbericht**: Druckbarer Bericht mit Highlights (knappstes Spiel, hoechster Sieg, meiste Punkte)
 - **Druckansicht**: Spielplan, aktuelle Runde, Rangliste oder kompletter Bericht
 
+### Language / Sprache
+- **Englisch** (Default) und **Deutsch** verfuegbar
+- Sprachauswahl in Einstellungen → Sprache
+- Sofortiger Wechsel, persistent gespeichert
+
 ### Design & Themes
 - **4 Farbdesigns**: Smaragd (Gruen), Saphir (Blau), Bernstein (Orange), Dunkel (Dark Mode)
 - Theme-Wechsel ueber Einstellungen → Design, wird sofort angewendet
@@ -119,7 +124,7 @@
 - **Schriftgroesse**: 7 Stufen (XXS bis XXL), persistent gespeichert
 - Theme wird persistent gespeichert
 - **Theme-konforme Druckansicht**: Druck-Report passt sich dem gewaehlten Farbschema an
-- **Standard-Logo**: Badminton Turnierplaner Logo in Sidebar (zentriert), TV-Modus, Favicon und App-Icon
+- **Standard-Logo**: BOSS Logo in Sidebar (zentriert), TV-Modus, Favicon und App-Icon
 - **Custom Vereinslogo**: Eigenes Logo hochladen mit Zuschnitt-Tool (1:1 Cropper)
   - Wird in der Sidebar (mit Text) und im TV-Modus angezeigt
   - Gespeichert in der SQLite-Datenbank (im Backup enthalten, wandert mit DB)

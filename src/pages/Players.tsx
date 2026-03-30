@@ -4,11 +4,13 @@ import * as XLSX from "xlsx";
 import type { Player, Gender } from "../lib/types";
 import ExcelImport from "../components/players/ExcelImport";
 import { useTheme } from "../lib/ThemeContext";
+import { useT } from "../lib/I18nContext";
 
 type GenderFilter = "all" | "m" | "f";
 
 export default function Players() {
   const { theme } = useTheme();
+  const { t } = useT();
   const [players, setPlayers] = useState<Player[]>([]);
   const [name, setName] = useState("");
   const [gender, setGender] = useState<Gender>("m");
@@ -122,7 +124,7 @@ export default function Players() {
   const handleExport = async () => {
     const data = players.map((p) => ({
       Name: p.name,
-      Geschlecht: p.gender === "m" ? "Herr" : "Dame",
+      Geschlecht: p.gender === "m" ? t.common_gender_male : t.common_gender_female,
       Alter: p.age ?? "",
       Verein: p.club ?? "",
     }));
@@ -167,10 +169,10 @@ export default function Players() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className={`text-2xl font-extrabold ${theme.textPrimary} tracking-tight`}>
-            Spielerverwaltung
+            {t.players_title}
           </h1>
           <p className={`text-sm ${theme.textSecondary} mt-0.5`}>
-            {players.length} Spieler registriert
+            {t.players_count.replace("{count}", String(players.length))}
           </p>
         </div>
         <div className="flex gap-2">
@@ -179,13 +181,13 @@ export default function Players() {
             disabled={players.length === 0}
             className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2 rounded-xl ${theme.cardHoverBorder} hover:shadow-sm transition-all text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed`}
           >
-            📤 Export
+            📤 {t.common_export}
           </button>
           <button
             onClick={() => setShowImport(true)}
             className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2 rounded-xl ${theme.cardHoverBorder} hover:shadow-sm transition-all text-sm font-medium`}
           >
-            📥 Import
+            📥 {t.common_import}
           </button>
         </div>
       </div>
@@ -196,11 +198,11 @@ export default function Players() {
 
       {/* Add Player */}
       <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-5 mb-6`}>
-        <h2 className={`font-semibold ${theme.textPrimary} mb-3`}>Neuer Spieler</h2>
+        <h2 className={`font-semibold ${theme.textPrimary} mb-3`}>{t.players_new_player}</h2>
         <div className="flex gap-3 items-end">
           <div className="flex-1">
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-              Name
+              {t.common_name}
             </label>
             <input
               type="text"
@@ -208,25 +210,25 @@ export default function Players() {
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-              placeholder="Name eingeben..."
+              placeholder={t.players_name_placeholder}
             />
           </div>
           <div>
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-              Geschlecht
+              {t.common_gender}
             </label>
             <select
               value={gender}
               onChange={(e) => setGender(e.target.value as Gender)}
               className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
             >
-              <option value="m">Herr</option>
-              <option value="f">Dame</option>
+              <option value="m">{t.common_gender_male}</option>
+              <option value="f">{t.common_gender_female}</option>
             </select>
           </div>
           <div>
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-              Alter
+              {t.common_age}
             </label>
             <input
               type="number"
@@ -240,7 +242,7 @@ export default function Players() {
           </div>
           <div className="flex-1">
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-              Verein
+              {t.common_club}
             </label>
             <input
               type="text"
@@ -248,14 +250,14 @@ export default function Players() {
               onChange={(e) => setClub(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-              placeholder="Vereinsname..."
+              placeholder={t.players_club_placeholder}
             />
           </div>
           <button
             onClick={handleAdd}
             className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium`}
           >
-            Hinzufuegen
+            {t.common_add}
           </button>
         </div>
       </div>
@@ -269,7 +271,7 @@ export default function Players() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Spieler suchen..."
+              placeholder={t.players_search_placeholder}
               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg pl-8 pr-3 py-1.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
             />
             <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${theme.textMuted} text-xs`}>🔍</span>
@@ -284,9 +286,9 @@ export default function Players() {
           {/* Gender Filter */}
           <div className={`flex rounded-lg border ${theme.inputBorder} overflow-hidden text-xs`}>
             {([
-              { value: "all" as GenderFilter, label: "Alle" },
-              { value: "m" as GenderFilter, label: "Herren" },
-              { value: "f" as GenderFilter, label: "Damen" },
+              { value: "all" as GenderFilter, label: t.players_filter_all },
+              { value: "m" as GenderFilter, label: t.players_filter_men },
+              { value: "f" as GenderFilter, label: t.players_filter_women },
             ]).map((opt) => (
               <button
                 key={opt.value}
@@ -306,19 +308,19 @@ export default function Players() {
           {someSelected && (
             <div className="flex items-center gap-2 ml-auto">
               <span className={`text-xs ${theme.textMuted}`}>
-                {selectedIds.size} ausgewaehlt
+                {t.common_selected.replace("{count}", String(selectedIds.size))}
               </span>
               <button
                 onClick={handleDeleteSelected}
                 className="bg-rose-500/10 text-rose-600 border border-rose-500/20 px-3 py-1.5 rounded-lg hover:bg-rose-500/20 transition-all text-xs font-medium"
               >
-                🗑 Ausgewaehlte loeschen
+                🗑 {t.players_delete_selected}
               </button>
               <button
                 onClick={() => setSelectedIds(new Set())}
                 className={`${theme.textMuted} hover:opacity-80 px-2 py-1.5 text-xs`}
               >
-                Auswahl aufheben
+                {t.players_clear_selection}
               </button>
             </div>
           )}
@@ -327,7 +329,7 @@ export default function Players() {
         {/* Info bar */}
         {(genderFilter !== "all" || search) && (
           <div className={`px-5 py-1.5 text-xs ${theme.textMuted} border-b ${theme.cardBorder}`}>
-            {filteredPlayers.length} von {players.length} Spielern angezeigt
+            {t.players_shown_of_total.replace("{shown}", String(filteredPlayers.length)).replace("{total}", String(players.length))}
           </div>
         )}
 
@@ -341,26 +343,26 @@ export default function Players() {
                   checked={allFilteredSelected}
                   onChange={toggleSelectAll}
                   className="rounded accent-emerald-600"
-                  title="Alle auswaehlen"
+                  title={t.players_select_all}
                 />
               </th>
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide align-middle`}>
                 #
               </th>
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                Name
+                {t.common_name}
               </th>
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                Geschlecht
+                {t.common_gender}
               </th>
               <th className={`text-center px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                Alter
+                {t.common_age}
               </th>
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                Verein
+                {t.common_club}
               </th>
               <th className={`text-right px-5 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                Aktionen
+                {t.common_actions}
               </th>
             </tr>
           </thead>
@@ -406,8 +408,8 @@ export default function Players() {
                         onChange={(e) => setEditGender(e.target.value as Gender)}
                         className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm`}
                       >
-                        <option value="m">Herr</option>
-                        <option value="f">Dame</option>
+                        <option value="m">{t.common_gender_male}</option>
+                        <option value="f">{t.common_gender_female}</option>
                       </select>
                     ) : (
                       <span
@@ -417,7 +419,7 @@ export default function Players() {
                             : "bg-pink-500/10 text-pink-500"
                         }`}
                       >
-                        {p.gender === "m" ? "Herr" : "Dame"}
+                        {p.gender === "m" ? t.common_gender_male : t.common_gender_female}
                       </span>
                     )}
                   </td>
@@ -442,7 +444,7 @@ export default function Players() {
                         value={editClub}
                         onChange={(e) => setEditClub(e.target.value)}
                         className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm w-full`}
-                        placeholder="Verein..."
+                        placeholder={t.players_club_placeholder}
                       />
                     ) : (
                       <span className="text-sm">{p.club ?? "-"}</span>
@@ -455,13 +457,13 @@ export default function Players() {
                           onClick={handleSave}
                           className={`${theme.activeBadgeText} text-sm font-medium`}
                         >
-                          Speichern
+                          {t.common_save}
                         </button>
                         <button
                           onClick={() => setEditingId(null)}
                           className={`${theme.textMuted} hover:opacity-80 text-sm`}
                         >
-                          Abbrechen
+                          {t.common_cancel}
                         </button>
                       </div>
                     ) : (
@@ -470,13 +472,13 @@ export default function Players() {
                           onClick={() => handleEdit(p)}
                           className={`${theme.textMuted} hover:${theme.activeBadgeText} text-sm transition-colors`}
                         >
-                          Bearbeiten
+                          {t.common_edit}
                         </button>
                         <button
                           onClick={() => handleDeleteSingle(p)}
                           className={`${theme.textMuted} hover:text-rose-600 text-sm transition-colors`}
                         >
-                          Loeschen
+                          {t.common_delete}
                         </button>
                       </div>
                     )}
@@ -488,8 +490,8 @@ export default function Players() {
               <tr>
                 <td colSpan={7} className={`px-5 py-12 text-center ${theme.textMuted}`}>
                   {players.length === 0
-                    ? "Noch keine Spieler vorhanden."
-                    : "Keine Spieler fuer diesen Filter gefunden."}
+                    ? t.players_none_yet
+                    : t.players_no_filter_results}
                 </td>
               </tr>
             )}
@@ -505,8 +507,8 @@ export default function Players() {
               <div className="text-4xl mb-3">⚠️</div>
               <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
                 {deleteTarget.ids.length === 1
-                  ? "Spieler loeschen?"
-                  : `${deleteTarget.ids.length} Spieler loeschen?`}
+                  ? t.players_delete_confirm_single
+                  : t.players_delete_confirm_multi.replace("{count}", String(deleteTarget.ids.length))}
               </h3>
               <div className={`text-sm ${theme.textSecondary} mt-3`}>
                 {deleteTarget.ids.length <= 5 ? (
@@ -525,12 +527,12 @@ export default function Players() {
                       ))}
                     </div>
                     <div className={theme.textMuted}>
-                      ... und {deleteTarget.ids.length - 3} weitere
+                      {t.common_and_more.replace("{count}", String(deleteTarget.ids.length - 3))}
                     </div>
                   </div>
                 )}
                 <p className={`mt-3 ${theme.textMuted} text-xs`}>
-                  Diese Aktion kann nicht rueckgaengig gemacht werden.
+                  {t.common_action_irreversible}
                 </p>
               </div>
             </div>
@@ -539,13 +541,13 @@ export default function Players() {
                 onClick={() => setDeleteTarget(null)}
                 className={`flex-1 ${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
               >
-                Abbrechen
+                {t.common_cancel}
               </button>
               <button
                 onClick={handleDeleteConfirm}
                 className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-all text-sm font-medium"
               >
-                {deleteTarget.ids.length === 1 ? "Loeschen" : `${deleteTarget.ids.length} Spieler loeschen`}
+                {deleteTarget.ids.length === 1 ? t.common_delete : t.players_delete_confirm_multi.replace("{count}", String(deleteTarget.ids.length))}
               </button>
             </div>
           </div>

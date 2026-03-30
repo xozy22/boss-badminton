@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { wipeAllPlayers, wipeAllTournaments, getAppSetting, setAppSetting, deleteAppSetting } from "../lib/db";
 import { useTheme } from "../lib/ThemeContext";
+import { useT } from "../lib/I18nContext";
+import type { Lang } from "../lib/I18nContext";
 import { THEMES, type ThemeId, FONT_SIZES, type FontSizeId } from "../lib/theme";
 import type { HallConfig } from "../lib/types";
 
@@ -85,6 +87,7 @@ function Section({
 
 export default function Settings() {
   const { theme } = useTheme();
+  const { t } = useT();
   const [dbPath, setDbPath] = useState("");
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState(false);
@@ -108,7 +111,7 @@ export default function Settings() {
 
   const loadDbPath = async () => {
     if (!isTauri()) {
-      setDbPath("Browser-Modus (localStorage)");
+      setDbPath(t.settings_db_browser_mode);
       setLoading(false);
       return;
     }
@@ -117,7 +120,7 @@ export default function Settings() {
       const path = await invoke<string>("get_db_path");
       setDbPath(path);
     } catch (err) {
-      setDbPath("Pfad konnte nicht ermittelt werden");
+      setDbPath(t.settings_db_path_error);
     }
     setLoading(false);
   };
@@ -129,7 +132,7 @@ export default function Settings() {
       const dir = await invoke<string>("get_db_dir");
       await invoke("open_folder", { path: dir });
     } catch (err) {
-      setMessage({ type: "error", text: `Fehler: ${err}` });
+      setMessage({ type: "error", text: `${err}` });
     }
   };
 
@@ -140,7 +143,7 @@ export default function Settings() {
       const selected = await open({
         directory: true,
         multiple: false,
-        title: "Neuen Speicherort fuer die Datenbank waehlen",
+        title: t.settings_db_choose_title,
       });
       if (!selected) return;
       setChanging(true);
@@ -150,10 +153,10 @@ export default function Settings() {
       setDbPath(newPath);
       setMessage({
         type: "success",
-        text: "Datenbank wurde kopiert. Bitte starte die App neu, damit der neue Speicherort verwendet wird.",
+        text: t.settings_db_copied_message,
       });
     } catch (err) {
-      setMessage({ type: "error", text: `Fehler: ${err}` });
+      setMessage({ type: "error", text: `${err}` });
     } finally {
       setChanging(false);
     }
@@ -169,12 +172,12 @@ export default function Settings() {
       await remove(dir + "db_config.json");
       setMessage({
         type: "success",
-        text: "Speicherort auf Standard zurueckgesetzt. Bitte starte die App neu.",
+        text: t.settings_db_reset_message,
       });
       const path = await invoke<string>("get_db_path");
       setDbPath(path);
     } catch (err) {
-      setMessage({ type: "error", text: `Fehler beim Zuruecksetzen: ${err}` });
+      setMessage({ type: "error", text: `${err}` });
     }
   };
 
@@ -194,9 +197,9 @@ export default function Settings() {
       });
       if (!path) return;
       await invoke("backup_db", { targetPath: path });
-      setMessage({ type: "success", text: "Backup erfolgreich gespeichert." });
+      setMessage({ type: "success", text: t.settings_backup_success });
     } catch (err) {
-      setMessage({ type: "error", text: `Backup fehlgeschlagen: ${err}` });
+      setMessage({ type: "error", text: `${err}` });
     }
   };
 
@@ -211,21 +214,21 @@ export default function Settings() {
           { name: "SQLite Datenbank (*.db)", extensions: ["db"] },
           { name: "Alle Dateien (*.*)", extensions: ["*"] },
         ],
-        title: "Backup-Datei auswaehlen",
+        title: t.settings_backup_restore,
       });
       if (!selected) return;
       const confirmed = await ask(
-        "Die aktuelle Datenbank wird durch das Backup ersetzt. Alle aktuellen Daten gehen verloren!\n\nBitte starte die App nach der Wiederherstellung neu.\n\nFortfahren?",
-        { title: "Backup wiederherstellen", kind: "warning", okLabel: "Wiederherstellen", cancelLabel: "Abbrechen" }
+        t.settings_backup_restore_confirm,
+        { title: t.settings_backup_restore, kind: "warning", okLabel: t.settings_backup_restore, cancelLabel: t.common_cancel }
       );
       if (!confirmed) return;
       await invoke("restore_db", { sourcePath: selected });
       setMessage({
         type: "success",
-        text: "Datenbank wurde wiederhergestellt. Bitte starte die App jetzt neu.",
+        text: t.settings_backup_restored,
       });
     } catch (err) {
-      setMessage({ type: "error", text: `Wiederherstellung fehlgeschlagen: ${err}` });
+      setMessage({ type: "error", text: `${err}` });
     }
   };
 
@@ -234,53 +237,58 @@ export default function Settings() {
     try {
       if (confirmTarget === "players") {
         await wipeAllPlayers();
-        setMessage({ type: "success", text: "Alle Spieler wurden geloescht." });
+        setMessage({ type: "success", text: t.settings_players_deleted });
       } else {
         await wipeAllTournaments();
-        setMessage({ type: "success", text: "Alle Turniere und Ergebnisse wurden geloescht." });
+        setMessage({ type: "success", text: t.settings_tournaments_deleted });
       }
     } catch (err) {
-      setMessage({ type: "error", text: `Fehler: ${err}` });
+      setMessage({ type: "error", text: `${err}` });
     }
     setConfirmTarget(null);
     setConfirmText("");
   };
 
-  const CONFIRM_WORD = confirmTarget === "players" ? "SPIELER" : "TURNIERE";
+  const CONFIRM_WORD = confirmTarget === "players" ? t.settings_confirm_word_players : t.settings_confirm_word_tournaments;
 
-  if (loading) return <div>Laden...</div>;
+  if (loading) return <div>{t.common_loading}</div>;
 
   return (
     <div>
       <div className="mb-6">
         <h1 className={`text-2xl font-extrabold ${theme.textPrimary} tracking-tight`}>
-          Einstellungen
+          {t.settings_title}
         </h1>
         <p className={`text-sm ${theme.textSecondary} mt-0.5`}>
-          App-Konfiguration und Datenverwaltung.
+          {t.settings_subtitle}
         </p>
       </div>
 
       {/* ===== Updates ===== */}
       {isTauri() && (
-        <Section title="Updates" icon="🔄" defaultOpen={false}>
+        <Section title={t.settings_updates} icon="🔄" defaultOpen={false}>
           <UpdateChecker />
         </Section>
       )}
 
+      {/* ===== Language ===== */}
+      <Section title={t.settings_language} icon="🌐" defaultOpen={false}>
+        <LanguageSelector />
+      </Section>
+
       {/* ===== Design ===== */}
-      <Section title="Design" icon="🎨" defaultOpen={false}>
+      <Section title={t.settings_design} icon="🎨" defaultOpen={false}>
         <ThemeSelector />
         <FontSizeSelector />
         <LogoUploader />
       </Section>
 
       {/* ===== Voreinstellungen ===== */}
-      <Section title="Voreinstellungen" icon="🎯" defaultOpen={false}>
+      <Section title={t.settings_defaults} icon="🎯" defaultOpen={false}>
         <div className="space-y-4">
           <div>
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1.5 uppercase tracking-wide`}>
-              Standard-Hallen
+              {t.settings_default_halls}
             </label>
             <div className="space-y-2">
               {settings.defaultHalls.map((hall, idx) => (
@@ -293,7 +301,7 @@ export default function Settings() {
                       updateSetting("defaultHalls", next);
                     }}
                     className={`flex-1 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-3 py-2 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-                    placeholder="Hallenname..."
+                    placeholder={t.settings_hall_name_placeholder}
                   />
                   <input
                     type="number"
@@ -306,7 +314,7 @@ export default function Settings() {
                     }}
                     className={`w-20 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-3 py-2 text-sm text-center ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                   />
-                  <span className={`text-xs ${theme.textMuted} w-12`}>Felder</span>
+                  <span className={`text-xs ${theme.textMuted} w-12`}>{t.common_fields}</span>
                   {settings.defaultHalls.length > 1 && (
                     <button
                       onClick={() => {
@@ -328,28 +336,28 @@ export default function Settings() {
                   }}
                   className={`text-xs font-medium ${theme.activeBadgeText} hover:opacity-80 transition-colors`}
                 >
-                  + Halle hinzufuegen
+                  {t.settings_add_hall}
                 </button>
                 <span className={`text-xs ${theme.textMuted}`}>
-                  Gesamt: {settings.defaultHalls.reduce((s, h) => s + h.courts, 0)} Felder in {settings.defaultHalls.length} {settings.defaultHalls.length === 1 ? "Halle" : "Hallen"}
+                  {t.settings_total_courts_in_halls.replace("{courts}", String(settings.defaultHalls.reduce((s, h) => s + h.courts, 0))).replace("{halls}", String(settings.defaultHalls.length))}
                 </span>
               </div>
             </div>
             <span className="text-xs text-gray-400 mt-1 block">
-              Wird als Standardwert beim Erstellen neuer Turniere verwendet.
+              {t.settings_default_hint}
             </span>
           </div>
 
           {/* Timer Thresholds */}
           <div className={`pt-4 border-t ${theme.cardBorder}`}>
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-3 uppercase tracking-wide`}>
-              ⏱ Spielzeit-Timer Schwellenwerte
+              ⏱ {t.settings_timer_thresholds}
             </label>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="w-3 h-3 rounded-full bg-amber-400 shrink-0"></span>
-                  <span className={`text-xs font-medium ${theme.textSecondary}`}>Warnung (gelb)</span>
+                  <span className={`text-xs font-medium ${theme.textSecondary}`}>{t.settings_timer_warning}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -364,13 +372,13 @@ export default function Settings() {
                     }}
                     className={`w-20 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-3 py-2 text-sm text-center ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                   />
-                  <span className="text-xs text-gray-400">Minuten</span>
+                  <span className="text-xs text-gray-400">{t.settings_timer_minutes}</span>
                 </div>
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <span className="w-3 h-3 rounded-full bg-rose-500 shrink-0"></span>
-                  <span className={`text-xs font-medium ${theme.textSecondary}`}>Kritisch (rot)</span>
+                  <span className={`text-xs font-medium ${theme.textSecondary}`}>{t.settings_timer_critical}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -385,22 +393,22 @@ export default function Settings() {
                     }}
                     className={`w-20 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-3 py-2 text-sm text-center ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                   />
-                  <span className="text-xs text-gray-400">Minuten</span>
+                  <span className="text-xs text-gray-400">{t.settings_timer_minutes}</span>
                 </div>
               </div>
             </div>
             <div className="text-xs text-gray-400 mt-2">
-              Der Timer auf den Spielfeldern wechselt die Farbe wenn die Schwellenwerte ueberschritten werden.
+              {t.settings_timer_hint}
             </div>
           </div>
         </div>
       </Section>
 
       {/* ===== Datenbank ===== */}
-      <Section title="Datenbank" icon="💾">
+      <Section title={t.settings_database} icon="💾">
         {/* Speicherort */}
         <div className="mb-5">
-          <h3 className={`text-sm font-medium ${theme.textPrimary} mb-2`}>Speicherort</h3>
+          <h3 className={`text-sm font-medium ${theme.textPrimary} mb-2`}>{t.settings_db_location}</h3>
           <div className="flex gap-2 mb-3">
             <input
               type="text"
@@ -414,7 +422,7 @@ export default function Settings() {
                 onClick={handleOpenFolder}
                 className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl ${theme.cardHoverBorder} hover:shadow-sm transition-all text-sm font-medium whitespace-nowrap`}
               >
-                📂 Oeffnen
+                📂 {t.settings_db_open}
               </button>
             )}
           </div>
@@ -425,13 +433,13 @@ export default function Settings() {
                 disabled={changing}
                 className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 shadow-sm transition-all text-sm font-medium disabled:bg-gray-300"
               >
-                {changing ? "Kopiere..." : "📁 Speicherort aendern"}
+                {changing ? t.settings_db_changing : `📁 ${t.settings_db_change}`}
               </button>
               <button
                 onClick={handleResetToDefault}
                 className={`${theme.textMuted} hover:opacity-80 px-4 py-2 rounded-xl text-sm transition-colors`}
               >
-                Standard wiederherstellen
+                {t.settings_db_reset_default}
               </button>
             </div>
           )}
@@ -441,25 +449,24 @@ export default function Settings() {
         {isTauri() && (
           <div className={`mb-5 pt-4 border-t ${theme.cardBorder}`}>
             <h3 className={`text-sm font-medium ${theme.textPrimary} mb-2`}>
-              Backup & Wiederherstellung
+              {t.settings_backup_title}
             </h3>
             <div className="flex gap-3 mb-2">
               <button
                 onClick={handleBackup}
                 className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 shadow-sm transition-all text-sm font-medium"
               >
-                💾 Backup erstellen
+                💾 {t.settings_backup_create}
               </button>
               <button
                 onClick={handleRestore}
                 className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2 rounded-xl hover:border-amber-300 hover:text-amber-700 transition-all text-sm font-medium`}
               >
-                📥 Wiederherstellen
+                📥 {t.settings_backup_restore}
               </button>
             </div>
             <div className="text-xs text-gray-400 leading-relaxed">
-              Das Backup speichert eine Kopie der gesamten Datenbank.
-              <strong className={theme.textSecondary}> Nach der Wiederherstellung muss die App neu gestartet werden.</strong>
+              {t.settings_backup_hint}
             </div>
           </div>
         )}
@@ -467,31 +474,31 @@ export default function Settings() {
         {/* Danger Zone */}
         <div className={`pt-4 border-t ${theme.cardBorder}`}>
           <h3 className="text-sm font-medium text-rose-600 mb-3">
-            Gefahrenzone
+            {t.settings_danger_zone}
           </h3>
           <div className="space-y-2">
             <div className={`flex items-center justify-between bg-rose-500/10 rounded-xl p-3 border border-rose-500/20`}>
               <div>
-                <div className={`text-sm font-medium ${theme.textPrimary}`}>Alle Spieler loeschen</div>
-                <div className="text-xs text-gray-400">Entfernt alle Spieler unwiderruflich.</div>
+                <div className={`text-sm font-medium ${theme.textPrimary}`}>{t.settings_delete_all_players}</div>
+                <div className="text-xs text-gray-400">{t.settings_delete_all_players_hint}</div>
               </div>
               <button
                 onClick={() => { setConfirmTarget("players"); setConfirmText(""); setMessage(null); }}
                 className={`${theme.cardBg} border border-rose-500/30 text-rose-500 px-3 py-1.5 rounded-lg hover:bg-rose-500/10 transition-all text-xs font-medium whitespace-nowrap ml-3`}
               >
-                Loeschen
+                {t.common_delete}
               </button>
             </div>
             <div className={`flex items-center justify-between bg-rose-500/10 rounded-xl p-3 border border-rose-500/20`}>
               <div>
-                <div className={`text-sm font-medium ${theme.textPrimary}`}>Alle Turniere loeschen</div>
-                <div className="text-xs text-gray-400">Entfernt Turniere, Runden, Spiele und Ergebnisse.</div>
+                <div className={`text-sm font-medium ${theme.textPrimary}`}>{t.settings_delete_all_tournaments}</div>
+                <div className="text-xs text-gray-400">{t.settings_delete_all_tournaments_hint}</div>
               </div>
               <button
                 onClick={() => { setConfirmTarget("tournaments"); setConfirmText(""); setMessage(null); }}
                 className={`${theme.cardBg} border border-rose-500/30 text-rose-500 px-3 py-1.5 rounded-lg hover:bg-rose-500/10 transition-all text-xs font-medium whitespace-nowrap ml-3`}
               >
-                Loeschen
+                {t.common_delete}
               </button>
             </div>
           </div>
@@ -517,16 +524,16 @@ export default function Settings() {
           <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
             <div className="text-center mb-5">
               <div className="text-4xl mb-3">⚠️</div>
-              <h3 className={`text-lg font-bold ${theme.textPrimary}`}>Bist du sicher?</h3>
+              <h3 className={`text-lg font-bold ${theme.textPrimary}`}>{t.settings_confirm_title}</h3>
               <p className={`text-sm ${theme.textSecondary} mt-2`}>
                 {confirmTarget === "players"
-                  ? "Alle Spieler werden unwiderruflich geloescht."
-                  : "Alle Turniere, Runden, Spiele und Ergebnisse werden unwiderruflich geloescht."}
+                  ? t.settings_confirm_players
+                  : t.settings_confirm_tournaments}
               </p>
             </div>
             <div className="mb-5">
               <label className={`block text-xs font-medium ${theme.textSecondary} mb-1.5`}>
-                Tippe <span className="font-bold text-rose-600">{CONFIRM_WORD}</span> zur Bestaetigung:
+                {t.common_confirm_type.replace("{word}", "").trim()} <span className="font-bold text-rose-600">{CONFIRM_WORD}</span>
               </label>
               <input
                 type="text"
@@ -542,14 +549,14 @@ export default function Settings() {
                 onClick={() => { setConfirmTarget(null); setConfirmText(""); }}
                 className={`flex-1 ${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
               >
-                Abbrechen
+                {t.common_cancel}
               </button>
               <button
                 onClick={handleWipeConfirm}
                 disabled={confirmText !== CONFIRM_WORD}
                 className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-all text-sm font-medium disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
-                Endgueltig loeschen
+                {t.common_delete_permanently}
               </button>
             </div>
           </div>
@@ -600,6 +607,7 @@ function LogoCropper({
   onCancel: () => void;
 }) {
   const { theme } = useTheme();
+  const { t } = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -757,9 +765,9 @@ function LogoCropper({
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
       <div className={`${theme.cardBg} rounded-2xl shadow-2xl border ${theme.cardBorder} p-6 max-w-lg w-full`}>
-        <h3 className={`text-lg font-bold ${theme.textPrimary} mb-1`}>Logo zuschneiden</h3>
+        <h3 className={`text-lg font-bold ${theme.textPrimary} mb-1`}>{t.settings_logo_crop_title}</h3>
         <p className={`text-xs ${theme.textMuted} mb-4`}>
-          Ziehe den Ausschnitt an die gewuenschte Stelle. Ecke unten rechts zum Skalieren.
+          {t.settings_logo_crop_hint}
         </p>
 
         {/* Canvas */}
@@ -782,13 +790,13 @@ function LogoCropper({
             onClick={onCancel}
             className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
           >
-            Abbrechen
+            {t.common_cancel}
           </button>
           <button
             onClick={handleSave}
             className={`${theme.primaryBg} text-white px-4 py-2 rounded-xl ${theme.primaryHoverBg} shadow-sm transition-all text-sm font-medium`}
           >
-            Zuschneiden & Speichern
+            {t.settings_logo_crop_save}
           </button>
         </div>
       </div>
@@ -798,6 +806,7 @@ function LogoCropper({
 
 function LogoUploader() {
   const { theme } = useTheme();
+  const { t } = useT();
   const [logo, setLogo] = useState<string | null>(() => getCustomLogo());
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -815,7 +824,7 @@ function LogoUploader() {
 
     // Max 10MB for source (will be cropped+compressed to ~256x256 PNG)
     if (file.size > 10 * 1024 * 1024) {
-      alert("Bild ist zu gross (max. 10 MB)");
+      alert(t.settings_logo_too_large);
       return;
     }
 
@@ -845,7 +854,7 @@ function LogoUploader() {
   return (
     <div className={`mt-5 pt-5 border-t ${theme.cardBorder}`}>
       <label className={`block text-xs font-medium ${theme.textSecondary} mb-3 uppercase tracking-wide`}>
-        Vereinslogo
+        {t.settings_club_logo}
       </label>
       <div className="flex items-center gap-4">
         {/* Preview */}
@@ -867,19 +876,19 @@ function LogoUploader() {
               onClick={() => fileRef.current?.click()}
               className={`${theme.primaryBg} text-white px-3 py-1.5 rounded-lg ${theme.primaryHoverBg} transition-all text-xs font-medium`}
             >
-              {logo ? "Aendern" : "Logo hochladen"}
+              {logo ? t.settings_logo_change : t.settings_logo_upload}
             </button>
             {logo && (
               <button
                 onClick={handleRemove}
                 className="text-rose-500 hover:text-rose-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
               >
-                Entfernen
+                {t.settings_logo_remove}
               </button>
             )}
           </div>
           <div className={`text-[10px] ${theme.textMuted}`}>
-            PNG, JPG, SVG oder WebP. Wird auf 256x256 zugeschnitten. Sidebar + TV-Modus.
+            {t.settings_logo_hint}
           </div>
           <input
             ref={fileRef}
@@ -905,11 +914,12 @@ function LogoUploader() {
 
 function ThemeSelector() {
   const { themeId, theme, setThemeId } = useTheme();
+  const { t } = useT();
 
   return (
     <div>
       <label className={`block text-xs font-medium ${theme.textSecondary} mb-3 uppercase tracking-wide`}>
-        Farbschema
+        {t.settings_color_scheme}
       </label>
       <div className="grid grid-cols-2 gap-3">
         {(Object.entries(THEMES) as [ThemeId, typeof THEMES[ThemeId]][]).map(
@@ -939,7 +949,7 @@ function ThemeSelector() {
                     {label}
                   </div>
                   <div className={`text-[10px] ${theme.textMuted} uppercase tracking-wide mt-0.5`}>
-                    {id === "green" ? "Smaragd" : id === "blue" ? "Saphir" : id === "orange" ? "Bernstein" : "Nachtmodus"}
+                    {id === "green" ? t.theme_emerald : id === "blue" ? t.theme_sapphire : id === "orange" ? t.theme_amber : t.theme_night}
                   </div>
                 </div>
                 {isActive && (
@@ -956,13 +966,50 @@ function ThemeSelector() {
   );
 }
 
-function FontSizeSelector() {
-  const { fontSizeId, theme, setFontSize } = useTheme();
+function LanguageSelector() {
+  const { theme } = useTheme();
+  const { t, lang, setLang } = useT();
+
+  const LANGS: { id: Lang; label: string }[] = [
+    { id: "en", label: "English" },
+    { id: "de", label: "Deutsch" },
+  ];
 
   return (
     <div className="mt-5">
       <label className={`block text-xs font-medium ${theme.textSecondary} mb-3 uppercase tracking-wide`}>
-        Schriftgroesse
+        {t.settings_language}
+      </label>
+      <div className="flex gap-2">
+        {LANGS.map(({ id, label }) => {
+          const isActive = lang === id;
+          return (
+            <button
+              key={id}
+              onClick={() => setLang(id)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border-2 ${
+                isActive
+                  ? `${theme.roundActiveBg} ${theme.roundActiveText} border-transparent shadow-md`
+                  : `${theme.cardBg} ${theme.textSecondary} ${theme.inputBorder} hover:opacity-80`
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FontSizeSelector() {
+  const { fontSizeId, theme, setFontSize } = useTheme();
+  const { t } = useT();
+
+  return (
+    <div className="mt-5">
+      <label className={`block text-xs font-medium ${theme.textSecondary} mb-3 uppercase tracking-wide`}>
+        {t.settings_font_size}
       </label>
       <div className="flex gap-2">
         {(Object.entries(FONT_SIZES) as [FontSizeId, typeof FONT_SIZES[FontSizeId]][]).map(
@@ -990,6 +1037,7 @@ function FontSizeSelector() {
 
 function UpdateChecker() {
   const { theme } = useTheme();
+  const { t } = useT();
   const [checking, setChecking] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -1048,7 +1096,7 @@ function UpdateChecker() {
       await relaunch();
     } catch (err) {
       setStatus("error");
-      setErrorMsg(`Update fehlgeschlagen: ${err}`);
+      setErrorMsg(`${t.settings_update_failed}: ${err}`);
       setDownloading(false);
     }
   };
@@ -1058,10 +1106,10 @@ function UpdateChecker() {
       <div className="flex items-center justify-between mb-3">
         <div>
           <div className={`text-sm font-medium ${theme.textPrimary}`}>
-            Aktuelle Version: <span className="font-mono">{currentVersion}</span>
+            {t.settings_current_version} <span className="font-mono">{currentVersion}</span>
           </div>
           <div className="text-xs text-gray-400 mt-0.5">
-            Prueft auf neue Versionen bei GitHub Releases.
+            {t.settings_check_updates_hint}
           </div>
         </div>
         <button
@@ -1069,20 +1117,20 @@ function UpdateChecker() {
           disabled={checking || downloading}
           className={`${theme.primaryBg} text-white px-4 py-2 rounded-xl ${theme.primaryHoverBg} shadow-sm transition-all text-sm font-medium disabled:opacity-50`}
         >
-          {checking ? "Pruefe..." : "🔄 Auf Updates pruefen"}
+          {checking ? t.settings_checking : `🔄 ${t.settings_check_updates}`}
         </button>
       </div>
 
       {status === "uptodate" && (
         <div className="bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl px-4 py-3 text-sm">
-          ✅ Du hast die neueste Version ({currentVersion}).
+          ✅ {t.settings_up_to_date.replace("{version}", currentVersion)}
         </div>
       )}
 
       {status === "available" && updateInfo && (
         <div className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl p-4`}>
           <div className={`text-sm font-semibold ${theme.textPrimary} mb-1`}>
-            🎉 Neue Version verfuegbar: <span className="font-mono">{updateInfo.version}</span>
+            🎉 {t.settings_new_version.replace("{version}", "")} <span className="font-mono">{updateInfo.version}</span>
           </div>
           {updateInfo.notes && (
             <div className={`text-xs ${theme.textSecondary} mb-3 whitespace-pre-line max-h-32 overflow-y-auto`}>
@@ -1101,7 +1149,7 @@ function UpdateChecker() {
                 <span className="text-xs font-mono text-gray-500">{progress}%</span>
               </div>
               <div className="text-xs text-gray-400">
-                Update wird heruntergeladen und installiert...
+                {t.settings_downloading}
               </div>
             </div>
           ) : (
@@ -1109,7 +1157,7 @@ function UpdateChecker() {
               onClick={installUpdate}
               className="bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 shadow-sm transition-all text-sm font-medium"
             >
-              ⬇️ Update installieren &amp; neustarten
+              ⬇️ {t.settings_install_update}
             </button>
           )}
         </div>
@@ -1117,7 +1165,7 @@ function UpdateChecker() {
 
       {status === "error" && (
         <div className="bg-rose-50 text-rose-700 border border-rose-200 rounded-xl px-4 py-3 text-sm">
-          ❌ {errorMsg || "Update-Pruefung fehlgeschlagen. Bitte pruefe deine Internetverbindung."}
+          ❌ {errorMsg || t.settings_update_failed}
         </div>
       )}
     </div>

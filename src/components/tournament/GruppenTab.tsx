@@ -10,6 +10,7 @@ import {
   calculateStandings,
   calculateTeamStandings,
 } from "../../lib/scoring";
+import { useT } from "../../lib/I18nContext";
 
 interface GruppenTabProps {
   tournament: Tournament;
@@ -28,6 +29,7 @@ export default function GruppenTab({
   theme,
   getGroupData,
 }: GruppenTabProps) {
+  const { t } = useT();
   const numGroups = tournament.num_groups || 2;
   const [activeGroup, setActiveGroup] = useState<number | "all">("all");
 
@@ -46,10 +48,10 @@ export default function GruppenTab({
         <div key={groupNum} className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
           <div className={`px-5 py-2.5 border-b ${theme.cardBorder} ${theme.headerGradient}`}>
             <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
-              Gruppe {groupNum}
+              {t.groups_group.replace("{n}", String(groupNum))}
             </span>
             <span className={`text-xs ${theme.textMuted} ml-2`}>
-              ({teamStandings.length} Teams, Top {qualifyCount})
+              {t.groups_teams_count.replace("{count}", String(teamStandings.length)).replace("{qualify}", String(qualifyCount))}
             </span>
           </div>
           <table className="w-full text-xs table-fixed">
@@ -63,10 +65,10 @@ export default function GruppenTab({
             <thead>
               <tr className={`border-b ${theme.cardBorder}`}>
                 <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>#</th>
-                <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>Team</th>
-                <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>S</th>
-                <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>N</th>
-                <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>Pkt</th>
+                <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>{t.groups_team}</th>
+                <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>{t.common_wins_abbr}</th>
+                <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>{t.common_losses_abbr}</th>
+                <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>{t.common_points_abbr}</th>
               </tr>
             </thead>
             <tbody>
@@ -102,10 +104,10 @@ export default function GruppenTab({
       <div key={groupNum} className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
         <div className={`px-5 py-2.5 border-b ${theme.cardBorder} ${theme.headerGradient}`}>
           <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
-            Gruppe {groupNum}
+            {t.groups_group.replace("{n}", String(groupNum))}
           </span>
           <span className={`text-xs ${theme.textMuted} ml-2`}>
-            ({gPlayers.length} Spieler, Top {qualifyCount})
+            {t.groups_players_count.replace("{count}", String(gPlayers.length)).replace("{qualify}", String(qualifyCount))}
           </span>
         </div>
         <table className="w-full text-xs table-fixed">
@@ -119,10 +121,10 @@ export default function GruppenTab({
           <thead>
             <tr className={`border-b ${theme.cardBorder}`}>
               <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>#</th>
-              <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>Spieler</th>
-              <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>S</th>
-              <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>N</th>
-              <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>Pkt</th>
+              <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>{t.groups_player}</th>
+              <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>{t.common_wins_abbr}</th>
+              <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>{t.common_losses_abbr}</th>
+              <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>{t.common_points_abbr}</th>
             </tr>
           </thead>
           <tbody>
@@ -166,7 +168,7 @@ export default function GruppenTab({
                 : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`
             }`}
           >
-            Alle Gruppen
+            {t.groups_all}
           </button>
           {groupNums.map((g) => (
             <button
@@ -178,7 +180,7 @@ export default function GruppenTab({
                   : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`
               }`}
             >
-              Gruppe {g}
+              {t.groups_group.replace("{n}", String(g))}
             </button>
           ))}
         </div>

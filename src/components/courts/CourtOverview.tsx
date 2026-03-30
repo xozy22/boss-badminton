@@ -3,6 +3,7 @@ import type { Match, HallConfig } from "../../lib/types";
 import { getCourtHallLabel } from "../../lib/types";
 import { CourtTimer } from "./CourtTimer";
 import { useTheme } from "../../lib/ThemeContext";
+import { useT } from "../../lib/I18nContext";
 
 interface Props {
   courts: number;
@@ -16,6 +17,7 @@ interface Props {
 
 export default function CourtOverview({ courts, matches, activeRoundMatches, playerName, onDrop, onMatchClick, hallConfig }: Props) {
   const { theme } = useTheme();
+  const { t } = useT();
   // Finde fuer jedes Feld das aktive (nicht abgeschlossene) Match - aus ALLEN Runden
   const courtAssignments = useMemo(() => {
     const map = new Map<number, Match>();
@@ -122,9 +124,9 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
   const getCourtLabel = (courtNum: number): string => {
     if (hallConfig && hallConfig.length > 1) {
       const { localCourt } = getCourtHallLabel(courtNum, hallConfig);
-      return `Feld ${localCourt}`;
+      return t.court_field.replace("{n}", String(localCourt));
     }
-    return `Feld ${courtNum}`;
+    return t.court_field.replace("{n}", String(courtNum));
   };
 
   // Render a single court card
@@ -150,7 +152,7 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
           backgroundSize: 'auto 85%',
           opacity: undefined,
         }}
-        title={match ? "Doppelklick: Zum Spiel springen" : undefined}
+        title={match ? t.court_double_click_jump : undefined}
       >
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">
@@ -166,14 +168,14 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
             <div className={`font-semibold ${theme.textPrimary} truncate`}>
               {teamLabel(match).t1}
             </div>
-            <div className={`${theme.textMuted} text-[10px] my-0.5`}>vs</div>
+            <div className={`${theme.textMuted} text-[10px] my-0.5`}>{t.common_vs}</div>
             <div className={`font-semibold ${theme.textPrimary} truncate`}>
               {teamLabel(match).t2}
             </div>
           </div>
         ) : (
           <div className={`text-xs ${theme.textMuted} text-center mt-3`}>
-            Frei – Spiel hierher ziehen
+            {t.court_free_drag}
           </div>
         )}
       </div>
@@ -230,7 +232,7 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
       {unassigned.length > 0 && (
         <div className="mt-3">
           <div className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">
-            Warten auf Feld ({unassigned.length})
+            {t.court_waiting.replace("{count}", String(unassigned.length))}
           </div>
           <div className="flex gap-2 flex-wrap">
             {unassigned.map((m) => {
@@ -242,17 +244,17 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
                   onDragStart={(e) => handleDragStart(e, m.id)}
                   onDoubleClick={() => handleDoubleClick(m.id)}
                   className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl px-3 py-2 text-xs cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-md transition-all duration-200 select-none relative ${courtPickerMatchId === m.id ? "z-40" : ""}`}
-                  title="Drag auf ein Feld oder Doppelklick zum Zuweisen"
+                  title={t.court_drag_or_double_click}
                 >
                   <span className={`font-medium ${theme.textPrimary}`}>{t1}</span>
-                  <span className={`${theme.textMuted} mx-1`}>vs</span>
+                  <span className={`${theme.textMuted} mx-1`}>{t.common_vs}</span>
                   <span className={`font-medium ${theme.textPrimary}`}>{t2}</span>
 
                   {/* Court picker popup */}
                   {courtPickerMatchId === m.id && (
                     <div className={`absolute top-full left-0 mt-1 ${theme.cardBg} border ${theme.cardBorder} rounded-xl shadow-xl z-50 overflow-hidden`}>
                       <div className={`px-3 py-1.5 text-[10px] font-bold ${theme.textMuted} uppercase tracking-wide border-b ${theme.cardBorder}`}>
-                        Feld waehlen
+                        {t.court_choose_court}
                       </div>
                       {freeCourtsByHall ? (
                         // Multi-hall: group by hall
@@ -269,7 +271,7 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
                                   onClick={(e) => { e.stopPropagation(); handlePickCourt(c); }}
                                   className={`w-full px-4 py-2 text-left text-xs font-medium ${theme.textPrimary} hover:${theme.selectedBg} hover:pl-5 transition-all duration-150`}
                                 >
-                                  Feld {localCourt}
+                                  {t.court_field.replace("{n}", String(localCourt))}
                                 </button>
                               );
                             })}
@@ -283,7 +285,7 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
                             onClick={(e) => { e.stopPropagation(); handlePickCourt(c); }}
                             className={`w-full px-4 py-2 text-left text-xs font-medium ${theme.textPrimary} hover:${theme.selectedBg} hover:pl-5 transition-all duration-150`}
                           >
-                            Feld {c}
+                            {t.court_field.replace("{n}", String(c))}
                           </button>
                         ))
                       )}
@@ -291,7 +293,7 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
                         onClick={(e) => { e.stopPropagation(); setCourtPickerMatchId(null); }}
                         className={`w-full px-4 py-1.5 text-left text-[10px] ${theme.textMuted} border-t ${theme.cardBorder} hover:opacity-80`}
                       >
-                        Abbrechen
+                        {t.common_cancel}
                       </button>
                     </div>
                   )}

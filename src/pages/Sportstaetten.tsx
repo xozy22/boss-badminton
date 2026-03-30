@@ -3,6 +3,8 @@ import { getSportstaetten, createSportstaette, updateSportstaette, deleteSportst
 import type { Sportstaette, HallConfig } from "../lib/types";
 import { parseHallConfig, hallConfigTotalCourts } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
+import { useT } from "../lib/I18nContext";
+import type { Translations } from "../lib/i18n/types";
 
 const DEFAULT_HALLS: HallConfig[] = [{ name: "Halle 1", courts: 2 }];
 
@@ -10,11 +12,13 @@ function HallEditor({
   halls,
   onChange,
   theme,
+  t,
   compact = false,
 }: {
   halls: HallConfig[];
   onChange: (h: HallConfig[]) => void;
   theme: any;
+  t: Translations;
   compact?: boolean;
 }) {
   return (
@@ -29,7 +33,7 @@ function HallEditor({
               onChange(next);
             }}
             className={`${compact ? "flex-1 min-w-0" : "flex-1"} ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-            placeholder="Hallenname..."
+            placeholder={t.venues_name_placeholder}
           />
           <input
             type="number"
@@ -42,7 +46,7 @@ function HallEditor({
             }}
             className={`w-16 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-2 py-1.5 text-sm text-center ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
           />
-          <span className={`text-xs ${theme.textMuted} shrink-0`}>Felder</span>
+          <span className={`text-xs ${theme.textMuted} shrink-0`}>{t.common_fields}</span>
           {halls.length > 1 && (
             <button
               onClick={() => onChange(halls.filter((_, i) => i !== idx))}
@@ -55,13 +59,13 @@ function HallEditor({
       ))}
       <div className="flex items-center justify-between">
         <button
-          onClick={() => onChange([...halls, { name: `Halle ${halls.length + 1}`, courts: 2 }])}
+          onClick={() => onChange([...halls, { name: `${t.venues_hall} ${halls.length + 1}`, courts: 2 }])}
           className={`text-xs font-medium ${theme.activeBadgeText} hover:opacity-80 transition-colors`}
         >
-          + Halle
+          {t.venues_add_hall}
         </button>
         <span className={`text-xs ${theme.textMuted}`}>
-          {hallConfigTotalCourts(halls)} Felder
+          {hallConfigTotalCourts(halls)} {t.common_fields}
         </span>
       </div>
     </div>
@@ -70,6 +74,7 @@ function HallEditor({
 
 export default function Sportstaetten() {
   const { theme } = useTheme();
+  const { t } = useT();
   const [sportstaetten, setSportstaetten] = useState<Sportstaette[]>([]);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -121,7 +126,7 @@ export default function Sportstaetten() {
     setEditZip(s.zip ?? "");
     setEditCity(s.city ?? "");
     const parsed = parseHallConfig(s.halls);
-    setEditHalls(parsed.length > 0 ? parsed : [{ name: "Halle 1", courts: s.courts }]);
+    setEditHalls(parsed.length > 0 ? parsed : [{ name: `${t.venues_hall} 1`, courts: s.courts }]);
   };
 
   const handleSave = async () => {
@@ -148,9 +153,13 @@ export default function Sportstaetten() {
 
   const formatHallsSummary = (s: Sportstaette): string => {
     const parsed = parseHallConfig(s.halls);
-    if (parsed.length === 0) return `${s.courts} Felder`;
+    if (parsed.length === 0) return `${s.courts} ${t.common_fields}`;
     const totalCourts = hallConfigTotalCourts(parsed);
-    return `${parsed.length} ${parsed.length === 1 ? "Halle" : "Hallen"}, ${totalCourts} ${totalCourts === 1 ? "Feld" : "Felder"}`;
+    return t.hall_summary
+      .replace("{halls}", String(parsed.length))
+      .replace("{hallLabel}", parsed.length === 1 ? t.venues_hall_singular : t.venues_hall_plural)
+      .replace("{courts}", String(totalCourts))
+      .replace("{courtLabel}", totalCourts === 1 ? t.venues_field_singular : t.venues_field_plural);
   };
 
   return (
@@ -159,10 +168,10 @@ export default function Sportstaetten() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className={`text-2xl font-extrabold ${theme.textPrimary} tracking-tight`}>
-            Sportstaetten
+            {t.venues_title}
           </h1>
           <p className={`text-sm ${theme.textSecondary} mt-0.5`}>
-            {sportstaetten.length} {sportstaetten.length === 1 ? "Sportstaette" : "Sportstaetten"} registriert
+            {sportstaetten.length} {sportstaetten.length === 1 ? t.venues_count_singular : t.venues_count_plural} {t.venues_registered}
           </p>
         </div>
         <div className="flex gap-2">
@@ -173,7 +182,7 @@ export default function Sportstaetten() {
                 address: s.address,
                 zip: s.zip,
                 city: s.city,
-                halls: s.halls ? parseHallConfig(s.halls) : [{ name: "Halle 1", courts: s.courts }],
+                halls: s.halls ? parseHallConfig(s.halls) : [{ name: `${t.venues_hall} 1`, courts: s.courts }],
               }));
               const json = JSON.stringify(data, null, 2);
               const blob = new Blob([json], { type: "application/json" });
@@ -189,10 +198,10 @@ export default function Sportstaetten() {
             disabled={sportstaetten.length === 0}
             className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2 rounded-xl ${theme.cardHoverBorder} hover:shadow-sm transition-all text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed`}
           >
-            📤 Export
+            📤 {t.common_export}
           </button>
           <label className={`${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2 rounded-xl ${theme.cardHoverBorder} hover:shadow-sm transition-all text-sm font-medium cursor-pointer`}>
-            📥 Import
+            📥 {t.common_import}
             <input
               type="file"
               accept=".json"
@@ -207,7 +216,7 @@ export default function Sportstaetten() {
                     if (!Array.isArray(imported)) return;
                     for (const s of imported) {
                       if (!s.name) continue;
-                      const h = s.halls && Array.isArray(s.halls) ? s.halls : [{ name: "Halle 1", courts: s.courts || 2 }];
+                      const h = s.halls && Array.isArray(s.halls) ? s.halls : [{ name: `${t.venues_hall} 1`, courts: s.courts || 2 }];
                       const totalCourts = h.reduce((sum: number, hall: HallConfig) => sum + hall.courts, 0);
                       await createSportstaette(s.name, s.address || null, s.zip || null, s.city || null, totalCourts, JSON.stringify(h));
                     }
@@ -226,11 +235,11 @@ export default function Sportstaetten() {
 
       {/* Add Sportstaette */}
       <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-5 mb-6`}>
-        <h2 className={`font-semibold ${theme.textPrimary} mb-3`}>Neue Sportstaette</h2>
+        <h2 className={`font-semibold ${theme.textPrimary} mb-3`}>{t.venues_new}</h2>
         <div className="flex gap-3 items-end flex-wrap">
           <div className="flex-1 min-w-[180px]">
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-              Name
+              {t.common_name}
             </label>
             <input
               type="text"
@@ -238,12 +247,12 @@ export default function Sportstaetten() {
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-              placeholder="Name der Sportstaette..."
+              placeholder={t.venues_name_placeholder}
             />
           </div>
           <div className="flex-1 min-w-[180px]">
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-              Adresse
+              {t.venues_address}
             </label>
             <input
               type="text"
@@ -251,12 +260,12 @@ export default function Sportstaetten() {
               onChange={(e) => setAddress(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-              placeholder="Strasse und Hausnummer..."
+              placeholder={t.venues_address_placeholder}
             />
           </div>
           <div>
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-              PLZ
+              {t.venues_zip}
             </label>
             <input
               type="text"
@@ -264,12 +273,12 @@ export default function Sportstaetten() {
               onChange={(e) => setZip(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               className={`w-24 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-              placeholder="PLZ"
+              placeholder={t.venues_zip}
             />
           </div>
           <div className="flex-1 min-w-[140px]">
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-              Stadt
+              {t.venues_city}
             </label>
             <input
               type="text"
@@ -277,22 +286,22 @@ export default function Sportstaetten() {
               onChange={(e) => setCity(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-              placeholder="Stadt..."
+              placeholder={t.venues_city_placeholder}
             />
           </div>
           <button
             onClick={handleAdd}
             className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium shrink-0`}
           >
-            Hinzufuegen
+            {t.common_add}
           </button>
         </div>
         {/* Halls editor */}
         <div className="mt-4">
           <label className={`block text-xs font-medium ${theme.textSecondary} mb-1.5 uppercase tracking-wide`}>
-            Hallen
+            {t.venues_halls}
           </label>
-          <HallEditor halls={halls} onChange={setHalls} theme={theme} />
+          <HallEditor halls={halls} onChange={setHalls} theme={theme} t={t} />
         </div>
       </div>
 
@@ -305,7 +314,7 @@ export default function Sportstaetten() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Sportstaette suchen..."
+              placeholder={t.venues_search_placeholder}
               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg pl-8 pr-3 py-1.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
             />
             <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${theme.textMuted} text-xs`}>🔍</span>
@@ -321,7 +330,7 @@ export default function Sportstaetten() {
         {/* Info bar */}
         {search && (
           <div className={`px-5 py-1.5 text-xs ${theme.textMuted} border-b ${theme.cardBorder}`}>
-            {filteredSportstaetten.length} von {sportstaetten.length} Sportstaetten angezeigt
+            {t.venues_shown_of_total.replace("{shown}", String(filteredSportstaetten.length)).replace("{total}", String(sportstaetten.length))}
           </div>
         )}
 
@@ -333,22 +342,22 @@ export default function Sportstaetten() {
                 #
               </th>
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                Name
+                {t.common_name}
               </th>
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                Adresse
+                {t.venues_address}
               </th>
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                PLZ
+                {t.venues_zip}
               </th>
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                Stadt
+                {t.venues_city}
               </th>
               <th className={`text-center px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                Hallen / Felder
+                {t.venues_halls_courts}
               </th>
               <th className={`text-right px-5 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                Aktionen
+                {t.common_actions}
               </th>
             </tr>
           </thead>
@@ -382,7 +391,7 @@ export default function Sportstaetten() {
                       value={editAddress}
                       onChange={(e) => setEditAddress(e.target.value)}
                       className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm w-full`}
-                      placeholder="Adresse..."
+                      placeholder={t.venues_address_placeholder}
                     />
                   ) : (
                     <span className="text-sm">{s.address ?? "-"}</span>
@@ -395,7 +404,7 @@ export default function Sportstaetten() {
                       value={editZip}
                       onChange={(e) => setEditZip(e.target.value)}
                       className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-2 py-1.5 text-sm w-20`}
-                      placeholder="PLZ"
+                      placeholder={t.venues_zip}
                     />
                   ) : (
                     <span className="text-sm">{s.zip ?? "-"}</span>
@@ -408,7 +417,7 @@ export default function Sportstaetten() {
                       value={editCity}
                       onChange={(e) => setEditCity(e.target.value)}
                       className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm w-full`}
-                      placeholder="Stadt..."
+                      placeholder={t.venues_city_placeholder}
                     />
                   ) : (
                     <span className="text-sm">{s.city ?? "-"}</span>
@@ -417,7 +426,7 @@ export default function Sportstaetten() {
                 <td className={`px-3 py-3 ${theme.textSecondary}`}>
                   {editingId === s.id ? (
                     <div className="min-w-[200px]">
-                      <HallEditor halls={editHalls} onChange={setEditHalls} theme={theme} compact />
+                      <HallEditor halls={editHalls} onChange={setEditHalls} theme={theme} t={t} compact />
                     </div>
                   ) : (
                     <span className="text-sm text-center block">{formatHallsSummary(s)}</span>
@@ -430,13 +439,13 @@ export default function Sportstaetten() {
                         onClick={handleSave}
                         className={`${theme.activeBadgeText} text-sm font-medium`}
                       >
-                        Speichern
+                        {t.common_save}
                       </button>
                       <button
                         onClick={() => setEditingId(null)}
                         className={`${theme.textMuted} hover:opacity-80 text-sm`}
                       >
-                        Abbrechen
+                        {t.common_cancel}
                       </button>
                     </div>
                   ) : (
@@ -445,13 +454,13 @@ export default function Sportstaetten() {
                         onClick={() => handleEdit(s)}
                         className={`${theme.textMuted} hover:${theme.activeBadgeText} text-sm transition-colors`}
                       >
-                        Bearbeiten
+                        {t.common_edit}
                       </button>
                       <button
                         onClick={() => handleDeleteSingle(s)}
                         className={`${theme.textMuted} hover:text-rose-600 text-sm transition-colors`}
                       >
-                        Loeschen
+                        {t.common_delete}
                       </button>
                     </div>
                   )}
@@ -462,8 +471,8 @@ export default function Sportstaetten() {
               <tr>
                 <td colSpan={7} className={`px-5 py-12 text-center ${theme.textMuted}`}>
                   {sportstaetten.length === 0
-                    ? "Noch keine Sportstaetten vorhanden."
-                    : "Keine Sportstaetten fuer diesen Filter gefunden."}
+                    ? t.venues_none_yet
+                    : t.venues_no_filter_results}
                 </td>
               </tr>
             )}
@@ -478,7 +487,7 @@ export default function Sportstaetten() {
             <div className="text-center mb-5">
               <div className="text-4xl mb-3">⚠️</div>
               <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
-                Sportstaette loeschen?
+                {t.venues_delete_title}
               </h3>
               <div className={`text-sm ${theme.textSecondary} mt-3`}>
                 <div className="space-y-1">
@@ -489,7 +498,7 @@ export default function Sportstaetten() {
                   ))}
                 </div>
                 <p className={`mt-3 ${theme.textMuted} text-xs`}>
-                  Diese Aktion kann nicht rueckgaengig gemacht werden.
+                  {t.common_action_irreversible}
                 </p>
               </div>
             </div>
@@ -498,13 +507,13 @@ export default function Sportstaetten() {
                 onClick={() => setDeleteTarget(null)}
                 className={`flex-1 ${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
               >
-                Abbrechen
+                {t.common_cancel}
               </button>
               <button
                 onClick={handleDeleteConfirm}
                 className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-all text-sm font-medium"
               >
-                Loeschen
+                {t.common_delete}
               </button>
             </div>
           </div>

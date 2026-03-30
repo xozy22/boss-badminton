@@ -1,6 +1,7 @@
 import type { Match, Round, GameSet } from "../../lib/types";
 import { isSetComplete } from "../../lib/scoring";
 import { useTheme } from "../../lib/ThemeContext";
+import { useT } from "../../lib/I18nContext";
 
 interface BracketViewProps {
   rounds: Round[];
@@ -10,14 +11,7 @@ interface BracketViewProps {
   pointsPerSet: number;
 }
 
-function getRoundLabel(expectedTotalRounds: number, roundIdx: number): string {
-  const remaining = expectedTotalRounds - roundIdx;
-  if (remaining === 1) return "Finale";
-  if (remaining === 2) return "Halbfinale";
-  if (remaining === 3) return "Viertelfinale";
-  if (remaining === 4) return "Achtelfinale";
-  return `Runde ${roundIdx + 1}`;
-}
+// getRoundLabel is now inside the component to access translations
 
 function getExpectedRounds(firstRoundMatchCount: number): number {
   // 4 matches -> 3 rounds (VF, HF, F), 2 matches -> 2 rounds (HF, F), 1 -> 1 (F)
@@ -37,6 +31,16 @@ export default function BracketView({
   pointsPerSet,
 }: BracketViewProps) {
   const { theme } = useTheme();
+  const { t } = useT();
+
+  const getRoundLabel = (expectedTotalRounds: number, roundIdx: number): string => {
+    const remaining = expectedTotalRounds - roundIdx;
+    if (remaining === 1) return t.bracket_final;
+    if (remaining === 2) return t.bracket_semifinal;
+    if (remaining === 3) return t.bracket_quarterfinal;
+    if (remaining === 4) return t.bracket_round_of_16;
+    return t.bracket_round.replace("{n}", String(roundIdx + 1));
+  };
 
   if (rounds.length === 0) return null;
 
@@ -205,7 +209,7 @@ export default function BracketView({
             className="absolute text-xs font-bold uppercase tracking-wide text-amber-600"
             style={{ left: totalColumns * (MATCH_WIDTH + ROUND_GAP), top: -2 }}
           >
-            Sieger
+            {t.bracket_winner}
           </div>
         )}
 

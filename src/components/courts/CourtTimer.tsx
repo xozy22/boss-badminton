@@ -1,5 +1,6 @@
 import { useTimer } from "../../hooks/useTimer";
 import { useTheme } from "../../lib/ThemeContext";
+import { useT } from "../../lib/I18nContext";
 
 const SETTINGS_KEY = "turnierplaner_settings";
 
@@ -24,6 +25,7 @@ interface Props {
 
 export function CourtTimer({ assignedAt, completed }: Props) {
   const { theme } = useTheme();
+  const { t } = useT();
   const { display, totalSeconds } = useTimer(completed ? null : assignedAt);
 
   if (!assignedAt) return null;
@@ -46,9 +48,9 @@ export function CourtTimer({ assignedAt, completed }: Props) {
   return (
     <span
       className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md ${colorClass}`}
-      title={`Gestartet: ${new Date(assignedAt).toLocaleTimeString("de-DE")}${
+      title={`${t.court_timer_started.replace("{time}", new Date(assignedAt).toLocaleTimeString("de-DE"))}${
         !completed && elapsedMin >= thresholds.warningMin
-          ? ` (${elapsedMin >= thresholds.dangerMin ? "Kritisch!" : "Warnung"})`
+          ? ` (${elapsedMin >= thresholds.dangerMin ? t.court_timer_critical : t.court_timer_warning})`
           : ""
       }`}
     >
