@@ -71,7 +71,7 @@ import type {
   TournamentFormat,
   TournamentPlayerInfo,
 } from "../lib/types";
-import { MODE_LABELS, FORMAT_LABELS, STATUS_LABELS } from "../lib/types";
+import { MODE_LABELS, FORMAT_LABELS, STATUS_LABELS, parseHallConfig } from "../lib/types";
 
 const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
   singles: ["round_robin", "elimination", "group_ko"],
@@ -1287,6 +1287,7 @@ export default function TournamentView() {
                 ? groupRounds.flatMap((r) => matchesByRound.get(r.id) || [])
                 : activeRound ? matchesByRound.get(activeRound) : undefined}
               playerName={playerName}
+              hallConfig={tournament.hall_config ? parseHallConfig(tournament.hall_config) : undefined}
               onDrop={(matchId, court) => handleCourtChange(matchId, court)}
               onMatchClick={(matchId) => {
                 const el = document.querySelector(`[data-match-id="${matchId}"]`);

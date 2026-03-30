@@ -5,13 +5,15 @@ import {
   createTournament,
   updateTournament,
   updateTeamConfig,
+  updateHallConfig,
   addPlayerToTournament,
   removePlayerFromTournament,
   getTournament,
   getTournamentPlayers,
+  getSportstaetten,
 } from "../lib/db";
-import type { Player, TournamentMode, TournamentFormat } from "../lib/types";
-import { MODE_LABELS, FORMAT_LABELS } from "../lib/types";
+import type { Player, TournamentMode, TournamentFormat, Sportstaette, HallConfig } from "../lib/types";
+import { MODE_LABELS, FORMAT_LABELS, parseHallConfig, hallConfigTotalCourts } from "../lib/types";
 import { formFixedDoubleTeams, formFixedMixedTeams } from "../lib/draw";
 import { loadSettings } from "./Settings";
 import { useTheme } from "../lib/ThemeContext";
@@ -49,7 +51,24 @@ export default function TournamentCreate() {
   const [nameManuallyEdited, setNameManuallyEdited] = useState(false);
   const [setsToWin, setSetsToWin] = useState(2);
   const [pointsPerSet, setPointsPerSet] = useState(21);
-  const [courts, setCourts] = useState(() => loadSettings().defaultCourts);
+  // courts is derived from selected halls
+  const [hallConfig, setHallConfig] = useState<HallConfig[]>(() => {
+    const s = loadSettings();
+    return s.defaultHalls && s.defaultHalls.length > 0
+      ? s.defaultHalls
+      : [{ name: "Halle 1", courts: (s as any).defaultCourts || 2 }];
+  });
+  const [selectedHallIndices, setSelectedHallIndices] = useState<Set<number>>(() => {
+    const s = loadSettings();
+    const halls = s.defaultHalls && s.defaultHalls.length > 0
+      ? s.defaultHalls
+      : [{ name: "Halle 1", courts: (s as any).defaultCourts || 2 }];
+    return new Set(halls.map((_, i) => i));
+  });
+  const selectedHalls = useMemo(() => hallConfig.filter((_, i) => selectedHallIndices.has(i)), [hallConfig, selectedHallIndices]);
+  const courts = useMemo(() => Math.max(hallConfigTotalCourts(selectedHalls), 1), [selectedHalls]);
+  const [sportstaetten, setSportstaetten] = useState<Sportstaette[]>([]);
+  const [selectedVenueId, setSelectedVenueId] = useState<number | "">("");
   const [numGroups, setNumGroups] = useState(2);
   const [qualifyPerGroup, setQualifyPerGroup] = useState(2);
   const [useEntryFee, setUseEntryFee] = useState(false);
@@ -72,6 +91,7 @@ export default function TournamentCreate() {
 
   useEffect(() => {
     getPlayers().then(setPlayers);
+    getSportstaetten().then(setSportstaetten);
   }, []);
 
   // Load existing tournament data in edit mode
@@ -86,7 +106,18 @@ export default function TournamentCreate() {
       setFormat(t.format);
       setSetsToWin(t.sets_to_win);
       setPointsPerSet(t.points_per_set);
-      setCourts(t.courts);
+      // Load hall config from tournament
+      if (t.hall_config) {
+        const halls = parseHallConfig(t.hall_config);
+        if (halls.length > 0) {
+          setHallConfig(halls);
+          setSelectedHallIndices(new Set(halls.map((_, i) => i)));
+        }
+      } else {
+        // Fallback: single hall with tournament court count
+        setHallConfig([{ name: "Halle 1", courts: t.courts }]);
+        setSelectedHallIndices(new Set([0]));
+      }
       setNumGroups(t.num_groups || 2);
       setQualifyPerGroup(t.qualify_per_group || 2);
       if (t.entry_fee_single > 0 || t.entry_fee_double > 0) {
@@ -207,6 +238,9 @@ export default function TournamentCreate() {
     } else {
       await updateTeamConfig(id, null);
     }
+
+    // Persist hall config
+    await updateHallConfig(id, selectedHalls.length > 0 ? selectedHalls : null);
 
     navigate(`/tournaments/${id}`, { state: Object.keys(navState).length > 0 ? navState : undefined });
   };
@@ -342,7 +376,10 @@ export default function TournamentCreate() {
                     if (tpl.format) setFormat(tpl.format);
                     if (tpl.sets_to_win) setSetsToWin(tpl.sets_to_win);
                     if (tpl.points_per_set) setPointsPerSet(tpl.points_per_set);
-                    if (tpl.courts) setCourts(tpl.courts);
+                    if (tpl.courts) {
+                      setHallConfig([{ name: "Halle 1", courts: tpl.courts }]);
+                      setSelectedHallIndices(new Set([0]));
+                    }
                     if (tpl.num_groups) setNumGroups(tpl.num_groups);
                     if (tpl.qualify_per_group) setQualifyPerGroup(tpl.qualify_per_group);
                     if (tpl.entry_fee_single > 0 || tpl.entry_fee_double > 0) {
@@ -487,7 +524,7 @@ export default function TournamentCreate() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
                       Gewinnsaetze (Best of {setsToWin * 2 - 1})
@@ -516,19 +553,74 @@ export default function TournamentCreate() {
                   </div>
                   <div>
                     <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                      Spielfelder
+                      Sportstaette
                     </label>
                     <select
-                      value={courts}
-                      onChange={(e) => setCourts(Number(e.target.value))}
+                      value={selectedVenueId}
+                      onChange={(e) => {
+                        const venueId = e.target.value ? Number(e.target.value) : "";
+                        setSelectedVenueId(venueId);
+                        if (venueId) {
+                          const venue = sportstaetten.find((s) => s.id === venueId);
+                          if (venue) {
+                            const venueHalls = parseHallConfig(venue.halls);
+                            const halls = venueHalls.length > 0
+                              ? venueHalls
+                              : [{ name: "Halle 1", courts: venue.courts }];
+                            setHallConfig(halls);
+                            setSelectedHallIndices(new Set(halls.map((_, i) => i)));
+                          }
+                        } else {
+                          // Reset to settings default
+                          const s = loadSettings();
+                          const defaultHalls = s.defaultHalls && s.defaultHalls.length > 0
+                            ? s.defaultHalls
+                            : [{ name: "Halle 1", courts: 2 }];
+                          setHallConfig(defaultHalls);
+                          setSelectedHallIndices(new Set(defaultHalls.map((_, i) => i)));
+                        }
+                      }}
                       className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                     >
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                        <option key={n} value={n}>
-                          {n} {n === 1 ? "Feld" : "Felder"}
+                      <option value="">-- Keine --</option>
+                      {sportstaetten.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.courts} {s.courts === 1 ? "Feld" : "Felder"})
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
+                      Hallen / Spielfelder
+                    </label>
+                    {hallConfig.length > 0 && (
+                      <div className={`${theme.inputBg} border ${theme.inputBorder} rounded-xl px-3 py-2 space-y-1`}>
+                        {hallConfig.map((hall, idx) => (
+                          <label key={idx} className="flex items-center gap-2 cursor-pointer text-sm">
+                            <input
+                              type="checkbox"
+                              checked={selectedHallIndices.has(idx)}
+                              onChange={() => {
+                                setSelectedHallIndices((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(idx)) next.delete(idx);
+                                  else next.add(idx);
+                                  return next;
+                                });
+                              }}
+                              className="rounded"
+                            />
+                            <span className={theme.textPrimary}>
+                              {hall.name} ({hall.courts} {hall.courts === 1 ? "Feld" : "Felder"})
+                            </span>
+                          </label>
+                        ))}
+                        <div className={`text-xs ${theme.textMuted} pt-1 border-t ${theme.cardBorder}`}>
+                          {courts} {courts === 1 ? "Feld" : "Felder"} ausgewaehlt
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

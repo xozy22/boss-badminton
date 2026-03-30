@@ -1,6 +1,7 @@
 import type {
   Player,
   Gender,
+  Sportstaette,
   Tournament,
   TournamentMode,
   TournamentFormat,
@@ -38,6 +39,7 @@ async function getTauriDb() {
 // =============================================
 interface LocalStore {
   players: Player[];
+  sportstaetten: Sportstaette[];
   tournaments: Tournament[];
   tournamentPlayers: { tournament_id: number; player_id: number }[];
   rounds: Round[];
@@ -47,17 +49,22 @@ interface LocalStore {
 }
 
 function loadStore(): LocalStore {
-  const raw = localStorage.getItem("turnierplaner");
-  if (raw) return JSON.parse(raw);
-  return {
+  const defaults: LocalStore = {
     players: [],
+    sportstaetten: [],
     tournaments: [],
     tournamentPlayers: [],
     rounds: [],
     matches: [],
     sets: [],
-    nextId: { players: 1, tournaments: 1, rounds: 1, matches: 1, sets: 1 },
+    nextId: { players: 1, sportstaetten: 1, tournaments: 1, rounds: 1, matches: 1, sets: 1 },
   };
+  const raw = localStorage.getItem("turnierplaner");
+  if (raw) {
+    const parsed = JSON.parse(raw);
+    return { ...defaults, ...parsed, nextId: { ...defaults.nextId, ...parsed.nextId } };
+  }
+  return defaults;
 }
 
 function saveStore(store: LocalStore) {
@@ -131,6 +138,67 @@ export async function deletePlayer(id: number): Promise<void> {
   saveStore(store);
 }
 
+// --- Sportstaetten ---
+
+export async function getSportstaetten(): Promise<Sportstaette[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    return d.select("SELECT * FROM sportstaetten ORDER BY name");
+  }
+  const store = loadStore();
+  return [...store.sportstaetten].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function createSportstaette(name: string, address: string | null, zip: string | null, city: string | null, courts: number, halls: string | null = null): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("INSERT INTO sportstaetten (name, address, zip, city, courts, halls) VALUES ($1, $2, $3, $4, $5, $6)", [name, address, zip, city, courts, halls]);
+    return;
+  }
+  const store = loadStore();
+  store.sportstaetten.push({
+    id: nextId(store, "sportstaetten"),
+    name,
+    address,
+    zip,
+    city,
+    courts,
+    halls,
+    created_at: new Date().toISOString(),
+  });
+  saveStore(store);
+}
+
+export async function updateSportstaette(id: number, name: string, address: string | null, zip: string | null, city: string | null, courts: number, halls: string | null = null): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("UPDATE sportstaetten SET name = $1, address = $2, zip = $3, city = $4, courts = $5, halls = $6 WHERE id = $7", [name, address, zip, city, courts, halls, id]);
+    return;
+  }
+  const store = loadStore();
+  const s = store.sportstaetten.find((s) => s.id === id);
+  if (s) {
+    s.name = name;
+    s.address = address;
+    s.zip = zip;
+    s.city = city;
+    s.courts = courts;
+    s.halls = halls;
+  }
+  saveStore(store);
+}
+
+export async function deleteSportstaette(id: number): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("DELETE FROM sportstaetten WHERE id = $1", [id]);
+    return;
+  }
+  const store = loadStore();
+  store.sportstaetten = store.sportstaetten.filter((s) => s.id !== id);
+  saveStore(store);
+}
+
 // --- Tournaments ---
 
 export async function getTournaments(): Promise<Tournament[]> {
@@ -193,6 +261,7 @@ export async function createTournament(
     entry_fee_single: entryFeeSingle,
     entry_fee_double: entryFeeDouble,
     team_config: null,
+    hall_config: null,
     created_at: new Date().toISOString(),
     status: "draft",
   });
@@ -248,6 +317,19 @@ export async function updateTeamConfig(id: number, teamConfig: [number, number][
   const store = loadStore();
   const t = store.tournaments.find((t) => t.id === id);
   if (t) (t as any).team_config = json;
+  saveStore(store);
+}
+
+export async function updateHallConfig(id: number, hallConfig: import("./types").HallConfig[] | null): Promise<void> {
+  const json = hallConfig && hallConfig.length > 0 ? JSON.stringify(hallConfig) : null;
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("UPDATE tournaments SET hall_config=$1 WHERE id=$2", [json, id]);
+    return;
+  }
+  const store = loadStore();
+  const t = store.tournaments.find((t) => t.id === id);
+  if (t) (t as any).hall_config = json;
   saveStore(store);
 }
 

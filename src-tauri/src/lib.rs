@@ -165,12 +165,25 @@ pub fn run() {
     let migrations = vec![
         Migration {
             version: 1,
-            description: "create initial tables",
+            description: "create all tables (consolidated)",
             sql: "
                 CREATE TABLE IF NOT EXISTS players (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
                     gender TEXT NOT NULL CHECK(gender IN ('m', 'f')),
+                    age INTEGER,
+                    club TEXT,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+                );
+
+                CREATE TABLE IF NOT EXISTS sportstaetten (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    address TEXT,
+                    zip TEXT,
+                    city TEXT,
+                    courts INTEGER NOT NULL DEFAULT 1,
+                    halls TEXT,
                     created_at TEXT NOT NULL DEFAULT (datetime('now'))
                 );
 
@@ -178,16 +191,28 @@ pub fn run() {
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
                     mode TEXT NOT NULL CHECK(mode IN ('singles', 'doubles', 'mixed')),
-                    format TEXT NOT NULL CHECK(format IN ('round_robin', 'elimination', 'random_doubles')),
+                    format TEXT NOT NULL CHECK(format IN ('round_robin', 'elimination', 'random_doubles', 'group_ko')),
                     sets_to_win INTEGER NOT NULL DEFAULT 2,
                     points_per_set INTEGER NOT NULL DEFAULT 21,
+                    courts INTEGER NOT NULL DEFAULT 1,
+                    num_groups INTEGER NOT NULL DEFAULT 0,
+                    qualify_per_group INTEGER NOT NULL DEFAULT 0,
+                    current_phase TEXT,
+                    entry_fee_single REAL NOT NULL DEFAULT 0,
+                    entry_fee_double REAL NOT NULL DEFAULT 0,
+                    team_config TEXT,
+                    hall_config TEXT,
                     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                    status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'active', 'completed'))
+                    status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'active', 'completed', 'archived'))
                 );
 
                 CREATE TABLE IF NOT EXISTS tournament_players (
                     tournament_id INTEGER NOT NULL,
                     player_id INTEGER NOT NULL,
+                    retired INTEGER NOT NULL DEFAULT 0,
+                    payment_status TEXT NOT NULL DEFAULT 'unpaid',
+                    payment_method TEXT,
+                    paid_date TEXT,
                     PRIMARY KEY (tournament_id, player_id),
                     FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
                     FOREIGN KEY (player_id) REFERENCES players(id) ON DELETE CASCADE
@@ -197,6 +222,8 @@ pub fn run() {
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     tournament_id INTEGER NOT NULL,
                     round_number INTEGER NOT NULL,
+                    phase TEXT,
+                    group_number INTEGER,
                     FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
                 );
 
@@ -209,6 +236,8 @@ pub fn run() {
                     team2_p2 INTEGER,
                     winner_team INTEGER CHECK(winner_team IN (1, 2)),
                     status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'active', 'completed')),
+                    court INTEGER,
+                    court_assigned_at TEXT,
                     FOREIGN KEY (round_id) REFERENCES rounds(id) ON DELETE CASCADE,
                     FOREIGN KEY (team1_p1) REFERENCES players(id),
                     FOREIGN KEY (team1_p2) REFERENCES players(id),
@@ -224,127 +253,11 @@ pub fn run() {
                     team2_score INTEGER NOT NULL DEFAULT 0,
                     FOREIGN KEY (match_id) REFERENCES matches(id) ON DELETE CASCADE
                 );
-            ",
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 2,
-            description: "add archived status to tournaments",
-            sql: "
-                CREATE TABLE tournaments_new (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    mode TEXT NOT NULL CHECK(mode IN ('singles', 'doubles', 'mixed')),
-                    format TEXT NOT NULL CHECK(format IN ('round_robin', 'elimination', 'random_doubles')),
-                    sets_to_win INTEGER NOT NULL DEFAULT 2,
-                    points_per_set INTEGER NOT NULL DEFAULT 21,
-                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                    status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'active', 'completed', 'archived'))
-                );
-                INSERT INTO tournaments_new SELECT * FROM tournaments;
-                DROP TABLE tournaments;
-                ALTER TABLE tournaments_new RENAME TO tournaments;
-            ",
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 3,
-            description: "add courts to tournaments and court to matches",
-            sql: "
-                ALTER TABLE tournaments ADD COLUMN courts INTEGER NOT NULL DEFAULT 1;
-                ALTER TABLE matches ADD COLUMN court INTEGER;
-            ",
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 4,
-            description: "add court_assigned_at to matches for timer",
-            sql: "
-                ALTER TABLE matches ADD COLUMN court_assigned_at TEXT;
-            ",
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 5,
-            description: "add group_ko support: groups on tournaments, phase/group on rounds",
-            sql: "
-                ALTER TABLE tournaments ADD COLUMN num_groups INTEGER NOT NULL DEFAULT 0;
-                ALTER TABLE tournaments ADD COLUMN qualify_per_group INTEGER NOT NULL DEFAULT 0;
-                ALTER TABLE tournaments ADD COLUMN current_phase TEXT;
-                ALTER TABLE rounds ADD COLUMN phase TEXT;
-                ALTER TABLE rounds ADD COLUMN group_number INTEGER;
-            ",
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 6,
-            description: "add retired flag to tournament_players",
-            sql: "
-                ALTER TABLE tournament_players ADD COLUMN retired INTEGER NOT NULL DEFAULT 0;
-            ",
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 7,
-            description: "add group_ko to format CHECK constraint",
-            sql: "
-                CREATE TABLE tournaments_new (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    name TEXT NOT NULL,
-                    mode TEXT NOT NULL CHECK(mode IN ('singles', 'doubles', 'mixed')),
-                    format TEXT NOT NULL CHECK(format IN ('round_robin', 'elimination', 'random_doubles', 'group_ko')),
-                    sets_to_win INTEGER NOT NULL DEFAULT 2,
-                    points_per_set INTEGER NOT NULL DEFAULT 21,
-                    courts INTEGER NOT NULL DEFAULT 1,
-                    num_groups INTEGER NOT NULL DEFAULT 0,
-                    qualify_per_group INTEGER NOT NULL DEFAULT 0,
-                    current_phase TEXT,
-                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                    status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'active', 'completed', 'archived'))
-                );
-                INSERT INTO tournaments_new SELECT id, name, mode, format, sets_to_win, points_per_set, courts, num_groups, qualify_per_group, current_phase, created_at, status FROM tournaments;
-                DROP TABLE tournaments;
-                ALTER TABLE tournaments_new RENAME TO tournaments;
-            ",
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 8,
-            description: "add app_settings key-value table for logo etc.",
-            sql: "
+
                 CREATE TABLE IF NOT EXISTS app_settings (
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
                 );
-            ",
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 9,
-            description: "add age and club to players",
-            sql: "
-                ALTER TABLE players ADD COLUMN age INTEGER;
-                ALTER TABLE players ADD COLUMN club TEXT;
-            ",
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 10,
-            description: "add entry fees and payment tracking",
-            sql: "
-                ALTER TABLE tournaments ADD COLUMN entry_fee_single REAL NOT NULL DEFAULT 0;
-                ALTER TABLE tournaments ADD COLUMN entry_fee_double REAL NOT NULL DEFAULT 0;
-                ALTER TABLE tournament_players ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'unpaid';
-                ALTER TABLE tournament_players ADD COLUMN payment_method TEXT;
-                ALTER TABLE tournament_players ADD COLUMN paid_date TEXT;
-            ",
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 11,
-            description: "add team_config to tournaments for manual team pairings",
-            sql: "
-                ALTER TABLE tournaments ADD COLUMN team_config TEXT;
             ",
             kind: MigrationKind::Up,
         },

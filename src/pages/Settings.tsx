@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { wipeAllPlayers, wipeAllTournaments, getAppSetting, setAppSetting, deleteAppSetting } from "../lib/db";
 import { useTheme } from "../lib/ThemeContext";
 import { THEMES, type ThemeId } from "../lib/theme";
+import type { HallConfig } from "../lib/types";
 
 function isTauri(): boolean {
   return !!(window as any).__TAURI_INTERNALS__;
@@ -12,21 +13,29 @@ type ConfirmTarget = "players" | "tournaments" | null;
 const SETTINGS_KEY = "turnierplaner_settings";
 
 interface AppSettings {
-  defaultCourts: number;
+  defaultHalls: HallConfig[];
   timerWarningMin: number;  // yellow threshold in minutes
   timerDangerMin: number;   // red threshold in minutes
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  defaultCourts: 2,
+  defaultHalls: [{ name: "Halle 1", courts: 2 }],
   timerWarningMin: 20,
   timerDangerMin: 30,
 };
 
-function loadSettings(): AppSettings {
+export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Backward compat: convert old defaultCourts to defaultHalls
+      if (parsed.defaultCourts && !parsed.defaultHalls) {
+        parsed.defaultHalls = [{ name: "Halle 1", courts: parsed.defaultCourts }];
+        delete parsed.defaultCourts;
+      }
+      return { ...DEFAULT_SETTINGS, ...parsed };
+    }
   } catch {}
   return { ...DEFAULT_SETTINGS };
 }
@@ -270,24 +279,64 @@ export default function Settings() {
         <div className="space-y-4">
           <div>
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1.5 uppercase tracking-wide`}>
-              Standard-Spielfelder
+              Standard-Hallen
             </label>
-            <div className="flex items-center gap-3">
-              <select
-                value={settings.defaultCourts}
-                onChange={(e) => updateSetting("defaultCourts", Number(e.target.value))}
-                className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-              >
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                  <option key={n} value={n}>
-                    {n} {n === 1 ? "Feld" : "Felder"}
-                  </option>
-                ))}
-              </select>
-              <span className="text-xs text-gray-400">
-                Wird als Standardwert beim Erstellen neuer Turniere verwendet.
-              </span>
+            <div className="space-y-2">
+              {settings.defaultHalls.map((hall, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={hall.name}
+                    onChange={(e) => {
+                      const next = settings.defaultHalls.map((h, i) => i === idx ? { ...h, name: e.target.value } : h);
+                      updateSetting("defaultHalls", next);
+                    }}
+                    className={`flex-1 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-3 py-2 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+                    placeholder="Hallenname..."
+                  />
+                  <input
+                    type="number"
+                    value={hall.courts}
+                    min={1}
+                    max={8}
+                    onChange={(e) => {
+                      const next = settings.defaultHalls.map((h, i) => i === idx ? { ...h, courts: Number(e.target.value) || 1 } : h);
+                      updateSetting("defaultHalls", next);
+                    }}
+                    className={`w-20 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-3 py-2 text-sm text-center ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+                  />
+                  <span className={`text-xs ${theme.textMuted} w-12`}>Felder</span>
+                  {settings.defaultHalls.length > 1 && (
+                    <button
+                      onClick={() => {
+                        const next = settings.defaultHalls.filter((_, i) => i !== idx);
+                        updateSetting("defaultHalls", next);
+                      }}
+                      className={`${theme.textMuted} hover:text-rose-500 text-sm transition-colors px-1`}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => {
+                    const next = [...settings.defaultHalls, { name: `Halle ${settings.defaultHalls.length + 1}`, courts: 2 }];
+                    updateSetting("defaultHalls", next);
+                  }}
+                  className={`text-xs font-medium ${theme.activeBadgeText} hover:opacity-80 transition-colors`}
+                >
+                  + Halle hinzufuegen
+                </button>
+                <span className={`text-xs ${theme.textMuted}`}>
+                  Gesamt: {settings.defaultHalls.reduce((s, h) => s + h.courts, 0)} Felder in {settings.defaultHalls.length} {settings.defaultHalls.length === 1 ? "Halle" : "Hallen"}
+                </span>
+              </div>
             </div>
+            <span className="text-xs text-gray-400 mt-1 block">
+              Wird als Standardwert beim Erstellen neuer Turniere verwendet.
+            </span>
           </div>
 
           {/* Timer Thresholds */}
@@ -1042,6 +1091,4 @@ function UpdateChecker() {
   );
 }
 
-// Export settings loader for use in TournamentCreate
-export { loadSettings };
 export type { AppSettings };

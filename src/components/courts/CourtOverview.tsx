@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import type { Match } from "../../lib/types";
+import type { Match, HallConfig } from "../../lib/types";
+import { getCourtHallLabel } from "../../lib/types";
 import { CourtTimer } from "./CourtTimer";
 import { useTheme } from "../../lib/ThemeContext";
 
@@ -10,9 +11,10 @@ interface Props {
   playerName: (id: number | null) => string;
   onDrop?: (matchId: number, court: number) => void;
   onMatchClick?: (matchId: number) => void;
+  hallConfig?: HallConfig[];
 }
 
-export default function CourtOverview({ courts, matches, activeRoundMatches, playerName, onDrop, onMatchClick }: Props) {
+export default function CourtOverview({ courts, matches, activeRoundMatches, playerName, onDrop, onMatchClick, hallConfig }: Props) {
   const { theme } = useTheme();
   // Finde fuer jedes Feld das aktive (nicht abgeschlossene) Match - aus ALLEN Runden
   const courtAssignments = useMemo(() => {
@@ -101,64 +103,128 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
     <line x1="24" y1="2" x2="24" y2="132" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="4 3"/>
   </svg>`)}`;
 
+  // Determine if we should render multi-hall sections
+  const useMultiHall = hallConfig && hallConfig.length > 1;
+
+  // Build hall sections for multi-hall rendering
+  const hallSections = useMemo(() => {
+    if (!hallConfig || hallConfig.length <= 1) return null;
+    const sections: { name: string; globalStart: number; count: number }[] = [];
+    let offset = 0;
+    for (const hall of hallConfig) {
+      sections.push({ name: hall.name, globalStart: offset + 1, count: hall.courts });
+      offset += hall.courts;
+    }
+    return sections;
+  }, [hallConfig]);
+
+  // Get display label for a court number
+  const getCourtLabel = (courtNum: number): string => {
+    if (hallConfig && hallConfig.length > 1) {
+      const { localCourt } = getCourtHallLabel(courtNum, hallConfig);
+      return `Feld ${localCourt}`;
+    }
+    return `Feld ${courtNum}`;
+  };
+
+  // Render a single court card
+  const renderCourt = (courtNum: number) => {
+    const match = courtAssignments.get(courtNum);
+    const isFree = !match;
+
+    return (
+      <div
+        key={courtNum}
+        onDragOver={(e) => handleDragOver(e, courtNum)}
+        onDrop={(e) => handleDrop(e, courtNum)}
+        onDoubleClick={() => match && onMatchClick?.(match.id)}
+        className={`rounded-2xl border-2 border-dashed p-4 transition-all duration-200 min-h-[100px] relative overflow-hidden ${
+          isFree
+            ? `${theme.cardBorder} ${theme.cardBg} opacity-70 hover:opacity-100`
+            : `${theme.courtBorder} ${theme.cardBg} shadow-sm cursor-pointer`
+        }`}
+        style={{
+          backgroundImage: `url("${courtBgSvg}")`,
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          backgroundSize: 'auto 85%',
+          opacity: undefined,
+        }}
+        title={match ? "Doppelklick: Zum Spiel springen" : undefined}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">
+            {getCourtLabel(courtNum)}
+          </span>
+          {match && (
+            <CourtTimer assignedAt={match.court_assigned_at} />
+          )}
+        </div>
+
+        {match ? (
+          <div className="text-xs">
+            <div className={`font-semibold ${theme.textPrimary} truncate`}>
+              {teamLabel(match).t1}
+            </div>
+            <div className={`${theme.textMuted} text-[10px] my-0.5`}>vs</div>
+            <div className={`font-semibold ${theme.textPrimary} truncate`}>
+              {teamLabel(match).t2}
+            </div>
+          </div>
+        ) : (
+          <div className={`text-xs ${theme.textMuted} text-center mt-3`}>
+            Frei – Spiel hierher ziehen
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Group free courts by hall for the picker popup
+  const freeCourtsByHall = useMemo(() => {
+    if (!hallConfig || hallConfig.length <= 1) return null;
+    const groups: { hallName: string; courts: number[] }[] = [];
+    let offset = 0;
+    for (const hall of hallConfig) {
+      const hallCourts: number[] = [];
+      for (let i = offset + 1; i <= offset + hall.courts; i++) {
+        if (!courtAssignments.has(i)) hallCourts.push(i);
+      }
+      if (hallCourts.length > 0) {
+        groups.push({ hallName: hall.name, courts: hallCourts });
+      }
+      offset += hall.courts;
+    }
+    return groups;
+  }, [hallConfig, courtAssignments]);
+
   return (
     <div className="mb-5">
       {/* Court Grid */}
-      <div className="grid gap-3"
-        style={{ gridTemplateColumns: `repeat(${Math.min(courts, 4)}, 1fr)` }}
-      >
-        {Array.from({ length: courts }, (_, i) => i + 1).map((courtNum) => {
-          const match = courtAssignments.get(courtNum);
-          const isFree = !match;
-
-          return (
-            <div
-              key={courtNum}
-              onDragOver={(e) => handleDragOver(e, courtNum)}
-              onDrop={(e) => handleDrop(e, courtNum)}
-              onDoubleClick={() => match && onMatchClick?.(match.id)}
-              className={`rounded-2xl border-2 border-dashed p-4 transition-all duration-200 min-h-[100px] relative overflow-hidden ${
-                isFree
-                  ? `${theme.cardBorder} ${theme.cardBg} opacity-70 hover:opacity-100`
-                  : `${theme.courtBorder} ${theme.cardBg} shadow-sm cursor-pointer`
-              }`}
-              style={{
-                backgroundImage: `url("${courtBgSvg}")`,
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'center',
-                backgroundSize: 'auto 85%',
-                opacity: undefined,
-              }}
-              title={match ? "Doppelklick: Zum Spiel springen" : undefined}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">
-                  Feld {courtNum}
-                </span>
-                {match && (
-                  <CourtTimer assignedAt={match.court_assigned_at} />
-                )}
+      {useMultiHall && hallSections ? (
+        // Multi-hall: render sections per hall
+        <div className="space-y-4">
+          {hallSections.map((section) => (
+            <div key={section.name}>
+              <div className={`text-xs font-semibold ${theme.textSecondary} uppercase tracking-wide mb-2`}>
+                {section.name}
               </div>
-
-              {match ? (
-                <div className="text-xs">
-                  <div className={`font-semibold ${theme.textPrimary} truncate`}>
-                    {teamLabel(match).t1}
-                  </div>
-                  <div className={`${theme.textMuted} text-[10px] my-0.5`}>vs</div>
-                  <div className={`font-semibold ${theme.textPrimary} truncate`}>
-                    {teamLabel(match).t2}
-                  </div>
-                </div>
-              ) : (
-                <div className={`text-xs ${theme.textMuted} text-center mt-3`}>
-                  Frei – Spiel hierher ziehen
-                </div>
-              )}
+              <div className="grid gap-3"
+                style={{ gridTemplateColumns: `repeat(${Math.min(section.count, 4)}, 1fr)` }}
+              >
+                {Array.from({ length: section.count }, (_, i) => section.globalStart + i).map(renderCourt)}
+              </div>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        // Single hall or no config: flat grid
+        <div className="grid gap-3"
+          style={{ gridTemplateColumns: `repeat(${Math.min(courts, 4)}, 1fr)` }}
+        >
+          {Array.from({ length: courts }, (_, i) => i + 1).map(renderCourt)}
+        </div>
+      )}
 
       {/* Unassigned matches */}
       {unassigned.length > 0 && (
@@ -188,15 +254,39 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
                       <div className={`px-3 py-1.5 text-[10px] font-bold ${theme.textMuted} uppercase tracking-wide border-b ${theme.cardBorder}`}>
                         Feld waehlen
                       </div>
-                      {freeCourts.map((c) => (
-                        <button
-                          key={c}
-                          onClick={(e) => { e.stopPropagation(); handlePickCourt(c); }}
-                          className={`w-full px-4 py-2 text-left text-xs font-medium ${theme.textPrimary} hover:${theme.selectedBg} hover:pl-5 transition-all duration-150`}
-                        >
-                          Feld {c}
-                        </button>
-                      ))}
+                      {freeCourtsByHall ? (
+                        // Multi-hall: group by hall
+                        freeCourtsByHall.map((group) => (
+                          <div key={group.hallName}>
+                            <div className={`px-3 py-1 text-[10px] font-semibold ${theme.textMuted} ${theme.cardBg}`}>
+                              {group.hallName}
+                            </div>
+                            {group.courts.map((c) => {
+                              const { localCourt } = getCourtHallLabel(c, hallConfig!);
+                              return (
+                                <button
+                                  key={c}
+                                  onClick={(e) => { e.stopPropagation(); handlePickCourt(c); }}
+                                  className={`w-full px-4 py-2 text-left text-xs font-medium ${theme.textPrimary} hover:${theme.selectedBg} hover:pl-5 transition-all duration-150`}
+                                >
+                                  Feld {localCourt}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ))
+                      ) : (
+                        // Flat list
+                        freeCourts.map((c) => (
+                          <button
+                            key={c}
+                            onClick={(e) => { e.stopPropagation(); handlePickCourt(c); }}
+                            className={`w-full px-4 py-2 text-left text-xs font-medium ${theme.textPrimary} hover:${theme.selectedBg} hover:pl-5 transition-all duration-150`}
+                          >
+                            Feld {c}
+                          </button>
+                        ))
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); setCourtPickerMatchId(null); }}
                         className={`w-full px-4 py-1.5 text-left text-[10px] ${theme.textMuted} border-t ${theme.cardBorder} hover:opacity-80`}

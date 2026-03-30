@@ -8,6 +8,7 @@ const COLLAPSED_KEY = "turnierplaner_sidebar_collapsed";
 
 const links = [
   { to: "/", label: "Start", icon: "🏠" },
+  { to: "/sportstaetten", label: "Sportstaetten", icon: "🏟️" },
   { to: "/players", label: "Spieler", icon: "👥" },
   { to: "/tournaments", label: "Turniere", icon: "🏆" },
 ];

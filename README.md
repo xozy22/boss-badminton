@@ -61,6 +61,14 @@ Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turnier
   - Bei Wechselnden Partnern: Nur verletzter Spieler scheidet aus
   - Alle offenen Spiele werden als Freilos fuer den Gegner gewertet
 
+### Sportstaetten-Verwaltung
+- **Hallen mit individueller Feldanzahl**: Jede Sportstaette hat mehrere Hallen, jede Halle eigene Felder
+- Inline Hallen-Editor: Name + Feldanzahl pro Halle, Hinzufuegen/Entfernen
+- **JSON Export/Import**: Sportstaetten als Datei exportieren und importieren
+- **Turnier-Integration**: Bei Turniererstellung Sportstaette waehlen → Hallen per Checkbox auswaehlen
+- **Gruppierte Court-Anzeige**: Felder im Turnier nach Halle gruppiert mit Sektions-Headern
+- **Standard-Hallen in Einstellungen**: Greifen wenn keine Sportstaette gewaehlt
+
 ### Spielbetrieb
 - **Feldzuweisung**: Spiele per Drag & Drop oder Doppelklick auf Spielfelder ziehen
   - Belegte Felder werden erkannt und blockiert (runden-uebergreifend konsistent)
@@ -212,6 +220,7 @@ src/
 ├── pages/
 │   ├── Home.tsx        # Dashboard
 │   ├── Players.tsx     # Spielerverwaltung
+│   ├── Sportstaetten.tsx # Sportstaetten mit Hallen
 │   ├── Tournaments.tsx # Turnierliste + Archiv
 │   ├── TournamentCreate.tsx # Turniererstellung
 │   ├── TournamentView.tsx   # Turnieransicht (Matches, Courts, Rangliste)

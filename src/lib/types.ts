@@ -13,6 +13,43 @@ export interface Player {
   created_at: string;
 }
 
+export interface HallConfig {
+  name: string;
+  courts: number;
+}
+
+export function parseHallConfig(json: string | null): HallConfig[] {
+  if (!json) return [];
+  try { return JSON.parse(json) as HallConfig[]; } catch { return []; }
+}
+
+export function hallConfigTotalCourts(config: HallConfig[]): number {
+  return config.reduce((sum, h) => sum + h.courts, 0);
+}
+
+/** Convert global court number to hall-local label */
+export function getCourtHallLabel(courtNum: number, config: HallConfig[]): { hallName: string; localCourt: number } {
+  let offset = 0;
+  for (const h of config) {
+    if (courtNum <= offset + h.courts) {
+      return { hallName: h.name, localCourt: courtNum - offset };
+    }
+    offset += h.courts;
+  }
+  return { hallName: "", localCourt: courtNum };
+}
+
+export interface Sportstaette {
+  id: number;
+  name: string;
+  address: string | null;
+  zip: string | null;
+  city: string | null;
+  courts: number;
+  halls: string | null;
+  created_at: string;
+}
+
 export type TournamentPhase = "group" | "ko" | null;
 
 export interface Tournament {
@@ -29,6 +66,7 @@ export interface Tournament {
   entry_fee_single: number;
   entry_fee_double: number;
   team_config: string | null;
+  hall_config: string | null;
   created_at: string;
   status: TournamentStatus;
 }
