@@ -118,8 +118,9 @@
 - Vollstaendiger Dark Mode: Alle Seiten, Modals, Inputs, Tabellen, Bracket-Ansicht
 - Theme wird persistent gespeichert
 - **Theme-konforme Druckansicht**: Druck-Report passt sich dem gewaehlten Farbschema an
+- **Standard-Logo**: Badminton Turnierplaner Logo in Sidebar (zentriert), TV-Modus, Favicon und App-Icon
 - **Custom Vereinslogo**: Eigenes Logo hochladen mit Zuschnitt-Tool (1:1 Cropper)
-  - Wird in der Sidebar und im TV-Modus angezeigt (ersetzt Standard 🏸 Emoji)
+  - Wird in der Sidebar (mit Text) und im TV-Modus angezeigt
   - Gespeichert in der SQLite-Datenbank (im Backup enthalten, wandert mit DB)
 - **Badminton-Court SVG**: Dezentes Spielfeld-Hintergrundbild auf den Feld-Karten
 
