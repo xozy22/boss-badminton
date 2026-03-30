@@ -116,6 +116,7 @@
 - **4 Farbdesigns**: Smaragd (Gruen), Saphir (Blau), Bernstein (Orange), Dunkel (Dark Mode)
 - Theme-Wechsel ueber Einstellungen → Design, wird sofort angewendet
 - Vollstaendiger Dark Mode: Alle Seiten, Modals, Inputs, Tabellen, Bracket-Ansicht
+- **Schriftgroesse**: 7 Stufen (XXS bis XXL), persistent gespeichert
 - Theme wird persistent gespeichert
 - **Theme-konforme Druckansicht**: Druck-Report passt sich dem gewaehlten Farbschema an
 - **Standard-Logo**: Badminton Turnierplaner Logo in Sidebar (zentriert), TV-Modus, Favicon und App-Icon
@@ -143,7 +144,8 @@
 ### Technisch
 - **Installer**: Wahl zwischen Installation fuer alle Benutzer (Programme) oder nur aktuellen Benutzer
 - **Auto-Update**: Manueller Check ueber Einstellungen, signierte Updates von GitHub Releases
-- **Offline-faehig**: Laeuft komplett lokal, kein Internet noetig
+- **Offline-faehig**: Laeuft komplett lokal, kein Internet noetig (Font lokal gebundelt)
+- **Cross-Platform**: Windows + macOS (via GitHub Actions CI/CD)
 - **SQLite-Datenbank**: Robuste, persistente Datenspeicherung
 - **Backup & Restore**: Datenbank sichern und wiederherstellen mit nativem Dialog
 - **Konfigurierbarer Speicherort**: Datenbank an beliebigem Ort (z.B. USB-Stick)
