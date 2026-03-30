@@ -48,13 +48,13 @@ export default function GruppenTab({
             <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
               Gruppe {groupNum}
             </span>
-            <span className="text-xs text-gray-400 ml-2">
+            <span className={`text-xs ${theme.textMuted} ml-2`}>
               ({teamStandings.length} Teams, Top {qualifyCount})
             </span>
           </div>
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-gray-100">
+              <tr className={`border-b ${theme.cardBorder}`}>
                 <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>#</th>
                 <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>Team</th>
                 <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>S</th>
@@ -66,7 +66,7 @@ export default function GruppenTab({
               {teamStandings.map((ts, i) => (
                 <tr
                   key={ts.teamKey}
-                  className={`border-b border-gray-50 last:border-0 ${
+                  className={`border-b ${theme.cardBorder} last:border-0 ${
                     i < qualifyCount ? `${theme.selectedBg}` : ""
                   }`}
                 >
@@ -97,13 +97,13 @@ export default function GruppenTab({
           <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
             Gruppe {groupNum}
           </span>
-          <span className="text-xs text-gray-400 ml-2">
+          <span className={`text-xs ${theme.textMuted} ml-2`}>
             ({gPlayers.length} Spieler, Top {qualifyCount})
           </span>
         </div>
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-gray-100">
+            <tr className={`border-b ${theme.cardBorder}`}>
               <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>#</th>
               <th className={`px-3 py-2 text-left ${theme.textSecondary} font-medium`}>Spieler</th>
               <th className={`px-3 py-2 text-center ${theme.textSecondary} font-medium`}>S</th>
@@ -115,7 +115,7 @@ export default function GruppenTab({
             {gStandings.map((s, i) => (
               <tr
                 key={s.player.id}
-                className={`border-b border-gray-50 last:border-0 ${
+                className={`border-b ${theme.cardBorder} last:border-0 ${
                   i < qualifyCount ? `${theme.selectedBg}` : ""
                 }`}
               >

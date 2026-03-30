@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { wipeAllPlayers, wipeAllTournaments, getAppSetting, setAppSetting, deleteAppSetting } from "../lib/db";
 import { useTheme } from "../lib/ThemeContext";
-import { THEMES, type ThemeId } from "../lib/theme";
+import { THEMES, type ThemeId, FONT_SIZES, type FontSizeId } from "../lib/theme";
 import type { HallConfig } from "../lib/types";
 
 function isTauri(): boolean {
@@ -271,6 +271,7 @@ export default function Settings() {
       {/* ===== Design ===== */}
       <Section title="Design" icon="🎨" defaultOpen={false}>
         <ThemeSelector />
+        <FontSizeSelector />
         <LogoUploader />
       </Section>
 
@@ -946,6 +947,38 @@ function ThemeSelector() {
                     ✓
                   </span>
                 )}
+              </button>
+            );
+          }
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FontSizeSelector() {
+  const { fontSizeId, theme, setFontSize } = useTheme();
+
+  return (
+    <div className="mt-5">
+      <label className={`block text-xs font-medium ${theme.textSecondary} mb-3 uppercase tracking-wide`}>
+        Schriftgroesse
+      </label>
+      <div className="flex gap-2">
+        {(Object.entries(FONT_SIZES) as [FontSizeId, typeof FONT_SIZES[FontSizeId]][]).map(
+          ([id, { label }]) => {
+            const isActive = fontSizeId === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setFontSize(id)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border-2 ${
+                  isActive
+                    ? `${theme.roundActiveBg} ${theme.roundActiveText} border-transparent shadow-md`
+                    : `${theme.cardBg} ${theme.textSecondary} ${theme.inputBorder} hover:opacity-80`
+                }`}
+              >
+                {label}
               </button>
             );
           }

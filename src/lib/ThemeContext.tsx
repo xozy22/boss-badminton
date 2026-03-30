@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { type ThemeId, type ThemeColors, THEMES, loadThemeId, saveThemeId } from "./theme";
+import { type ThemeId, type ThemeColors, THEMES, loadThemeId, saveThemeId, type FontSizeId, FONT_SIZES, loadFontSize, saveFontSize } from "./theme";
 
 interface ThemeContextValue {
   themeId: ThemeId;
   theme: ThemeColors;
   setThemeId: (id: ThemeId) => void;
   isDark: boolean;
+  fontSizeId: FontSizeId;
+  setFontSize: (id: FontSizeId) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
@@ -13,14 +15,22 @@ const ThemeContext = createContext<ThemeContextValue>({
   theme: THEMES.green.colors,
   setThemeId: () => {},
   isDark: false,
+  fontSizeId: "m",
+  setFontSize: () => {},
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [themeId, setThemeIdState] = useState<ThemeId>(loadThemeId);
+  const [fontSizeId, setFontSizeState] = useState<FontSizeId>(loadFontSize);
 
   const setThemeId = (id: ThemeId) => {
     setThemeIdState(id);
     saveThemeId(id);
+  };
+
+  const setFontSize = (id: FontSizeId) => {
+    setFontSizeState(id);
+    saveFontSize(id);
   };
 
   const theme = THEMES[themeId].colors;
@@ -39,8 +49,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [themeId, theme, isDark]);
 
+  // Apply font size
+  useEffect(() => {
+    const factor = FONT_SIZES[fontSizeId].factor;
+    document.documentElement.style.fontSize = `${factor * 16}px`;
+  }, [fontSizeId]);
+
   return (
-    <ThemeContext.Provider value={{ themeId, theme, setThemeId, isDark }}>
+    <ThemeContext.Provider value={{ themeId, theme, setThemeId, isDark, fontSizeId, setFontSize }}>
       {children}
     </ThemeContext.Provider>
   );

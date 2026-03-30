@@ -228,8 +228,8 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                   step === s
                     ? `${theme.primaryBg} text-white`
                     : i < ["upload", "mapping", "preview", "done"].indexOf(step)
-                    ? "bg-gray-500 text-white"
-                    : `bg-gray-500/30 ${theme.textMuted}`
+                    ? "bg-gray-500/70 text-white"
+                    : `bg-gray-500/20 ${theme.textMuted}`
                 }`}
               >
                 {i + 1}
@@ -280,7 +280,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                   <select
                     value={selectedSheet}
                     onChange={(e) => handleSheetChange(e.target.value)}
-                    className="w-full border rounded px-3 py-2 text-sm"
+                    className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
                   >
                     {sheets.map((s) => (
                       <option key={s} value={s}>
@@ -302,7 +302,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                 <select
                   value={nameCol}
                   onChange={(e) => setNameCol(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
                 >
                   <option value="">-- Bitte waehlen --</option>
                   {columns.map((c) => (
@@ -320,7 +320,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                 <select
                   value={genderCol}
                   onChange={(e) => setGenderCol(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
                 >
                   <option value="">-- Nicht vorhanden --</option>
                   {columns.map((c) => (
@@ -338,7 +338,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                 <select
                   value={ageCol}
                   onChange={(e) => setAgeCol(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
                 >
                   <option value="">-- Nicht vorhanden --</option>
                   {columns.map((c) => (
@@ -354,7 +354,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                 <select
                   value={clubCol}
                   onChange={(e) => setClubCol(e.target.value)}
-                  className="w-full border rounded px-3 py-2 text-sm"
+                  className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
                 >
                   <option value="">-- Nicht vorhanden --</option>
                   {columns.map((c) => (
@@ -371,7 +371,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                   <select
                     value={defaultGender}
                     onChange={(e) => setDefaultGender(e.target.value as Gender)}
-                    className="w-full border rounded px-3 py-2 text-sm"
+                    className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
                   >
                     <option value="m">Herr</option>
                     <option value="f">Dame</option>
@@ -385,11 +385,11 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                   <div className={`text-sm ${theme.textSecondary} mb-2`}>
                     Vorschau (erste 5 Zeilen):
                   </div>
-                  <table className="w-full text-xs border">
+                  <table className={`w-full text-xs border ${theme.cardBorder} ${theme.inputText}`}>
                     <thead>
-                      <tr className="bg-gray-100">
-                        <th className="px-2 py-1 text-left border">Name</th>
-                        <th className="px-2 py-1 text-left border">Geschlecht</th>
+                      <tr className={theme.headerGradient}>
+                        <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>Name</th>
+                        <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>Geschlecht</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -401,13 +401,13 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                           ? parseGender(row[genderCol]) ?? defaultGender
                           : defaultGender;
                         return (
-                          <tr key={i} className="border-t">
-                            <td className="px-2 py-1 border">
+                          <tr key={i} className={`border-t ${theme.cardBorder}`}>
+                            <td className={`px-2 py-1 border ${theme.cardBorder}`}>
                               {name || (
-                                <span className="text-red-400">leer</span>
+                                <span className={theme.textMuted}>leer</span>
                               )}
                             </td>
-                            <td className="px-2 py-1 border">
+                            <td className={`px-2 py-1 border ${theme.cardBorder}`}>
                               {gender === "m" ? "Herr" : "Dame"}
                             </td>
                           </tr>
@@ -455,13 +455,13 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                         key={i}
                         className={`border-t ${
                           !row.valid
-                            ? "bg-red-50 text-gray-400"
+                            ? `bg-red-500/10 ${theme.textMuted}`
                             : row.duplicate
-                            ? "bg-orange-50 text-gray-400"
+                            ? `bg-orange-500/10 ${theme.textMuted}`
                             : ""
                         }`}
                       >
-                        <td className="px-3 py-1.5 text-gray-400">{i + 1}</td>
+                        <td className={`px-3 py-1.5 ${theme.textMuted}`}>{i + 1}</td>
                         <td className="px-3 py-1.5">
                           {row.name || <em>leer</em>}
                         </td>
@@ -493,7 +493,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
           {step === "done" && (
             <div className="text-center py-8">
               <div className="text-4xl mb-3">✓</div>
-              <div className="text-lg font-medium text-green-600">
+              <div className={`text-lg font-medium ${theme.activeBadgeText}`}>
                 {importCount} Spieler importiert
               </div>
             </div>
@@ -525,7 +525,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
             <button
               onClick={handlePreview}
               disabled={!nameCol}
-              className={`${theme.primaryBg} text-white px-4 py-2 rounded text-sm ${theme.primaryHoverBg} disabled:bg-gray-300 disabled:cursor-not-allowed`}
+              className={`${theme.primaryBg} text-white px-4 py-2 rounded text-sm ${theme.primaryHoverBg} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               Weiter zur Vorschau
             </button>
@@ -534,7 +534,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
             <button
               onClick={handleImport}
               disabled={importing || previewRows.filter((r) => r.valid && !r.duplicate).length === 0}
-              className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className={`${theme.primaryBg} text-white px-4 py-2 rounded text-sm ${theme.primaryHoverBg} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {importing ? "Importiere..." : "Importieren"}
             </button>

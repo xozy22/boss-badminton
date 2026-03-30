@@ -279,6 +279,33 @@ export const THEMES: Record<ThemeId, { label: string; colors: ThemeColors; previ
   dark: { label: "Dunkel", colors: darkTheme, preview: "#111827" },
 };
 
+// Font size
+export type FontSizeId = "xxs" | "xs" | "s" | "m" | "l" | "xl" | "xxl";
+
+export const FONT_SIZES: Record<FontSizeId, { label: string; factor: number }> = {
+  xxs: { label: "XXS", factor: 0.75 },
+  xs:  { label: "XS",  factor: 0.85 },
+  s:   { label: "S",   factor: 0.925 },
+  m:   { label: "M",   factor: 1.0 },
+  l:   { label: "L",   factor: 1.075 },
+  xl:  { label: "XL",  factor: 1.15 },
+  xxl: { label: "XXL", factor: 1.25 },
+};
+
+const FONTSIZE_KEY = "turnierplaner_fontsize";
+
+export function loadFontSize(): FontSizeId {
+  try {
+    const stored = localStorage.getItem(FONTSIZE_KEY);
+    if (stored && stored in FONT_SIZES) return stored as FontSizeId;
+  } catch {}
+  return "m";
+}
+
+export function saveFontSize(id: FontSizeId): void {
+  localStorage.setItem(FONTSIZE_KEY, id);
+}
+
 const THEME_KEY = "turnierplaner_theme";
 
 export function loadThemeId(): ThemeId {

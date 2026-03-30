@@ -52,3 +52,11 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Remove .sig files from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for asset in $(gh release view ${{ github.ref_name }} --json assets -q '.assets[].name' | grep '\.sig$'); do
+            gh release delete-asset ${{ github.ref_name }} "$asset" --yes
+          done

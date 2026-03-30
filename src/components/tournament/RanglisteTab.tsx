@@ -36,7 +36,7 @@ export default function RanglisteTab({
         </div>
         <table className="w-full text-xs">
           <thead>
-            <tr className="border-b border-gray-100">
+            <tr className={`border-b ${theme.cardBorder}`}>
               <th className={`px-3 py-2.5 text-left ${theme.textSecondary} font-medium`}>#</th>
               <th className={`px-3 py-2.5 text-left ${theme.textSecondary} font-medium`}>Spieler</th>
               <th className={`px-3 py-2.5 text-center ${theme.textSecondary} font-medium`}>S</th>
@@ -49,7 +49,7 @@ export default function RanglisteTab({
             {standings.map((s, i) => (
               <tr
                 key={s.player.id}
-                className={`border-b border-gray-50 last:border-0 ${
+                className={`border-b ${theme.cardBorder} last:border-0 ${
                   i < 3 && s.wins > 0 ? "bg-amber-500/10" : ""
                 }`}
               >
@@ -77,7 +77,7 @@ export default function RanglisteTab({
               <tr>
                 <td
                   colSpan={6}
-                  className="px-3 py-6 text-center text-gray-400"
+                  className={`px-3 py-6 text-center ${theme.textMuted}`}
                 >
                   Noch keine Ergebnisse
                 </td>
