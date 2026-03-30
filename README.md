@@ -1,6 +1,13 @@
-# 🏸 Badminton Turnierplaner
+<p align="center">
+  <img src="public/logo.png" alt="Badminton Turnierplaner" width="300" />
+</p>
 
-Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turniere. Gebaut mit [Tauri](https://tauri.app/), React und SQLite.
+<h1 align="center">Badminton Turnierplaner</h1>
+
+<p align="center">
+  Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turniere.<br/>
+  Gebaut mit <a href="https://tauri.app/">Tauri</a>, React und SQLite.
+</p>
 
 ## Screenshots
 

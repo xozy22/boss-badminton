@@ -48,19 +48,11 @@ export default function Sidebar() {
       <div className={`${collapsed ? "p-3" : "p-5"} border-b ${theme.sidebarBorder}`}>
         {collapsed ? (
           <div className="text-2xl text-center flex justify-center">
-            {customLogo ? (
-              <img src={customLogo} alt="Logo" className="w-8 h-8 object-contain" />
-            ) : (
-              <span>🏸</span>
-            )}
+            <img src={customLogo || "/logo.png"} alt="Logo" className="w-14 h-14 object-contain" />
           </div>
-        ) : (
+        ) : customLogo ? (
           <div className="flex items-center gap-3">
-            {customLogo ? (
-              <img src={customLogo} alt="Logo" className="w-9 h-9 object-contain shrink-0" />
-            ) : (
-              <div className="text-3xl shrink-0">🏸</div>
-            )}
+            <img src={customLogo} alt="Logo" className="w-14 h-14 object-contain shrink-0" />
             <div>
               <div className="text-base font-bold tracking-tight text-white">
                 Badminton
@@ -69,6 +61,10 @@ export default function Sidebar() {
                 Turnierplaner
               </div>
             </div>
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <img src="/logo.png" alt="Logo" className="w-40 object-contain" />
           </div>
         )}
       </div>
