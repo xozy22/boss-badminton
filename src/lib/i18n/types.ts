@@ -648,6 +648,8 @@ export interface Translations {
   stats_win_rate: string;
   stats_points_avg: string;
   stats_no_data: string;
+  stats_all_tournaments: string;
+  stats_filter_tournament: string;
 
   // ===== PDF Export & Certificates =====
   pdf_save: string;

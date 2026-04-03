@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getTournaments, getPlayers, getAllMatchesWithTournament, getAllSetsFlat } from "../lib/db";
 import { calculateTournamentStats, calculateMatchStats, calculateCourtStats, calculatePlayerDemographics, calculatePlayerRankings } from "../lib/stats";
 import type { TournamentStats, MatchStats, CourtStats, DemoStats, PlayerRankingEntry } from "../lib/stats";
-import type { Tournament, Player, GameSet } from "../lib/types";
+import type { Tournament, Player, Match, GameSet } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
 import { PRINT_COLORS, loadThemeId } from "../lib/theme";
@@ -14,6 +14,10 @@ export default function Statistics() {
   const [loading, setLoading] = useState(true);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [allMatches, setAllMatches] = useState<(Match & { tournament_id: number; tournament_name: string })[]>([]);
+  const [allSetsMap, setAllSetsMap] = useState<Map<number, GameSet[]>>(new Map());
+
+  const [selectedTournamentId, setSelectedTournamentId] = useState<number | null>(null);
 
   const [tournamentStats, setTournamentStats] = useState<TournamentStats | null>(null);
   const [matchStats, setMatchStats] = useState<MatchStats | null>(null);
@@ -32,6 +36,7 @@ export default function Statistics() {
     ]).then(([ts, ps, ms, sets]) => {
       setTournaments(ts);
       setPlayers(ps);
+      setAllMatches(ms);
 
       const map = new Map<number, GameSet[]>();
       for (const s of sets) {
@@ -39,15 +44,34 @@ export default function Statistics() {
         if (arr) arr.push(s);
         else map.set(s.match_id, [s]);
       }
-
-      setTournamentStats(calculateTournamentStats(ts));
-      setMatchStats(calculateMatchStats(ms, map));
-      setCourtStats(calculateCourtStats(ms));
-      setDemoStats(calculatePlayerDemographics(ps));
-      setRankings(calculatePlayerRankings(ms, map, ps));
+      setAllSetsMap(map);
       setLoading(false);
     });
   }, []);
+
+  const recalculate = useCallback((tournamentId: number | null) => {
+    const filteredMatches = tournamentId !== null
+      ? allMatches.filter(m => m.tournament_id === tournamentId)
+      : allMatches;
+
+    const filteredSetsMap = new Map<number, GameSet[]>();
+    for (const m of filteredMatches) {
+      const sets = allSetsMap.get(m.id);
+      if (sets) filteredSetsMap.set(m.id, sets);
+    }
+
+    setTournamentStats(calculateTournamentStats(
+      tournamentId !== null ? tournaments.filter(tr => tr.id === tournamentId) : tournaments
+    ));
+    setMatchStats(calculateMatchStats(filteredMatches, filteredSetsMap));
+    setCourtStats(calculateCourtStats(filteredMatches));
+    setDemoStats(calculatePlayerDemographics(players));
+    setRankings(calculatePlayerRankings(filteredMatches, filteredSetsMap, players));
+  }, [allMatches, allSetsMap, tournaments, players]);
+
+  useEffect(() => {
+    if (!loading) recalculate(selectedTournamentId);
+  }, [loading, selectedTournamentId, recalculate]);
 
   if (loading) {
     return (
@@ -95,11 +119,28 @@ export default function Statistics() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
-        <h1 className={`text-3xl font-extrabold ${theme.textPrimary} tracking-tight`}>
-          {t.stats_title} 📊
-        </h1>
-        <p className={`${theme.textSecondary} mt-1`}>{t.stats_subtitle}</p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <h1 className={`text-3xl font-extrabold ${theme.textPrimary} tracking-tight`}>
+            {t.stats_title} 📊
+          </h1>
+          <p className={`${theme.textSecondary} mt-1`}>{t.stats_subtitle}</p>
+        </div>
+        {tournaments.length > 0 && (
+          <div>
+            <label className={`block text-xs ${theme.textMuted} mb-1`}>{t.stats_filter_tournament}</label>
+            <select
+              value={selectedTournamentId ?? ""}
+              onChange={e => setSelectedTournamentId(e.target.value === "" ? null : Number(e.target.value))}
+              className={`${theme.inputBg} ${theme.inputBorder} ${theme.inputText} border rounded-xl px-4 py-2 text-sm min-w-[250px]`}
+            >
+              <option value="">{t.stats_all_tournaments}</option>
+              {tournaments.map(tr => (
+                <option key={tr.id} value={tr.id}>{tr.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Section 1: Tournament Overview */}

@@ -647,6 +647,8 @@ export const de: Translations = {
   stats_win_rate: "Siegquote",
   stats_points_avg: "Pkt/Spiel",
   stats_no_data: "Noch keine Daten vorhanden. Schliesse einige Turniere ab, um Statistiken zu sehen.",
+  stats_all_tournaments: "Alle Turniere",
+  stats_filter_tournament: "Nach Turnier filtern",
 
   // ===== PDF Export & Certificates =====
   pdf_save: "Als PDF speichern",
