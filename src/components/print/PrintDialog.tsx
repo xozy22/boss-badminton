@@ -173,18 +173,40 @@ export default function PrintDialog({
     if (!printRef.current) return;
 
     const printContent = printRef.current.innerHTML;
+
+    // Collect all stylesheets from the main document (includes bundled Inter font)
+    const styleSheets = Array.from(document.styleSheets);
+    let collectedStyles = "";
+    for (const sheet of styleSheets) {
+      try {
+        const rules = Array.from(sheet.cssRules || []);
+        for (const rule of rules) {
+          // Include @font-face rules and basic styles
+          if (rule instanceof CSSFontFaceRule || rule.cssText.includes("font-face")) {
+            collectedStyles += rule.cssText + "\n";
+          }
+        }
+      } catch {
+        // Cross-origin stylesheets can't be read — skip
+      }
+    }
+
     const printWindow = window.open("", "_blank", "width=900,height=700");
-    if (!printWindow) return;
+    if (!printWindow) {
+      // Fallback: if window.open is blocked (Tauri), use PDF export instead
+      alert("Print window blocked. Please use 'Save as PDF' instead.");
+      return;
+    }
 
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
-        <title>${tournament.name} - Druckansicht</title>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <title>${tournament.name}</title>
         <style>
+          ${collectedStyles}
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Inter', system-ui, sans-serif; }
+          body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
           @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           }
