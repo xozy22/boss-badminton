@@ -650,6 +650,11 @@ export const de: Translations = {
   stats_all_tournaments: "Alle Turniere",
   stats_filter_tournament: "Nach Turnier filtern",
 
+  // ===== Auto-Update Banner =====
+  update_available_banner: "Version {version} ist verfuegbar!",
+  update_go_to_settings: "Aktualisieren",
+  update_dismiss: "Spaeter",
+
   // ===== PDF Export & Certificates =====
   pdf_save: "Als PDF speichern",
   pdf_saving: "PDF wird erstellt...",

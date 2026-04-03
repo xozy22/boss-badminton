@@ -651,6 +651,11 @@ export interface Translations {
   stats_all_tournaments: string;
   stats_filter_tournament: string;
 
+  // ===== Auto-Update Banner =====
+  update_available_banner: string;
+  update_go_to_settings: string;
+  update_dismiss: string;
+
   // ===== PDF Export & Certificates =====
   pdf_save: string;
   pdf_saving: string;
