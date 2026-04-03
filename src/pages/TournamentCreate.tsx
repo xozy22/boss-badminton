@@ -13,7 +13,7 @@ import {
   getSportstaetten,
 } from "../lib/db";
 import type { Player, TournamentMode, TournamentFormat, Sportstaette, HallConfig } from "../lib/types";
-import { MODE_LABELS, FORMAT_LABELS, parseHallConfig, hallConfigTotalCourts } from "../lib/types";
+import { parseHallConfig, hallConfigTotalCourts } from "../lib/types";
 import { formFixedDoubleTeams, formFixedMixedTeams, recommendedSwissRounds } from "../lib/draw";
 import { loadSettings } from "./Settings";
 import { useTheme } from "../lib/ThemeContext";
@@ -45,7 +45,14 @@ export default function TournamentCreate() {
   const generateName = (m: TournamentMode, f: TournamentFormat) => {
     const now = new Date();
     const d = `${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}.${now.getFullYear()}`;
-    return `${d} - ${MODE_LABELS[m]} - ${FORMAT_LABELS[f]}`;
+    const modeLabels: Record<TournamentMode, string> = { singles: t.mode_singles, doubles: t.mode_doubles, mixed: t.mode_mixed };
+    const fmtLabels: Record<TournamentFormat, string> = {
+      round_robin: t.format_round_robin, elimination: t.format_elimination,
+      random_doubles: t.format_random_doubles, group_ko: t.format_group_ko,
+      swiss: t.format_swiss, double_elimination: t.format_double_elimination,
+      monrad: t.format_monrad, king_of_court: t.format_king_of_court, waterfall: t.format_waterfall,
+    };
+    return `${d} - ${modeLabels[m]} - ${fmtLabels[f]}`;
   };
 
   const [mode, setMode] = useState<TournamentMode>("doubles");
