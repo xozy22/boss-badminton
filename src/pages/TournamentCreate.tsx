@@ -295,7 +295,8 @@ export default function TournamentCreate() {
   };
 
   const minPlayers = mode === "singles" ? 2 : 4;
-  const needsTeamPairing = (mode === "doubles" || mode === "mixed") && format !== "random_doubles";
+  const formatsWithoutTeamPairing: TournamentFormat[] = ["random_doubles", "swiss", "monrad", "king_of_court", "waterfall"];
+  const needsTeamPairing = (mode === "doubles" || mode === "mixed") && !formatsWithoutTeamPairing.includes(format);
 
   // Team pairing helpers
   const pairedIds = useMemo(() => {
