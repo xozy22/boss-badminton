@@ -1235,6 +1235,12 @@ export default function TournamentView() {
     loadAll();
   };
 
+  const handleReopenTournament = async () => {
+    if (!confirm(t.tournament_view_reopen_confirm)) return;
+    await updateTournamentStatus(tournamentId, "active");
+    loadAll();
+  };
+
   const allRoundMatchesCompleted = (roundId: number): boolean => {
     const matches = matchesByRound.get(roundId) || [];
     return matches.length > 0 && matches.every((m) => m.status === "completed");
@@ -1578,6 +1584,14 @@ export default function TournamentView() {
               }`}
             >
               {t.tournament_view_end}
+            </button>
+          )}
+          {tournament.status === "completed" && (
+            <button
+              onClick={handleReopenTournament}
+              className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:border-emerald-300 hover:text-emerald-600 transition-all text-sm font-medium`}
+            >
+              🔓 {t.tournament_view_reopen}
             </button>
           )}
           {tournament.status === "completed" && (

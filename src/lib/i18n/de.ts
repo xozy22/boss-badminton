@@ -653,6 +653,10 @@ export const de: Translations = {
   stats_all_tournaments: "Alle Turniere",
   stats_filter_tournament: "Nach Turnier filtern",
 
+  // ===== Reopen tournament =====
+  tournament_view_reopen: "Turnier wieder oeffnen",
+  tournament_view_reopen_confirm: "Turnier wird wieder auf aktiv gesetzt.",
+
   // ===== Import fuzzy duplicates =====
   import_fuzzy_match: "Aehnlich wie: {name}",
   import_fuzzy_keep: "Trotzdem importieren",

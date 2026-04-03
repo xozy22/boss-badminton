@@ -654,6 +654,10 @@ export interface Translations {
   stats_all_tournaments: string;
   stats_filter_tournament: string;
 
+  // ===== Reopen tournament =====
+  tournament_view_reopen: string;
+  tournament_view_reopen_confirm: string;
+
   // ===== Import fuzzy duplicates =====
   import_fuzzy_match: string;
   import_fuzzy_keep: string;

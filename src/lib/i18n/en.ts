@@ -653,6 +653,10 @@ export const en: Translations = {
   stats_all_tournaments: "All Tournaments",
   stats_filter_tournament: "Filter by tournament",
 
+  // ===== Reopen tournament =====
+  tournament_view_reopen: "Reopen tournament",
+  tournament_view_reopen_confirm: "Tournament will be set back to active.",
+
   // ===== Import fuzzy duplicates =====
   import_fuzzy_match: "Similar to: {name}",
   import_fuzzy_keep: "Import anyway",
