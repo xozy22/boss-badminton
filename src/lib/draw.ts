@@ -93,35 +93,40 @@ export function generateRandomDoublesRound(
   pairingCounts?: Map<string, number>
 ): { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number; bye?: number }[] {
   const ids = shuffle(players.map((p) => p.id));
-  let byePlayer: number | undefined;
+  const byePlayers: number[] = [];
 
-  // If odd number, one sits out - pick the player with the MOST matches
-  // so everyone gets roughly equal play time
+  // Doubles needs groups of 4. Remove players until count is divisible by 4.
+  // Pick players with the MOST matches to sit out (fair rotation).
   const active = [...ids];
-  if (active.length % 2 !== 0) {
+  const byeCount = active.length % 4;
+  if (byeCount > 0) {
     if (matchCounts && matchCounts.size > 0) {
-      // Sort by match count descending, then shuffle among ties
-      active.sort((a, b) => {
+      // Sort candidates by match count descending (most matches sit out first)
+      const sorted = [...active].sort((a, b) => {
         const ca = matchCounts.get(a) ?? 0;
         const cb = matchCounts.get(b) ?? 0;
-        if (cb !== ca) return cb - ca; // most matches first
-        return Math.random() - 0.5; // random among ties
+        if (cb !== ca) return cb - ca;
+        return Math.random() - 0.5;
       });
-      byePlayer = active.shift(); // remove the one with most matches
+      for (let i = 0; i < byeCount; i++) {
+        const pid = sorted[i];
+        byePlayers.push(pid);
+        active.splice(active.indexOf(pid), 1);
+      }
     } else {
-      byePlayer = active.pop();
+      for (let i = 0; i < byeCount; i++) {
+        byePlayers.push(active.pop()!);
+      }
     }
   }
 
-  // Need groups of 4 for doubles matches
-  // If active count not divisible by 4, we need to handle it
-  // Strategy: pair up into teams of 2, then match teams against each other
+  // Need at least 4 for one doubles match
   if (active.length < 4) return [];
 
   // Try to find pairings that haven't been used before (or least repeated)
   const bestPairing = findBestPairing(active, previousPairings, pairingCounts);
 
-  // Group into matches (pairs of teams)
+  // Group into matches (pairs of teams) — active.length is divisible by 4
   const matches: { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number; bye?: number }[] = [];
   for (let i = 0; i < bestPairing.length - 1; i += 2) {
     matches.push({
@@ -132,13 +137,8 @@ export function generateRandomDoublesRound(
     });
   }
 
-  // If odd number of teams, remaining team gets bye
-  if (bestPairing.length % 2 !== 0) {
-    // Extra pair that couldn't be matched - put them back as bye
-  }
-
-  if (byePlayer !== undefined && matches.length > 0) {
-    matches[0].bye = byePlayer;
+  if (byePlayers.length > 0 && matches.length > 0) {
+    matches[0].bye = byePlayers[0]; // Store first bye player for reference
   }
 
   return matches;
@@ -329,8 +329,10 @@ export function generateMixedDoublesRound(
   const males = shuffle(players.filter((p) => p.gender === "m"));
   const females = shuffle(players.filter((p) => p.gender === "f"));
 
+  // Need even number of teams (each match = 2 teams), so pairs must be divisible by 2
   const pairCount = Math.min(males.length, females.length);
-  if (pairCount < 2) return [];
+  const usablePairs = pairCount - (pairCount % 2); // ensure even number of teams
+  if (usablePairs < 2) return [];
 
   // Try to find pairings that minimize repeats
   let bestTeams: [number, number][] = [];
@@ -342,7 +344,7 @@ export function generateMixedDoublesRound(
     const teams: [number, number][] = [];
     let repeats = 0;
 
-    for (let i = 0; i < pairCount; i++) {
+    for (let i = 0; i < usablePairs; i++) {
       const pair: [number, number] = [mShuffled[i].id, fShuffled[i].id];
       teams.push(pair);
       if (previousPairings.has(pairingKey(pair[0], pair[1]))) {
@@ -358,7 +360,7 @@ export function generateMixedDoublesRound(
   }
 
   const matches: { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number }[] = [];
-  for (let i = 0; i < bestTeams.length - 1; i += 2) {
+  for (let i = 0; i < bestTeams.length; i += 2) {
     matches.push({
       team1_p1: bestTeams[i][0],
       team1_p2: bestTeams[i][1],
