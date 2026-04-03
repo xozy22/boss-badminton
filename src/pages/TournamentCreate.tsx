@@ -21,6 +21,7 @@ import { useT } from "../lib/I18nContext";
 import TeamPairingStep from "../components/tournament/TeamPairingStep";
 import SeedingStep from "../components/tournament/SeedingStep";
 import FormatInfoModal from "../components/tournament/FormatInfoModal";
+import ExcelImport from "../components/players/ExcelImport";
 
 const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
   singles: ["round_robin", "elimination", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination", "group_ko"],
@@ -90,6 +91,7 @@ export default function TournamentCreate() {
   const [dragSeedIdx, setDragSeedIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [showFormatInfo, setShowFormatInfo] = useState(false);
+  const [showExcelImport, setShowExcelImport] = useState(false);
 
   // Team pairing state
   const [manualTeams, setManualTeams] = useState<[number, number][]>([]);
@@ -811,7 +813,13 @@ export default function TournamentCreate() {
                     ({t.common_selected.replace("{count}", String(selectedCount))})
                   </span>
                 </h2>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                  <button
+                    onClick={() => setShowExcelImport(true)}
+                    className={`${theme.primaryBg} text-white text-xs px-3 py-1.5 rounded-lg ${theme.primaryHoverBg} transition-colors font-medium`}
+                  >
+                    📥 {t.common_import}
+                  </button>
                   <button
                     onClick={selectAllFiltered}
                     className={`${theme.activeBadgeText} text-sm font-medium`}
@@ -1042,6 +1050,26 @@ export default function TournamentCreate() {
           format={format}
           theme={theme}
           onClose={() => setShowFormatInfo(false)}
+        />
+      )}
+
+      {showExcelImport && (
+        <ExcelImport
+          onImportDone={async () => {
+            const oldIds = new Set(players.map(p => p.id));
+            const freshPlayers = await getPlayers();
+            setPlayers(freshPlayers);
+            // Auto-select newly imported players
+            const newIds = freshPlayers.filter(p => !oldIds.has(p.id)).map(p => p.id);
+            if (newIds.length > 0) {
+              setSelectedPlayerIds(prev => {
+                const next = new Set(prev);
+                for (const id of newIds) next.add(id);
+                return next;
+              });
+            }
+          }}
+          onClose={() => setShowExcelImport(false)}
         />
       )}
     </div>
