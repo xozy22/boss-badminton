@@ -360,24 +360,23 @@ export async function updateTournamentStatus(id: number, status: string): Promis
 export async function deleteTournament(id: number): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute("BEGIN TRANSACTION");
-    try {
-      await d.execute(
-        "DELETE FROM sets WHERE match_id IN (SELECT m.id FROM matches m JOIN rounds r ON m.round_id = r.id WHERE r.tournament_id = $1)",
-        [id]
+    // Get round IDs first, then delete step by step (avoid subquery issues)
+    const rounds: { id: number }[] = await d.select(
+      "SELECT id FROM rounds WHERE tournament_id = $1", [id]
+    );
+    const roundIds = rounds.map(r => r.id);
+    for (const rid of roundIds) {
+      const matches: { id: number }[] = await d.select(
+        "SELECT id FROM matches WHERE round_id = $1", [rid]
       );
-      await d.execute(
-        "DELETE FROM matches WHERE round_id IN (SELECT id FROM rounds WHERE tournament_id = $1)",
-        [id]
-      );
-      await d.execute("DELETE FROM rounds WHERE tournament_id = $1", [id]);
-      await d.execute("DELETE FROM tournament_players WHERE tournament_id = $1", [id]);
-      await d.execute("DELETE FROM tournaments WHERE id = $1", [id]);
-      await d.execute("COMMIT");
-    } catch (err) {
-      await d.execute("ROLLBACK");
-      throw err;
+      for (const m of matches) {
+        await d.execute("DELETE FROM sets WHERE match_id = $1", [m.id]);
+      }
+      await d.execute("DELETE FROM matches WHERE round_id = $1", [rid]);
     }
+    await d.execute("DELETE FROM rounds WHERE tournament_id = $1", [id]);
+    await d.execute("DELETE FROM tournament_players WHERE tournament_id = $1", [id]);
+    await d.execute("DELETE FROM tournaments WHERE id = $1", [id]);
     return;
   }
   const store = loadStore();
