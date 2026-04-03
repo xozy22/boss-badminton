@@ -1,4 +1,5 @@
 import type { Tournament, Match, GameSet, Player, TournamentFormat, TournamentMode } from "./types";
+import { calculateAge } from "./types";
 
 // ===== Tournament Stats =====
 export interface TournamentStats {
@@ -175,11 +176,12 @@ export function calculatePlayerDemographics(players: Player[]): DemoStats {
     if (p.gender === "m") male++;
     else female++;
 
-    if (p.age !== null) {
-      if (p.age < 18) ageBuckets["<18"]++;
-      else if (p.age <= 30) ageBuckets["18-30"]++;
-      else if (p.age <= 45) ageBuckets["31-45"]++;
-      else if (p.age <= 60) ageBuckets["46-60"]++;
+    const age = calculateAge(p.birth_year);
+    if (age !== null) {
+      if (age < 18) ageBuckets["<18"]++;
+      else if (age <= 30) ageBuckets["18-30"]++;
+      else if (age <= 45) ageBuckets["31-45"]++;
+      else if (age <= 60) ageBuckets["46-60"]++;
       else ageBuckets["60+"]++;
     }
 

@@ -270,6 +270,15 @@ pub fn run() {
             ",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "convert age to birth_year",
+            sql: "
+                ALTER TABLE players RENAME COLUMN age TO birth_year;
+                UPDATE players SET birth_year = (CAST(strftime('%Y', 'now') AS INTEGER) - birth_year) WHERE birth_year IS NOT NULL AND birth_year < 200;
+            ",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { getPlayers, createPlayer, updatePlayer, deletePlayer } from "../lib/db";
 import * as XLSX from "xlsx";
 import type { Player, Gender } from "../lib/types";
+import { calculateAge } from "../lib/types";
 import ExcelImport from "../components/players/ExcelImport";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
@@ -14,12 +15,12 @@ export default function Players() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [name, setName] = useState("");
   const [gender, setGender] = useState<Gender>("m");
-  const [age, setAge] = useState<string>("");
+  const [birthYear, setBirthYear] = useState<string>("");
   const [club, setClub] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editGender, setEditGender] = useState<Gender>("m");
-  const [editAge, setEditAge] = useState<string>("");
+  const [editBirthYear, setEditBirthYear] = useState<string>("");
   const [editClub, setEditClub] = useState("");
   const [showImport, setShowImport] = useState(false);
 
@@ -45,9 +46,9 @@ export default function Players() {
 
   const handleAdd = async () => {
     if (!name.trim()) return;
-    await createPlayer(name.trim(), gender, age ? Number(age) : null, club.trim() || null);
+    await createPlayer(name.trim(), gender, birthYear ? Number(birthYear) : null, club.trim() || null);
     setName("");
-    setAge("");
+    setBirthYear("");
     setClub("");
     load();
   };
@@ -56,13 +57,13 @@ export default function Players() {
     setEditingId(p.id);
     setEditName(p.name);
     setEditGender(p.gender);
-    setEditAge(p.age != null ? String(p.age) : "");
+    setEditBirthYear(p.birth_year != null ? String(p.birth_year) : "");
     setEditClub(p.club ?? "");
   };
 
   const handleSave = async () => {
     if (editingId === null || !editName.trim()) return;
-    await updatePlayer(editingId, editName.trim(), editGender, editAge ? Number(editAge) : null, editClub.trim() || null);
+    await updatePlayer(editingId, editName.trim(), editGender, editBirthYear ? Number(editBirthYear) : null, editClub.trim() || null);
     setEditingId(null);
     load();
   };
@@ -125,11 +126,12 @@ export default function Players() {
     const data = players.map((p) => ({
       Name: p.name,
       Geschlecht: p.gender === "m" ? t.common_gender_male : t.common_gender_female,
-      Alter: p.age ?? "",
+      [t.common_birth_year]: p.birth_year ?? "",
+      [t.common_age]: calculateAge(p.birth_year) ?? "",
       Verein: p.club ?? "",
     }));
     const ws = XLSX.utils.json_to_sheet(data);
-    ws["!cols"] = [{ wch: 30 }, { wch: 12 }, { wch: 8 }, { wch: 25 }];
+    ws["!cols"] = [{ wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 25 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Spieler");
     const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
@@ -228,16 +230,17 @@ export default function Players() {
           </div>
           <div>
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-              {t.common_age}
+              {t.common_birth_year}
             </label>
             <input
               type="number"
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
+              value={birthYear}
+              onChange={(e) => setBirthYear(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-              className={`w-20 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-              placeholder="-"
-              min={1}
+              className={`w-24 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+              placeholder="z.B. 1990"
+              min={1900}
+              max={new Date().getFullYear()}
             />
           </div>
           <div className="flex-1">
@@ -427,14 +430,21 @@ export default function Players() {
                     {editingId === p.id ? (
                       <input
                         type="number"
-                        value={editAge}
-                        onChange={(e) => setEditAge(e.target.value)}
-                        className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-2 py-1.5 text-sm w-16 text-center`}
-                        min={1}
-                        placeholder="-"
+                        value={editBirthYear}
+                        onChange={(e) => setEditBirthYear(e.target.value)}
+                        className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-2 py-1.5 text-sm w-20 text-center`}
+                        min={1900}
+                        max={new Date().getFullYear()}
+                        placeholder="z.B. 1990"
                       />
                     ) : (
-                      <span className="text-sm">{p.age ?? "-"}</span>
+                      p.birth_year != null ? (
+                        <span className="text-sm" title={`${t.common_birth_year}: ${p.birth_year}`}>
+                          {calculateAge(p.birth_year)}
+                        </span>
+                      ) : (
+                        <span className="text-sm">-</span>
+                      )
                     )}
                   </td>
                   <td className={`px-3 py-3 ${theme.textSecondary}`}>

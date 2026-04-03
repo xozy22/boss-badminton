@@ -99,7 +99,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
   // Mapping
   const [nameCol, setNameCol] = useState("");
   const [genderCol, setGenderCol] = useState("");
-  const [ageCol, setAgeCol] = useState("");
+  const [birthYearCol, setBirthYearCol] = useState("");
   const [clubCol, setClubCol] = useState("");
   const [defaultGender, setDefaultGender] = useState<Gender>("m");
 
@@ -108,7 +108,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
   // Preview
   const [previewRows, setPreviewRows] = useState<
-    { name: string; gender: Gender; age: number | null; club: string | null; valid: boolean; duplicate: boolean; fuzzyMatch: string | null; skipFuzzy: boolean }[]
+    { name: string; gender: Gender; birthYear: number | null; club: string | null; valid: boolean; duplicate: boolean; fuzzyMatch: string | null; skipFuzzy: boolean }[]
   >([]);
   const [importCount, setImportCount] = useState(0);
   const [importing, setImporting] = useState(false);
@@ -159,7 +159,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
       );
 
       const ageLower = cols.find((c) =>
-        ["alter", "age", "jahrgang", "geburtsjahr"].includes(c.toLowerCase())
+        ["alter", "age", "jahrgang", "geburtsjahr", "birth_year", "birth year", "born", "geb", "geb."].includes(c.toLowerCase())
       );
       const clubLower = cols.find((c) =>
         ["verein", "club", "team", "mannschaft"].includes(c.toLowerCase())
@@ -167,7 +167,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
       setNameCol(nameLower ?? cols[0] ?? "");
       setGenderCol(genderLower ?? "");
-      setAgeCol(ageLower ?? "");
+      setBirthYearCol(ageLower ?? "");
       setClubCol(clubLower ?? "");
     }
 
@@ -213,12 +213,19 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
       if (name.length > 0) seenInImport.add(nameLower);
 
-      const rawAge = ageCol ? row[ageCol] : null;
-      const age = rawAge != null ? (Number(rawAge) || null) : null;
+      const rawBirthYear = birthYearCol ? row[birthYearCol] : null;
+      let birthYear: number | null = null;
+      if (rawBirthYear != null) {
+        const num = Number(rawBirthYear);
+        if (num) {
+          // Smart detection: values > 1900 are birth years, values < 200 are ages to convert
+          birthYear = num > 1900 ? num : (num < 200 ? new Date().getFullYear() - num : null);
+        }
+      }
       const rawClub = clubCol ? row[clubCol] : null;
       const club = rawClub != null ? String(rawClub).trim() || null : null;
 
-      return { name, gender, age, club, valid: name.length > 0, duplicate, fuzzyMatch, skipFuzzy: false };
+      return { name, gender, birthYear, club, valid: name.length > 0, duplicate, fuzzyMatch, skipFuzzy: false };
     });
 
     setPreviewRows(rows);
@@ -232,7 +239,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
     for (const row of previewRows) {
       if (!row.valid || row.duplicate || (row.fuzzyMatch && row.skipFuzzy)) continue;
       try {
-        await createPlayer(row.name, row.gender, row.age, row.club);
+        await createPlayer(row.name, row.gender, row.birthYear, row.club);
         count++;
       } catch (err) {
         console.error("Import error:", err);
@@ -385,8 +392,8 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                   {t.import_column_age}
                 </label>
                 <select
-                  value={ageCol}
-                  onChange={(e) => setAgeCol(e.target.value)}
+                  value={birthYearCol}
+                  onChange={(e) => setBirthYearCol(e.target.value)}
                   className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
                 >
                   <option value="">{t.import_not_available}</option>

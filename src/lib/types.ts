@@ -8,9 +8,14 @@ export interface Player {
   id: number;
   name: string;
   gender: Gender;
-  age: number | null;
+  birth_year: number | null;
   club: string | null;
   created_at: string;
+}
+
+export function calculateAge(birthYear: number | null): number | null {
+  if (birthYear === null) return null;
+  return new Date().getFullYear() - birthYear;
 }
 
 export interface HallConfig {
