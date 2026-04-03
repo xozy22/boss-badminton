@@ -121,6 +121,16 @@
 - **Medaillen**: Gold/Silber/Bronze fuer die Top 3
 - **Turnierbericht**: Druckbarer Bericht mit Highlights (knappstes Spiel, hoechster Sieg, meiste Punkte)
 - **Druckansicht**: Spielplan, aktuelle Runde, Rangliste oder kompletter Bericht
+- **PDF-Export**: Turnierbericht als PDF-Datei speichern
+- **Urkunden-Generator**: Festliche Urkunden fuer Platz 1-3 (Goldrahmen, BOSS-Branding, Unterschriftszeile)
+
+### Statistik-Dashboard
+- **Turnier-Uebersicht**: Turniere nach Status, Format-Verteilung, Modus-Verteilung
+- **Spiel-Statistiken**: Abgeschlossene Spiele, durchschnittliche/laengste/kuerzeste Spieldauer, Punkte pro Satz, knappstes Spiel
+- **Feldauslastung**: Genutzte Felder, Spiele pro Feld, durchschnittliche Zeit pro Feld
+- **Teilnehmer-Statistiken**: Geschlechterverteilung, Altersverteilung, Top-Vereine
+- **Spieler-Rangliste**: Turnier-uebergreifend mit Siegquote, Punkte pro Spiel, Medaillen fuer Top 3
+- **Spieldauer-Tracking**: Automatische Start-/Endzeitstempel fuer alle Spiele
 
 ### Sprache
 - **Englisch** (Standard) und **Deutsch** verfuegbar

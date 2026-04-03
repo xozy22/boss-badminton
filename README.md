@@ -121,6 +121,16 @@
 - **Medals**: Gold/Silver/Bronze for Top 3
 - **Tournament Report**: Printable report with highlights (closest match, biggest win, most points)
 - **Print View**: Match schedule, current round, standings or complete report
+- **PDF Export**: Save tournament report as PDF file
+- **Certificate Generator**: Festive certificates for Top 3 (gold border, BOSS branding, signature line)
+
+### Statistics Dashboard
+- **Tournament Overview**: Total tournaments by status, format distribution, mode distribution
+- **Match Statistics**: Total completed matches, average/longest/shortest match duration, avg points per set, closest match
+- **Court Utilization**: Courts used, matches per court, average time per court
+- **Player Demographics**: Gender split, age distribution, top clubs
+- **Player Rankings**: Cross-tournament rankings with win rate, points per match, medals for Top 3
+- **Match Duration Tracking**: Automatic start/end timestamps for all matches
 
 ### Language
 - **English** (Default) and **German** available
