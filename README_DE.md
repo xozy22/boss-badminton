@@ -65,12 +65,15 @@
   - Teams werden automatisch remapped
 - **Tab-Navigation im Turnierbetrieb**: Spiele | Rangliste | Verwaltung
 - **Archivierung**: Beendete Turniere archivieren und wiederherstellen
+- **Turnier wieder oeffnen**: Versehentlich beendet? Abgeschlossene Turniere wieder aktivieren
+- **Verletzung aufheben**: Verletzte Spieler fuer zukuenftige Runden wiederherstellen (Walkovers bleiben)
 - **Auto-Benennung**: Turniername wird automatisch generiert (Datum - Modus - Format), editierbar
 
 ### Spielerverwaltung
-- Spieler anlegen, bearbeiten, loeschen mit **Alter** und **Vereinszugehoerigkeit**
-- **Excel-Import** mit Spaltenmapping (Name, Geschlecht, Alter, Verein) und Duplikaterkennung
-- **Excel-Export** mit nativem Speichern-Dialog (inkl. Alter + Verein)
+- Spieler anlegen, bearbeiten, loeschen mit **Geburtsjahr** (Alter wird automatisch berechnet) und **Vereinszugehoerigkeit**
+- **Excel-Import** mit Spaltenmapping (Name, Geschlecht, Geburtsjahr/Alter, Verein) und Fuzzy-Duplikaterkennung
+- **Fuzzy-Duplikaterkennung**: Levenshtein-basierte Aehnlichkeitspruefung erkennt Tippfehler (z.B. "Schmidt" vs "Schmitt")
+- **Excel-Export** mit nativem Speichern-Dialog (inkl. Geburtsjahr + Alter + Verein)
 - Geschlechter-Filter und Suchfunktion bei der Spielerauswahl
 - **Verletzung/Aufgabe**: Spieler als verletzt markieren - scheidet fuer restliches Turnier aus
   - Gestylter Modal-Dialog (kein Browser-Popup) mit Warnung bei Team-Auswirkungen

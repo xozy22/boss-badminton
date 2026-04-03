@@ -65,11 +65,14 @@
   - Teams are automatically remapped
 - **Tab Navigation in Tournament**: Matches | Standings | Management
 - **Archiving**: Archive and restore completed tournaments
+- **Reopen Tournament**: Accidentally ended? Reopen completed tournaments
+- **Injury/Retirement Undo**: Restore injured players for future rounds (walkovers remain)
 - **Auto-Naming**: Tournament name automatically generated (Date - Mode - Format), editable
 
 ### Player Management
-- Create, edit, delete players with **Age** and **Club affiliation**
-- **Excel Import** with column mapping (Name, Gender, Age, Club) and duplicate detection
+- Create, edit, delete players with **Birth Year** (age calculated automatically) and **Club affiliation**
+- **Excel Import** with column mapping (Name, Gender, Birth Year/Age, Club) and fuzzy duplicate detection
+- **Fuzzy Duplicate Detection**: Levenshtein-based similarity check catches near-matches (e.g. "Schmidt" vs "Schmitt")
 - **Excel Export** with native save dialog (incl. Age + Club)
 - Gender filter and search function for player selection
 - **Injury/Retirement**: Mark player as injured - excluded from remaining tournament
