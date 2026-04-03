@@ -1,6 +1,6 @@
 export type Gender = "m" | "f";
 export type TournamentMode = "singles" | "doubles" | "mixed";
-export type TournamentFormat = "round_robin" | "elimination" | "random_doubles" | "group_ko";
+export type TournamentFormat = "round_robin" | "elimination" | "random_doubles" | "group_ko" | "swiss" | "double_elimination" | "monrad" | "king_of_court" | "waterfall";
 export type TournamentStatus = "draft" | "active" | "completed" | "archived";
 export type MatchStatus = "pending" | "active" | "completed";
 
@@ -50,7 +50,7 @@ export interface Sportstaette {
   created_at: string;
 }
 
-export type TournamentPhase = "group" | "ko" | null;
+export type TournamentPhase = "group" | "ko" | "swiss" | "winners" | "losers" | null;
 
 export interface Tournament {
   id: number;
@@ -155,6 +155,11 @@ export const FORMAT_LABELS: Record<TournamentFormat, string> = {
   elimination: "KO-System",
   random_doubles: "Wechselnde Partner",
   group_ko: "Gruppenphase + KO",
+  swiss: "Schweizer System",
+  double_elimination: "Doppel-KO",
+  monrad: "Monrad-System",
+  king_of_court: "King of the Court",
+  waterfall: "Waterfall",
 };
 
 export const STATUS_LABELS: Record<TournamentStatus, string> = {

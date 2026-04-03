@@ -167,6 +167,83 @@ export const de: Translations = {
   format_elimination: "KO-System",
   format_random_doubles: "Wechselnde Partner",
   format_group_ko: "Gruppenphase + KO",
+  format_swiss: "Schweizer System",
+  format_double_elimination: "Doppel-KO",
+  format_monrad: "Monrad-System",
+  format_king_of_court: "King of the Court",
+  format_waterfall: "Waterfall",
+
+  format_desc_round_robin: "Jeder spielt gegen jeden. Ideal fuer kleine Gruppen.",
+  format_desc_elimination: "KO-System. Eine Niederlage und man ist raus.",
+  format_desc_random_doubles: "Jede Runde neue zufaellige Partnerzusammenstellung. Geselliges Format.",
+  format_desc_group_ko: "Rundenspiel in Gruppen, dann KO-Phase mit den Besten.",
+  format_desc_swiss: "Paarungen nach aktuellem Tabellenstand jede Runde. Kein Ausscheiden -- alle spielen alle Runden. Ideal fuer groessere Teilnehmerfelder.",
+  format_desc_double_elimination: "Zwei Klammern: Gewinner und Verlierer. Erst nach zwei Niederlagen ist man ausgeschieden.",
+  format_desc_monrad: "Wie Schweizer System, aber strikt nach Platzierung gepaart (#1 vs #2, #3 vs #4). Beliebt in Skandinavien.",
+  format_desc_king_of_court: "Gewinner bleibt auf dem Feld, Verlierer geht ans Ende der Warteschlange. Schnelles Rotationsformat.",
+  format_desc_waterfall: "Spieler rotieren durch nummerierte Felder. Gewinner steigt auf, Verlierer ab. Oberstes Feld = Koenig.",
+
+  format_info_title: "Format-Info",
+  format_info_best_for: "Am besten geeignet fuer",
+  format_info_pros: "Vorteile",
+  format_info_cons: "Nachteile",
+
+  format_detail_round_robin: "Beim Rundenturnier spielt jeder Spieler oder jedes Team genau einmal gegen jeden anderen Teilnehmer. Das garantiert maximale Fairness, da alle Begegnungen ausgetragen werden. Die Endplatzierung ergibt sich aus Siegen, Satzverhaeltnis und Punkteverhaeltnis.\n\nDie Rundenanzahl entspricht der Teilnehmerzahl minus eins (bei ungerader Zahl hat ein Spieler pro Runde ein Freilos). Dieses Format benoetigt die meisten Spiele, liefert aber die genaueste Rangliste.",
+  format_detail_elimination: "Beim KO-System scheidet der Verlierer jedes Spiels sofort aus. Das Turnier laeuft ueber Runden (Achtelfinale, Viertelfinale, Halbfinale, Finale) bis ein Spieler uebrig bleibt.\n\nOptionales Seeding stellt sicher, dass Topspieler sich nicht in fruehen Runden treffen. Freilose werden vergeben, um auf eine Zweierpotenz zu kommen (4, 8, 16, 32 Spieler).",
+  format_detail_random_doubles: "Jede Runde werden neue zufaellige Partnerschaften gebildet. So spielt jeder mit verschiedenen Partnern im Turnierverlauf. Das System vermeidet Wiederholungen und verteilt Freilose fair.\n\nIdeal fuer gesellige Vereinsabende, bei denen Durchmischung das Ziel ist. Einzelwertungen werden trotz wechselnder Partner gefuehrt.",
+  format_detail_group_ko: "Spieler werden in Gruppen (2-8) aufgeteilt fuer eine Gruppenphase im Rundenmodus. Die besten Qualifikanten jeder Gruppe (konfigurierbar: Top 1-4) kommen in eine KO-Runde.\n\nDies kombiniert die Fairness des Rundenturniers mit der Spannung des KO-Systems. Gruppen koennen parallel auf mehreren Feldern laufen.",
+  format_detail_swiss: "In jeder Runde werden Spieler nach aktuellem Tabellenstand gepaart -- Fuehrende gegen Fuehrende, Mittelfeld gegen Mittelfeld. Niemand scheidet aus; alle spielen alle Runden.\n\nDie Rundenanzahl ist konfigurierbar (typisch: log2 der Spielerzahl). Dieses Format ermittelt effizient eine Rangliste mit deutlich weniger Spielen als Jeder-gegen-Jeden und ist fairer als KO.",
+  format_detail_double_elimination: "Zwei parallele Klammern: Gewinner und Verlierer. Alle starten in der Gewinner-Klammer. Eine Niederlage dort fuehrt zur Verlierer-Klammer. Eine Niederlage in der Verlierer-Klammer bedeutet das Aus.\n\nDas Grosse Finale wird zwischen dem Gewinner-Champion und dem Verlierer-Champion gespielt. Jeder bekommt eine zweite Chance.",
+  format_detail_monrad: "Aehnlich dem Schweizer System, aber mit strikter Paarung: #1 spielt gegen #2, #3 gegen #4, usw. nach aktuellem Tabellenstand. Keine Rematch-Vermeidung.\n\nBeliebt in skandinavischen Laendern. Einfachere Paarungslogik als Swiss, kann aber zu Wiederholungsspielen fuehren. Gleich effizient bei der Ermittlung von Platzierungen.",
+  format_detail_king_of_court: "Ein Feld ist das 'Koenigsfeld'. Der Gewinner jedes Spiels bleibt auf dem Feld als Verteidiger, der Verlierer geht ans Ende der Warteschlange. Der naechste Herausforderer kommt von vorne.\n\nSpiele werden kontinuierlich nacheinander gespielt. Minimale Wartezeit, perfekt fuer lockere Vereinsabende.",
+  format_detail_waterfall: "Mehrere Felder sind von 1 (Koenigsfeld) bis N nummeriert. Jede Runde spielen alle Felder gleichzeitig. Gewinner steigen ein Feld auf, Verlierer ein Feld ab. Wer auf Feld 1 gewinnt, bleibt oben.\n\nNach einer festgelegten Rundenanzahl gewinnt der Spieler, der am meisten Zeit auf den hoechsten Feldern verbracht hat. Ideal zur effizienten Nutzung aller verfuegbaren Felder.",
+
+  format_best_round_robin: "4-10 Spieler, wenn maximale Fairness wichtig ist, genuegend Zeit fuer alle Spiele",
+  format_best_elimination: "8-32 Spieler, begrenzte Zeit, spannende Bracket-Entwicklung",
+  format_best_random_doubles: "8-20 Spieler, gesellige Events, Durchmischung verschiedener Spielstaerken",
+  format_best_group_ko: "12-32 Spieler, ausgewogener Mix aus Gruppenphase und KO-Spannung",
+  format_best_swiss: "10-40 Spieler, faire Rangliste ohne gegen jeden spielen zu muessen",
+  format_best_double_elimination: "8-16 Spieler, wenn jeder eine zweite Chance verdient",
+  format_best_monrad: "10-40 Spieler, einfaches Ranglistensystem, skandinavischer Turnierstil",
+  format_best_king_of_court: "6-20 Spieler, lockere Abende, Dauerspiel mit einem Feld",
+  format_best_waterfall: "8-24 Spieler, mehrere Felder verfuegbar, kontinuierliche Rotation",
+
+  format_pros_round_robin: "Maximale Fairness\nJede Begegnung wird gespielt\nGenaueste Rangliste",
+  format_pros_elimination: "Schneller Abschluss\nSpannende Bracket-Dramatik\nKlarer Turnierverlauf",
+  format_pros_random_doubles: "Soziale Durchmischung\nJede Runde andere Partner\nSpassig und locker",
+  format_pros_group_ko: "Faire Gruppenphase + spannendes KO\nParallele Gruppenspiele\nFlexible Gruppen-/Qualifikanten-Konfiguration",
+  format_pros_swiss: "Effiziente Rangliste mit wenigen Runden\nKein Ausscheiden\nFaire Paarungen nach Spielstaerke",
+  format_pros_double_elimination: "Zweite Chance fuer alle\nMehr Spiele pro Spieler\nDer wahre Beste gewinnt",
+  format_pros_monrad: "Einfache Paarungslogik\nEffiziente Rangliste\nKein Ausscheiden",
+  format_pros_king_of_court: "Dauerspiel\nMinimale Wartezeit\nSpassig und schnelllebig",
+  format_pros_waterfall: "Alle Felder gleichzeitig belegt\nDynamischer Feldwechsel\nDauerhaft Action",
+
+  format_cons_round_robin: "Viele Spiele noetig\nZeitintensiv bei grossen Gruppen\nKann gegen Ende zaeh werden",
+  format_cons_elimination: "Ein schlechtes Spiel = raus\nWenig Spielzeit fuer fruehe Verlierer\nNicht ideal fuer kleine Gruppen",
+  format_cons_random_doubles: "Gluecksabhaengige Paarungen\nIndividuelle Staerke schwer beurteilbar\nNicht fuer kompetitive Ranglisten",
+  format_cons_group_ko: "Komplexer Aufbau\nLaengere Turnierdauer\nGruppenbalance abhaengig vom Seeding",
+  format_cons_swiss: "Kann abstrakt wirken\nPaarungen wirken fuer Gelegenheitsspieler unfair\nBraucht genuegend Runden fuer Genauigkeit",
+  format_cons_double_elimination: "Komplexe Bracket-Verwaltung\nLaenger als einfaches KO\nVerlierer-Klammer kann zweitrangig wirken",
+  format_cons_monrad: "Wiederholungsspiele moeglich\nWeniger verfeinert als Swiss\nTopspieler treffen sehr frueh aufeinander",
+  format_cons_king_of_court: "Nur ein Feld aktiv\nWartezeit steigt mit Spielerzahl\nKeine strukturierten Runden",
+  format_cons_waterfall: "Komplex in der manuellen Verwaltung\nSpieler auf niedrigen Feldern fuehlen sich benachteiligt\nAm besten mit gerader Spielerzahl",
+
+  tournament_swiss_rounds: "Anzahl Runden",
+  tournament_swiss_rounds_hint: "Empfohlen: {count} Runden fuer {players} Spieler",
+  tournament_view_next_swiss_round: "Naechste Schweizer Runde",
+  tournament_view_swiss_round_counter: "Runde {current} von {total}",
+
+  // Monrad specific
+  tournament_view_next_monrad_round: "Naechste Monrad-Runde",
+  tournament_view_monrad_round_counter: "Runde {current} von {total}",
+
+  // Double Elimination specific
+  tournament_view_advance_bracket: "Bracket fortsetzen",
+
+  // King of Court / Waterfall specific
+  tournament_view_next_kotc_match: "Naechstes Spiel",
+  tournament_view_next_waterfall_round: "Naechste Rotation",
+  tournament_view_waterfall_round_counter: "Runde {current} von {total}",
 
   // Status labels
   status_draft: "Entwurf",
@@ -294,6 +371,9 @@ export const de: Translations = {
   bracket_round_of_16: "Achtelfinale",
   bracket_round: "Runde {n}",
   bracket_winner: "Sieger",
+  bracket_winners_bracket: "Gewinner-Runde",
+  bracket_losers_bracket: "Verlierer-Runde",
+  bracket_grand_final: "Grosses Finale",
 
   // ===== Court Overview =====
   court_field: "Feld {n}",

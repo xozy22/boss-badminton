@@ -14,17 +14,18 @@ import {
 } from "../lib/db";
 import type { Player, TournamentMode, TournamentFormat, Sportstaette, HallConfig } from "../lib/types";
 import { MODE_LABELS, FORMAT_LABELS, parseHallConfig, hallConfigTotalCourts } from "../lib/types";
-import { formFixedDoubleTeams, formFixedMixedTeams } from "../lib/draw";
+import { formFixedDoubleTeams, formFixedMixedTeams, recommendedSwissRounds } from "../lib/draw";
 import { loadSettings } from "./Settings";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
 import TeamPairingStep from "../components/tournament/TeamPairingStep";
 import SeedingStep from "../components/tournament/SeedingStep";
+import FormatInfoModal from "../components/tournament/FormatInfoModal";
 
 const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
-  singles: ["round_robin", "elimination", "group_ko"],
-  doubles: ["round_robin", "elimination", "random_doubles", "group_ko"],
-  mixed: ["round_robin", "elimination", "random_doubles", "group_ko"],
+  singles: ["round_robin", "elimination", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination", "group_ko"],
+  doubles: ["round_robin", "elimination", "random_doubles", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination", "group_ko"],
+  mixed: ["round_robin", "elimination", "random_doubles", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination", "group_ko"],
 };
 
 type GenderFilter = "all" | "m" | "f";
@@ -81,6 +82,7 @@ export default function TournamentCreate() {
 
   const [dragSeedIdx, setDragSeedIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [showFormatInfo, setShowFormatInfo] = useState(false);
 
   // Team pairing state
   const [manualTeams, setManualTeams] = useState<[number, number][]>([]);
@@ -196,7 +198,7 @@ export default function TournamentCreate() {
       id = Number(editId);
       await updateTournament(
         id, finalName, mode, format, setsToWin, pointsPerSet, courts,
-        format === "group_ko" ? numGroups : 0,
+        (format === "group_ko" || format === "swiss" || format === "monrad" || format === "waterfall") ? numGroups : 0,
         format === "group_ko" ? qualifyPerGroup : 0,
         feeSingle, feeDouble
       );
@@ -216,7 +218,7 @@ export default function TournamentCreate() {
     } else {
       id = await createTournament(
         finalName, mode, format, setsToWin, pointsPerSet, courts,
-        format === "group_ko" ? numGroups : 0,
+        (format === "group_ko" || format === "swiss" || format === "monrad" || format === "waterfall") ? numGroups : 0,
         format === "group_ko" ? qualifyPerGroup : 0,
         feeSingle, feeDouble
       );
@@ -227,7 +229,7 @@ export default function TournamentCreate() {
 
     // Pass seed order and/or manual teams via navigation state
     const navState: Record<string, unknown> = {};
-    if (useSeeding && format === "elimination" && seedOrder.length > 0) {
+    if (useSeeding && (format === "elimination" || format === "double_elimination") && seedOrder.length > 0) {
       navState.seeds = seedOrder.filter((pid) => selectedPlayerIds.has(pid));
     }
     if (needsTeamPairing && manualTeams.length > 0) {
@@ -338,7 +340,7 @@ export default function TournamentCreate() {
   const playersValid = selectedPlayerIds.size >= minPlayers;
   const teamsValid = !needsTeamPairing || (manualTeams.length > 0 && poolPlayers.length < 2);
 
-  const showSeedingStep = useSeeding && format === "elimination";
+  const showSeedingStep = useSeeding && (format === "elimination" || format === "double_elimination");
   const seedingValid = !showSeedingStep || seedOrder.filter((pid) => selectedPlayerIds.has(pid)).length >= 2;
 
   const steps = [
@@ -504,8 +506,16 @@ export default function TournamentCreate() {
                     </select>
                   </div>
                   <div>
-                    <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
+                    <label className={`flex items-center gap-1.5 text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
                       {t.tournament_format}
+                      <button
+                        type="button"
+                        onClick={() => setShowFormatInfo(true)}
+                        className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] leading-none ${theme.inputBg} border ${theme.inputBorder} ${theme.textMuted} hover:${theme.textSecondary} transition-colors`}
+                        title={t.format_info_title}
+                      >
+                        i
+                      </button>
                     </label>
                     <select
                       value={format}
@@ -513,18 +523,31 @@ export default function TournamentCreate() {
                         const newFormat = e.target.value as TournamentFormat;
                         setFormat(newFormat);
                         setManualTeams([]); setFirstPick(null);
+                        if (newFormat === "swiss" || newFormat === "monrad" || newFormat === "waterfall") setNumGroups(recommendedSwissRounds(selectedPlayerIds.size));
                         if (!nameManuallyEdited) setName(generateName(mode, newFormat));
                       }}
                       className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                     >
                       {VALID_FORMATS[mode].map((f) => {
-                        const fmtLabels: Record<string, string> = { round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko };
+                        const fmtLabels: Record<string, string> = { round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko, swiss: t.format_swiss, double_elimination: t.format_double_elimination, monrad: t.format_monrad, king_of_court: t.format_king_of_court, waterfall: t.format_waterfall };
                         return (
                         <option key={f} value={f}>
                           {fmtLabels[f]}
                         </option>
                       );})}
                     </select>
+                    <p className={`text-xs ${theme.textMuted} mt-1.5`}>
+                      {format === "round_robin" ? t.format_desc_round_robin
+                        : format === "elimination" ? t.format_desc_elimination
+                        : format === "random_doubles" ? t.format_desc_random_doubles
+                        : format === "group_ko" ? t.format_desc_group_ko
+                        : format === "swiss" ? t.format_desc_swiss
+                        : format === "double_elimination" ? t.format_desc_double_elimination
+                        : format === "monrad" ? t.format_desc_monrad
+                        : format === "king_of_court" ? t.format_desc_king_of_court
+                        : format === "waterfall" ? t.format_desc_waterfall
+                        : ""}
+                    </p>
                   </div>
                 </div>
 
@@ -668,11 +691,32 @@ export default function TournamentCreate() {
                     </div>
                   </div>
                 )}
+
+                {/* Swiss / Monrad / Waterfall round settings */}
+                {(format === "swiss" || format === "monrad" || format === "waterfall") && (
+                  <div>
+                    <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
+                      {t.tournament_swiss_rounds}
+                    </label>
+                    <select
+                      value={numGroups || recommendedSwissRounds(selectedPlayerIds.size)}
+                      onChange={(e) => setNumGroups(Number(e.target.value))}
+                      className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+                    >
+                      {[3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                    <p className={`text-xs ${theme.textMuted} mt-1`}>
+                      {t.tournament_swiss_rounds_hint.replace("{count}", String(recommendedSwissRounds(selectedPlayerIds.size))).replace("{players}", String(selectedPlayerIds.size))}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Seeding Toggle - only for elimination */}
-            {format === "elimination" && (
+            {/* Seeding Toggle - for elimination and double_elimination */}
+            {(format === "elimination" || format === "double_elimination") && (
               <div className={`flex items-center gap-3 p-3 rounded-xl border ${theme.cardBorder} ${useSeeding ? theme.selectedBg : ''}`}>
                 <input
                   type="checkbox"
@@ -954,7 +998,10 @@ export default function TournamentCreate() {
               <h2 className={`font-semibold ${theme.textPrimary} mb-3`}>{t.tournament_summary}</h2>
               <div className={`text-sm ${theme.textSecondary} space-y-1.5`}>
                 <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_name}</span> {name || "—"}</div>
-                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_mode}</span> {({singles: t.mode_singles, doubles: t.mode_doubles, mixed: t.mode_mixed} as Record<string, string>)[mode]} · {({round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko} as Record<string, string>)[format]}</div>
+                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_mode}</span> {({singles: t.mode_singles, doubles: t.mode_doubles, mixed: t.mode_mixed} as Record<string, string>)[mode]} · {({round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko, swiss: t.format_swiss, double_elimination: t.format_double_elimination, monrad: t.format_monrad, king_of_court: t.format_king_of_court, waterfall: t.format_waterfall} as Record<string, string>)[format]}</div>
+                {(format === "swiss" || format === "monrad" || format === "waterfall") && (
+                  <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_swiss_rounds}:</span> {numGroups}</div>
+                )}
                 <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_rules}</span> Best of {setsToWin * 2 - 1} · {pointsPerSet} {t.common_points} · {courts} {courts === 1 ? t.common_field : t.common_fields}</div>
                 <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_players}</span> {t.common_selected.replace("{count}", String(selectedPlayerIds.size))} {selectedPlayerIds.size < minPlayers && <span className="text-orange-500">{t.tournament_min_players.replace("{count}", String(minPlayers))}</span>}</div>
                 {needsTeamPairing && (
@@ -982,6 +1029,14 @@ export default function TournamentCreate() {
           </>
         )}
       </div>
+
+      {showFormatInfo && (
+        <FormatInfoModal
+          format={format}
+          theme={theme}
+          onClose={() => setShowFormatInfo(false)}
+        />
+      )}
     </div>
   );
 }

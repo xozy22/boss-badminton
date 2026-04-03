@@ -49,6 +49,16 @@ import {
   splitTeamsIntoGroups,
   getPreviousPairings,
   getPreviousPairingCounts,
+  generateSwissFirstRound,
+  generateSwissFirstRoundDoubles,
+  generateSwissRound,
+  generateSwissRoundDoubles,
+  generateMonradRound,
+  generateMonradRoundDoubles,
+  generateKingOfCourtMatch,
+  generateWaterfallRound,
+  advanceWaterfall,
+  shufflePlayers,
 } from "../lib/draw";
 import {
   calculateStandings,
@@ -75,9 +85,9 @@ import { parseHallConfig } from "../lib/types";
 import { useT } from "../lib/I18nContext";
 
 const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
-  singles: ["round_robin", "elimination", "group_ko"],
-  doubles: ["round_robin", "elimination", "random_doubles", "group_ko"],
-  mixed: ["round_robin", "elimination", "random_doubles", "group_ko"],
+  singles: ["round_robin", "elimination", "group_ko", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination"],
+  doubles: ["round_robin", "elimination", "random_doubles", "group_ko", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination"],
+  mixed: ["round_robin", "elimination", "random_doubles", "group_ko", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination"],
 };
 
 function EditTournamentModal({
@@ -162,7 +172,7 @@ function EditTournamentModal({
               <label className={labelClass}>{t.tournament_format}</label>
               <select value={format} onChange={(e) => setFormat(e.target.value as TournamentFormat)} className={inputClass}>
                 {VALID_FORMATS[mode].map((f) => {
-                  const fmtLabels: Record<string, string> = { round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko };
+                  const fmtLabels: Record<string, string> = { round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko, swiss: t.format_swiss, double_elimination: t.format_double_elimination, monrad: t.format_monrad, king_of_court: t.format_king_of_court, waterfall: t.format_waterfall };
                   return <option key={f} value={f}>{fmtLabels[f]}</option>;
                 })}
               </select>
@@ -210,6 +220,17 @@ function EditTournamentModal({
                   ))}
                 </select>
               </div>
+            </div>
+          )}
+
+          {(format === "swiss" || format === "monrad" || format === "waterfall") && (
+            <div>
+              <label className={labelClass}>{t.tournament_swiss_rounds}</label>
+              <select value={numGroups} onChange={(e) => setNumGroups(Number(e.target.value))} className={inputClass}>
+                {[3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                  <option key={n} value={n}>{n} {t.tournament_view_tab_matches.toLowerCase()}</option>
+                ))}
+              </select>
             </div>
           )}
 
@@ -452,6 +473,91 @@ export default function TournamentView() {
       }
     } else if (tournament.format === "random_doubles") {
       await generateNextRound();
+    } else if (tournament.format === "swiss") {
+      await updateTournamentPhase(tournamentId, "swiss");
+      if (tournament.mode === "singles") {
+        const matches = generateSwissFirstRound(players);
+        const roundId = await createRound(tournamentId, 1, "swiss");
+        for (const m of matches) {
+          const court = autoAssign ? 1 : null;
+          await createMatch(roundId, m.team1_p1, null, m.team2_p1, null, court);
+        }
+      } else {
+        const teams = navTeams && navTeams.length > 0
+          ? navTeams
+          : tournament.mode === "mixed"
+            ? formFixedMixedTeams(players)
+            : formFixedDoubleTeams(players);
+        const matches = generateSwissFirstRoundDoubles(teams);
+        const roundId = await createRound(tournamentId, 1, "swiss");
+        for (const m of matches) {
+          const court = autoAssign ? 1 : null;
+          await createMatch(roundId, m.team1_p1, m.team1_p2, m.team2_p1, m.team2_p2, court);
+        }
+      }
+    } else if (tournament.format === "monrad") {
+      // Monrad: reuse Swiss infrastructure with random first round
+      await updateTournamentPhase(tournamentId, "swiss");
+      if (tournament.mode === "singles") {
+        const matches = generateSwissFirstRound(players);
+        const roundId = await createRound(tournamentId, 1, "swiss");
+        for (const m of matches) {
+          const court = autoAssign ? 1 : null;
+          await createMatch(roundId, m.team1_p1, null, m.team2_p1, null, court);
+        }
+      } else {
+        const teams = navTeams && navTeams.length > 0
+          ? navTeams
+          : tournament.mode === "mixed"
+            ? formFixedMixedTeams(players)
+            : formFixedDoubleTeams(players);
+        const matches = generateSwissFirstRoundDoubles(teams);
+        const roundId = await createRound(tournamentId, 1, "swiss");
+        for (const m of matches) {
+          const court = autoAssign ? 1 : null;
+          await createMatch(roundId, m.team1_p1, m.team1_p2, m.team2_p1, m.team2_p2, court);
+        }
+      }
+    } else if (tournament.format === "king_of_court") {
+      // King of the Court: shuffle players, generate first match
+      const shuffled = shufflePlayers(players.map((p) => p.id));
+      if (shuffled.length < 2) return;
+      const { team1_p1, team2_p1 } = generateKingOfCourtMatch(shuffled);
+      const roundId = await createRound(tournamentId, 1);
+      const court = autoAssign ? 1 : null;
+      await createMatch(roundId, team1_p1, null, team2_p1, null, court);
+    } else if (tournament.format === "waterfall") {
+      // Waterfall: shuffle players, assign to courts, generate first round
+      const shuffled = shufflePlayers(players.map((p) => p.id));
+      const waterfallMatches = generateWaterfallRound(shuffled);
+      const roundId = await createRound(tournamentId, 1);
+      for (const m of waterfallMatches) {
+        await createMatch(roundId, m.team1_p1, null, m.team2_p1, null, m.court);
+      }
+    } else if (tournament.format === "double_elimination") {
+      await updateTournamentPhase(tournamentId, "winners");
+      if (tournament.mode === "singles") {
+        const matches = generateEliminationBracket(players, navSeeds);
+        const roundId = await createRound(tournamentId, 1, "winners");
+        for (const m of matches) {
+          if (m.team2_p1 !== -1) {
+            const court = autoAssign ? 1 : null;
+            await createMatch(roundId, m.team1_p1, null, m.team2_p1, null, court);
+          }
+        }
+      } else {
+        const teams = navTeams && navTeams.length > 0
+          ? navTeams
+          : tournament.mode === "mixed"
+            ? formFixedMixedTeams(players)
+            : formFixedDoubleTeams(players);
+        const matches = generateEliminationBracketDoubles(teams);
+        const roundId = await createRound(tournamentId, 1, "winners");
+        for (const m of matches) {
+          const court = autoAssign ? 1 : null;
+          await createMatch(roundId, m.team1_p1, m.team1_p2, m.team2_p1, m.team2_p2, court);
+        }
+      }
     }
 
     loadAll();
@@ -506,6 +612,191 @@ export default function TournamentView() {
     }
 
     setActiveRound(roundId);
+    loadAll();
+  };
+
+  const generateNextSwissRound = async () => {
+    if (!tournament || tournament.format !== "swiss") return;
+
+    const swissRounds = rounds.filter((r) => r.phase === "swiss");
+    const allSwissMatches: Match[] = [];
+    const allSwissSets = new Map<number, GameSet[]>();
+    for (const r of swissRounds) {
+      const ms = matchesByRound.get(r.id) || [];
+      allSwissMatches.push(...ms);
+      for (const m of ms) allSwissSets.set(m.id, setsByMatch.get(m.id) || []);
+    }
+
+    // Build previousMatchups set
+    const previousMatchups = new Set<string>();
+    for (const m of allSwissMatches) {
+      if (tournament.mode === "singles") {
+        const ids = [m.team1_p1, m.team2_p1].sort((a, b) => a - b);
+        previousMatchups.add(`${ids[0]}-${ids[1]}`);
+      } else {
+        const t1Key = [m.team1_p1, m.team1_p2!].sort((a, b) => a - b).join("-");
+        const t2Key = [m.team2_p1, m.team2_p2!].sort((a, b) => a - b).join("-");
+        const parts = [t1Key, t2Key].sort();
+        previousMatchups.add(`${parts[0]}-${parts[1]}`);
+      }
+    }
+
+    const activePlayers = players.filter((p) => !retiredPlayerIds.has(p.id));
+    const numCourts = tournament.courts || 1;
+    const autoAssign = numCourts === 1;
+    const nextRoundNum = rounds.length + 1;
+
+    if (tournament.mode === "singles") {
+      const swissStandings = calculateStandings(activePlayers, allSwissMatches, allSwissSets);
+      const newMatches = generateSwissRound(swissStandings, previousMatchups);
+      if (newMatches.length === 0) return;
+      const roundId = await createRound(tournamentId, nextRoundNum, "swiss");
+      for (const m of newMatches) {
+        const court = autoAssign ? 1 : null;
+        await createMatch(roundId, m.team1_p1, null, m.team2_p1, null, court);
+      }
+    } else {
+      const teamStandings = calculateTeamStandings(activePlayers, allSwissMatches, allSwissSets);
+      const newMatches = generateSwissRoundDoubles(teamStandings, previousMatchups);
+      if (newMatches.length === 0) return;
+      const roundId = await createRound(tournamentId, nextRoundNum, "swiss");
+      for (const m of newMatches) {
+        const court = autoAssign ? 1 : null;
+        await createMatch(roundId, m.team1_p1, m.team1_p2, m.team2_p1, m.team2_p2, court);
+      }
+    }
+
+    loadAll();
+  };
+
+  const generateNextMonradRound = async () => {
+    if (!tournament || tournament.format !== "monrad") return;
+
+    const swissRoundsLocal = rounds.filter((r) => r.phase === "swiss");
+    const allMonradMatches: Match[] = [];
+    const allMonradSets = new Map<number, GameSet[]>();
+    for (const r of swissRoundsLocal) {
+      const ms = matchesByRound.get(r.id) || [];
+      allMonradMatches.push(...ms);
+      for (const m of ms) allMonradSets.set(m.id, setsByMatch.get(m.id) || []);
+    }
+
+    const activePlayers = players.filter((p) => !retiredPlayerIds.has(p.id));
+    const numCourts = tournament.courts || 1;
+    const autoAssign = numCourts === 1;
+    const nextRoundNum = rounds.length + 1;
+
+    if (tournament.mode === "singles") {
+      const monradStandings = calculateStandings(activePlayers, allMonradMatches, allMonradSets);
+      const newMatches = generateMonradRound(monradStandings);
+      if (newMatches.length === 0) return;
+      const roundId = await createRound(tournamentId, nextRoundNum, "swiss");
+      for (const m of newMatches) {
+        const court = autoAssign ? 1 : null;
+        await createMatch(roundId, m.team1_p1, null, m.team2_p1, null, court);
+      }
+    } else {
+      const teamStandings = calculateTeamStandings(activePlayers, allMonradMatches, allMonradSets);
+      const newMatches = generateMonradRoundDoubles(teamStandings);
+      if (newMatches.length === 0) return;
+      const roundId = await createRound(tournamentId, nextRoundNum, "swiss");
+      for (const m of newMatches) {
+        const court = autoAssign ? 1 : null;
+        await createMatch(roundId, m.team1_p1, m.team1_p2, m.team2_p1, m.team2_p2, court);
+      }
+    }
+
+    loadAll();
+  };
+
+  const generateNextKingOfCourtMatch = async () => {
+    if (!tournament || tournament.format !== "king_of_court") return;
+
+    // Build queue from match history: winner stays (front), loser goes to back
+    const allMatchesLocal: Match[] = [];
+    for (const [, matches] of matchesByRound) {
+      allMatchesLocal.push(...matches);
+    }
+
+    // Get the last completed match to determine new queue order
+    const completedMatches = allMatchesLocal
+      .filter((m) => m.status === "completed" && m.winner_team)
+      .sort((a, b) => b.id - a.id); // most recent first
+
+    if (completedMatches.length === 0) return;
+
+    const lastMatch = completedMatches[0];
+    const winner = lastMatch.winner_team === 1 ? lastMatch.team1_p1 : lastMatch.team2_p1;
+    const loser = lastMatch.winner_team === 1 ? lastMatch.team2_p1 : lastMatch.team1_p1;
+
+    // Build queue: winner first, then all other players who aren't winner/loser, then loser at back
+    const allPlayerIds = players.filter((p) => !retiredPlayerIds.has(p.id)).map((p) => p.id);
+    const inMatch = new Set([winner, loser]);
+    const others = allPlayerIds.filter((id) => !inMatch.has(id));
+
+    // Reconstruct remaining queue from previous state
+    // The queue order is: winner (stays), then others in previous order, then loser at back
+    const newQueue = [winner, ...others, loser];
+
+    if (newQueue.length < 2) return;
+
+    const { team1_p1, team2_p1 } = generateKingOfCourtMatch(newQueue);
+    const numCourts = tournament.courts || 1;
+    const autoAssign = numCourts === 1;
+    const nextRoundNum = rounds.length + 1;
+    const roundId = await createRound(tournamentId, nextRoundNum);
+    const court = autoAssign ? 1 : null;
+    await createMatch(roundId, team1_p1, null, team2_p1, null, court);
+
+    loadAll();
+  };
+
+  const generateNextWaterfallRound = async () => {
+    if (!tournament || tournament.format !== "waterfall") return;
+
+    // Get the last round's matches to determine results
+    const lastRound = rounds[rounds.length - 1];
+    if (!lastRound) return;
+    const lastMatches = matchesByRound.get(lastRound.id) || [];
+
+    // Build results from last round
+    const results: { court: number; winner: number; loser: number }[] = [];
+    for (const m of lastMatches) {
+      if (!m.winner_team || !m.court) continue;
+      results.push({
+        court: m.court,
+        winner: m.winner_team === 1 ? m.team1_p1 : m.team2_p1,
+        loser: m.winner_team === 1 ? m.team2_p1 : m.team1_p1,
+      });
+    }
+
+    if (results.length === 0) return;
+
+    // Reconstruct current court assignments from last round
+    const currentAssignments: number[] = [];
+    const sortedMatches = [...lastMatches].sort((a, b) => (a.court || 0) - (b.court || 0));
+    for (const m of sortedMatches) {
+      currentAssignments.push(m.team1_p1);
+      currentAssignments.push(m.team2_p1);
+    }
+    // Add any sitting-out players
+    const inMatch = new Set(currentAssignments);
+    for (const p of players) {
+      if (!inMatch.has(p.id) && !retiredPlayerIds.has(p.id)) {
+        currentAssignments.push(p.id);
+      }
+    }
+
+    // Advance
+    const newAssignments = advanceWaterfall(currentAssignments, results);
+    const waterfallMatches = generateWaterfallRound(newAssignments);
+
+    const nextRoundNum = rounds.length + 1;
+    const roundId = await createRound(tournamentId, nextRoundNum);
+    for (const m of waterfallMatches) {
+      await createMatch(roundId, m.team1_p1, null, m.team2_p1, null, m.court);
+    }
+
     loadAll();
   };
 
@@ -584,6 +875,131 @@ export default function TournamentView() {
     }
 
     setActiveRound(koRoundId);
+    loadAll();
+  };
+
+  const advanceDoubleElimination = async () => {
+    if (!tournament || tournament.format !== "double_elimination") return;
+
+    const winnersRounds = rounds.filter((r) => r.phase === "winners");
+    const losersRounds = rounds.filter((r) => r.phase === "losers");
+
+    const numCourts = tournament.courts || 1;
+    const autoAssign = numCourts === 1;
+    const nextRoundNum = rounds.length + 1;
+
+    // Find last completed round in each bracket
+    const lastCompletedWinners = [...winnersRounds].reverse().find((r) => allRoundMatchesCompleted(r.id));
+    const lastCompletedLosers = [...losersRounds].reverse().find((r) => allRoundMatchesCompleted(r.id));
+
+    // Check if we already created the next round for each bracket
+    const lastWinnersRound = winnersRounds[winnersRounds.length - 1];
+    const lastLosersRound = losersRounds.length > 0 ? losersRounds[losersRounds.length - 1] : null;
+
+    // Process completed winners round: winners go to next winners round, losers drop to losers bracket
+    if (lastCompletedWinners && lastCompletedWinners === lastWinnersRound) {
+      const wMatches = matchesByRound.get(lastCompletedWinners.id) || [];
+
+      const winners: { p1: number; p2: number | null }[] = [];
+      const losers: { p1: number; p2: number | null }[] = [];
+
+      for (const m of wMatches) {
+        if (!m.winner_team) continue;
+        if (m.winner_team === 1) {
+          winners.push({ p1: m.team1_p1, p2: m.team1_p2 });
+          losers.push({ p1: m.team2_p1, p2: m.team2_p2 });
+        } else {
+          winners.push({ p1: m.team2_p1, p2: m.team2_p2 });
+          losers.push({ p1: m.team1_p1, p2: m.team1_p2 });
+        }
+      }
+
+      // Create next winners round (if more than 1 winner)
+      if (winners.length >= 2) {
+        const wRoundId = await createRound(tournamentId, nextRoundNum, "winners");
+        for (let i = 0; i < winners.length - 1; i += 2) {
+          const w1 = winners[i];
+          const w2 = winners[i + 1];
+          const court = autoAssign ? 1 : null;
+          await createMatch(wRoundId, w1.p1, w1.p2, w2.p1, w2.p2, court);
+        }
+      }
+
+      // Create losers bracket round from dropped players
+      if (losers.length >= 2) {
+        // If losers bracket already has players waiting, combine them
+        // For simplicity: losers from winners bracket form new losers round
+        const lRoundId = await createRound(tournamentId, nextRoundNum + 1, "losers");
+        for (let i = 0; i < losers.length - 1; i += 2) {
+          const l1 = losers[i];
+          const l2 = losers[i + 1];
+          const court = autoAssign ? 1 : null;
+          await createMatch(lRoundId, l1.p1, l1.p2, l2.p1, l2.p2, court);
+        }
+      } else if (losers.length === 1 && winners.length === 1) {
+        // Grand Final: last winner vs last loser bracket winner (or this loser)
+        // Check if losers bracket has a remaining player
+        const lastLosersMatches = lastLosersRound ? matchesByRound.get(lastLosersRound.id) || [] : [];
+        const losersComplete = lastLosersRound ? allRoundMatchesCompleted(lastLosersRound.id) : true;
+        let losersChampion: { p1: number; p2: number | null } | null = null;
+
+        if (losersComplete && lastLosersMatches.length === 1 && lastLosersMatches[0].winner_team) {
+          const lm = lastLosersMatches[0];
+          losersChampion = lm.winner_team === 1
+            ? { p1: lm.team1_p1, p2: lm.team1_p2 }
+            : { p1: lm.team2_p1, p2: lm.team2_p2 };
+        }
+
+        if (losersChampion) {
+          // Grand Final
+          const gfRoundId = await createRound(tournamentId, nextRoundNum, "winners");
+          const court = autoAssign ? 1 : null;
+          await createMatch(gfRoundId, winners[0].p1, winners[0].p2, losersChampion.p1, losersChampion.p2, court);
+        }
+      }
+    }
+
+    // Process completed losers round: winners advance, losers eliminated
+    if (lastCompletedLosers && lastCompletedLosers === lastLosersRound) {
+      const lMatches = matchesByRound.get(lastCompletedLosers.id) || [];
+
+      const losersWinners: { p1: number; p2: number | null }[] = [];
+      for (const m of lMatches) {
+        if (!m.winner_team) continue;
+        if (m.winner_team === 1) {
+          losersWinners.push({ p1: m.team1_p1, p2: m.team1_p2 });
+        } else {
+          losersWinners.push({ p1: m.team2_p1, p2: m.team2_p2 });
+        }
+      }
+
+      if (losersWinners.length >= 2) {
+        const lRoundId = await createRound(tournamentId, nextRoundNum, "losers");
+        for (let i = 0; i < losersWinners.length - 1; i += 2) {
+          const w1 = losersWinners[i];
+          const w2 = losersWinners[i + 1];
+          const court = autoAssign ? 1 : null;
+          await createMatch(lRoundId, w1.p1, w1.p2, w2.p1, w2.p2, court);
+        }
+      } else if (losersWinners.length === 1) {
+        // Check if winners bracket also has 1 remaining player for Grand Final
+        const lastWinnersMatches = lastWinnersRound ? matchesByRound.get(lastWinnersRound.id) || [] : [];
+        const winnersComplete = lastWinnersRound ? allRoundMatchesCompleted(lastWinnersRound.id) : false;
+
+        if (winnersComplete && lastWinnersMatches.length === 1 && lastWinnersMatches[0].winner_team) {
+          const wm = lastWinnersMatches[0];
+          const winnersChampion = wm.winner_team === 1
+            ? { p1: wm.team1_p1, p2: wm.team1_p2 }
+            : { p1: wm.team2_p1, p2: wm.team2_p2 };
+
+          // Grand Final
+          const gfRoundId = await createRound(tournamentId, nextRoundNum, "winners");
+          const court = autoAssign ? 1 : null;
+          await createMatch(gfRoundId, winnersChampion.p1, winnersChampion.p2, losersWinners[0].p1, losersWinners[0].p2, court);
+        }
+      }
+    }
+
     loadAll();
   };
 
@@ -818,6 +1234,11 @@ export default function TournamentView() {
     tournament?.status === "active" &&
     tournament.format !== "group_ko" &&
     tournament.format !== "elimination" &&
+    tournament.format !== "swiss" &&
+    tournament.format !== "monrad" &&
+    tournament.format !== "king_of_court" &&
+    tournament.format !== "waterfall" &&
+    tournament.format !== "double_elimination" &&
     (tournament.format === "random_doubles" ||
       (tournament.format === "round_robin" && tournament.mode !== "singles")) &&
     rounds.length > 0 &&
@@ -877,6 +1298,72 @@ export default function TournamentView() {
     groupPhaseComplete &&
     koRounds.length === 0;
 
+  // Swiss: Check if next round can be generated
+  const isSwiss = tournament?.format === "swiss";
+  const swissRounds = rounds.filter((r) => r.phase === "swiss");
+  const swissMaxRounds = tournament?.num_groups || 5; // num_groups stores swiss round count
+  const lastSwissRound = swissRounds.length > 0 ? swissRounds[swissRounds.length - 1] : null;
+  const lastSwissRoundComplete = lastSwissRound ? allRoundMatchesCompleted(lastSwissRound.id) : false;
+  const canGenerateNextSwissRound = isSwiss &&
+    tournament?.status === "active" &&
+    swissRounds.length > 0 &&
+    lastSwissRoundComplete &&
+    swissRounds.length < swissMaxRounds;
+
+  // Monrad: Check if next round can be generated (reuses swiss phase)
+  const isMonrad = tournament?.format === "monrad";
+  const monradRounds = isMonrad ? rounds.filter((r) => r.phase === "swiss") : [];
+  const monradMaxRounds = isMonrad ? (tournament?.num_groups || 5) : 0;
+  const lastMonradRound = monradRounds.length > 0 ? monradRounds[monradRounds.length - 1] : null;
+  const lastMonradRoundComplete = lastMonradRound ? allRoundMatchesCompleted(lastMonradRound.id) : false;
+  const canGenerateNextMonradRound = isMonrad &&
+    tournament?.status === "active" &&
+    monradRounds.length > 0 &&
+    lastMonradRoundComplete &&
+    monradRounds.length < monradMaxRounds;
+
+  // King of the Court: Check if next match can be generated
+  const isKingOfCourt = tournament?.format === "king_of_court";
+  const lastKotcRound = isKingOfCourt && rounds.length > 0 ? rounds[rounds.length - 1] : null;
+  const lastKotcMatches = lastKotcRound ? matchesByRound.get(lastKotcRound.id) || [] : [];
+  const lastKotcComplete = lastKotcRound ? allRoundMatchesCompleted(lastKotcRound.id) : false;
+  const canGenerateNextKotcMatch = isKingOfCourt &&
+    tournament?.status === "active" &&
+    rounds.length > 0 &&
+    lastKotcComplete &&
+    lastKotcMatches.length > 0;
+
+  // Waterfall: Check if next round can be generated
+  const isWaterfall = tournament?.format === "waterfall";
+  const waterfallMaxRounds = isWaterfall ? (tournament?.num_groups || 5) : 0;
+  const lastWaterfallRound = isWaterfall && rounds.length > 0 ? rounds[rounds.length - 1] : null;
+  const lastWaterfallComplete = lastWaterfallRound ? allRoundMatchesCompleted(lastWaterfallRound.id) : false;
+  const canGenerateNextWaterfallRound = isWaterfall &&
+    tournament?.status === "active" &&
+    rounds.length > 0 &&
+    lastWaterfallComplete &&
+    rounds.length < waterfallMaxRounds;
+
+  // Double Elimination: Check if bracket can be advanced
+  const isDoubleElimination = tournament?.format === "double_elimination";
+  const winnersRounds = rounds.filter((r) => r.phase === "winners");
+  const losersRounds = rounds.filter((r) => r.phase === "losers");
+  const canAdvanceDoubleElimination = (() => {
+    if (!isDoubleElimination || tournament?.status !== "active" || rounds.length === 0) return false;
+    const lastWR = winnersRounds.length > 0 ? winnersRounds[winnersRounds.length - 1] : null;
+    const lastLR = losersRounds.length > 0 ? losersRounds[losersRounds.length - 1] : null;
+    const winnersComplete = lastWR ? allRoundMatchesCompleted(lastWR.id) : false;
+    const losersComplete = lastLR ? allRoundMatchesCompleted(lastLR.id) : false;
+    const lastWMatches = lastWR ? matchesByRound.get(lastWR.id) || [] : [];
+    const lastLMatches = lastLR ? matchesByRound.get(lastLR.id) || [] : [];
+    // Can advance if winners bracket last round is complete and has more than final match
+    // or losers bracket last round is complete and has more than one match
+    if (winnersComplete && lastWMatches.length > 1) return true;
+    if (winnersComplete && losersRounds.length === 0 && lastWMatches.length >= 1) return true; // need to create losers bracket
+    if (losersComplete && lastLMatches.length >= 1) return true;
+    return false;
+  })();
+
   // Pruefe ob noch offene Spiele existieren (ueber alle Runden)
   const hasOpenMatches = (() => {
     for (const [, matches] of matchesByRound) {
@@ -914,7 +1401,7 @@ export default function TournamentView() {
               {({singles: t.mode_singles, doubles: t.mode_doubles, mixed: t.mode_mixed} as Record<string, string>)[tournament.mode]}
             </span>
             <span className={`text-xs font-medium ${theme.cardBg} ${theme.textSecondary} border ${theme.cardBorder} px-2.5 py-1 rounded-full`}>
-              {({round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko} as Record<string, string>)[tournament.format]}
+              {({round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko, swiss: t.format_swiss, double_elimination: t.format_double_elimination, monrad: t.format_monrad, king_of_court: t.format_king_of_court, waterfall: t.format_waterfall} as Record<string, string>)[tournament.format]}
             </span>
             <span className={`text-xs font-medium ${theme.cardBg} ${theme.textSecondary} border ${theme.cardBorder} px-2.5 py-1 rounded-full`}>
               Best of {tournament.sets_to_win * 2 - 1}
@@ -934,6 +1421,26 @@ export default function TournamentView() {
                   : `${theme.activeBadgeBg} ${theme.activeBadgeText}`
               }`}>
                 {tournament.current_phase === "ko" ? t.tournament_view_ko_phase : t.tournament_view_groups_label.replace("{count}", String(tournament.num_groups))}
+              </span>
+            )}
+            {isSwiss && swissRounds.length > 0 && (
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${theme.activeBadgeBg} ${theme.activeBadgeText}`}>
+                {t.tournament_view_swiss_round_counter.replace("{current}", String(swissRounds.length)).replace("{total}", String(swissMaxRounds))}
+              </span>
+            )}
+            {isMonrad && monradRounds.length > 0 && (
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${theme.activeBadgeBg} ${theme.activeBadgeText}`}>
+                {t.tournament_view_monrad_round_counter.replace("{current}", String(monradRounds.length)).replace("{total}", String(monradMaxRounds))}
+              </span>
+            )}
+            {isWaterfall && rounds.length > 0 && (
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${theme.activeBadgeBg} ${theme.activeBadgeText}`}>
+                {t.tournament_view_waterfall_round_counter.replace("{current}", String(rounds.length)).replace("{total}", String(waterfallMaxRounds))}
+              </span>
+            )}
+            {isDoubleElimination && (
+              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-violet-100 text-violet-700">
+                {t.format_double_elimination}
               </span>
             )}
             <span
@@ -994,6 +1501,46 @@ export default function TournamentView() {
               className="bg-violet-600 text-white px-5 py-2.5 rounded-xl hover:bg-violet-700 shadow-sm hover:shadow-md transition-all text-sm font-medium"
             >
               ➡️ {t.tournament_view_next_ko_round}
+            </button>
+          )}
+          {canGenerateNextSwissRound && (
+            <button
+              onClick={generateNextSwissRound}
+              className="bg-amber-500 text-white px-5 py-2.5 rounded-xl hover:bg-amber-600 shadow-sm hover:shadow-md transition-all text-sm font-medium"
+            >
+              🔄 {t.tournament_view_next_swiss_round}
+            </button>
+          )}
+          {canGenerateNextMonradRound && (
+            <button
+              onClick={generateNextMonradRound}
+              className="bg-amber-500 text-white px-5 py-2.5 rounded-xl hover:bg-amber-600 shadow-sm hover:shadow-md transition-all text-sm font-medium"
+            >
+              🔄 {t.tournament_view_next_monrad_round}
+            </button>
+          )}
+          {canGenerateNextKotcMatch && (
+            <button
+              onClick={generateNextKingOfCourtMatch}
+              className="bg-amber-500 text-white px-5 py-2.5 rounded-xl hover:bg-amber-600 shadow-sm hover:shadow-md transition-all text-sm font-medium"
+            >
+              🎯 {t.tournament_view_next_kotc_match}
+            </button>
+          )}
+          {canGenerateNextWaterfallRound && (
+            <button
+              onClick={generateNextWaterfallRound}
+              className="bg-amber-500 text-white px-5 py-2.5 rounded-xl hover:bg-amber-600 shadow-sm hover:shadow-md transition-all text-sm font-medium"
+            >
+              🔄 {t.tournament_view_next_waterfall_round}
+            </button>
+          )}
+          {canAdvanceDoubleElimination && (
+            <button
+              onClick={advanceDoubleElimination}
+              className="bg-violet-600 text-white px-5 py-2.5 rounded-xl hover:bg-violet-700 shadow-sm hover:shadow-md transition-all text-sm font-medium"
+            >
+              ➡️ {t.tournament_view_advance_bracket}
             </button>
           )}
           {tournament.status === "active" && (
@@ -1152,11 +1699,13 @@ export default function TournamentView() {
         <div className={`flex border-b-2 ${theme.inputBorder} mb-5`}>
           {(() => {
             const hasBracket = koRoundsForBracket.length > 0 && (isElimination || (isGroupKo && tournament.current_phase === "ko"));
+            const hasDoubleElimBracket = isDoubleElimination && (winnersRounds.length > 0 || losersRounds.length > 0);
+            const showRangliste = !isGroupKo || koRounds.length > 0;
             const viewTabs = [
               { key: "spiele" as const, label: t.tournament_view_tab_matches, icon: "🏸" },
               ...(isGroupKo && groupRounds.length > 0 ? [{ key: "gruppen" as const, label: t.tournament_view_tab_groups, icon: "📋" }] : []),
-              ...(hasBracket ? [{ key: "bracket" as const, label: t.tournament_view_tab_bracket, icon: "🏆" }] : []),
-              ...(!isGroupKo || koRounds.length > 0 ? [{ key: "rangliste" as const, label: t.tournament_view_tab_standings, icon: "📊" }] : []),
+              ...(hasBracket || hasDoubleElimBracket ? [{ key: "bracket" as const, label: t.tournament_view_tab_bracket, icon: "🏆" }] : []),
+              ...(showRangliste ? [{ key: "rangliste" as const, label: t.tournament_view_tab_standings, icon: "📊" }] : []),
               { key: "verwaltung" as const, label: t.tournament_view_tab_management, icon: "👥" },
             ];
             return viewTabs;
@@ -1255,8 +1804,53 @@ export default function TournamentView() {
                   })}
                 </div>
               )}
-              {/* Normal rounds (non group_ko) */}
-              {!isGroupKo && (
+              {/* Double Elimination rounds (winners + losers) */}
+              {isDoubleElimination && (
+                <>
+                  {winnersRounds.length > 0 && (
+                    <div className="flex gap-2 flex-wrap items-center">
+                      <span className="text-xs font-bold text-emerald-500 uppercase tracking-wide w-8">W</span>
+                      {winnersRounds.map((r, idx) => {
+                        const colorClass = activeRound === r.id
+                          ? "bg-emerald-600 text-white shadow-md"
+                          : `${theme.cardBg} text-emerald-600 hover:bg-emerald-500/10 border border-emerald-500/30 hover:border-emerald-400`;
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={() => { setActiveRound(r.id); setShowAllGroups(false); }}
+                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${colorClass}`}
+                          >
+                            R{idx + 1}
+                            {allRoundMatchesCompleted(r.id) && <span className="ml-1.5">✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {losersRounds.length > 0 && (
+                    <div className="flex gap-2 flex-wrap items-center">
+                      <span className="text-xs font-bold text-rose-400 uppercase tracking-wide w-8">L</span>
+                      {losersRounds.map((r, idx) => {
+                        const colorClass = activeRound === r.id
+                          ? "bg-rose-600 text-white shadow-md"
+                          : `${theme.cardBg} text-rose-600 hover:bg-rose-500/10 border border-rose-500/30 hover:border-rose-400`;
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={() => { setActiveRound(r.id); setShowAllGroups(false); }}
+                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${colorClass}`}
+                          >
+                            R{idx + 1}
+                            {allRoundMatchesCompleted(r.id) && <span className="ml-1.5">✓</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+              {/* Normal rounds (non group_ko, non double_elimination) */}
+              {!isGroupKo && !isDoubleElimination && (
                 <div className="flex gap-2 flex-wrap">
               {rounds.map((r) => {
                 const label = t.tournament_view_round_label.replace("{n}", String(r.round_number));
@@ -1399,6 +1993,36 @@ export default function TournamentView() {
           playerName={playerName}
           pointsPerSet={tournament.points_per_set}
         />
+      )}
+
+      {/* Tab: Bracket (Double Elimination) */}
+      {viewTab === "bracket" && isDoubleElimination && (winnersRounds.length > 0 || losersRounds.length > 0) && (
+        <div>
+          {winnersRounds.length > 0 && (
+            <>
+              <h3 className={`text-lg font-bold ${theme.textPrimary} mb-3`}>{t.bracket_winners_bracket}</h3>
+              <BracketView
+                rounds={winnersRounds}
+                matchesByRound={matchesByRound}
+                setsByMatch={setsByMatch}
+                playerName={playerName}
+                pointsPerSet={tournament.points_per_set}
+              />
+            </>
+          )}
+          {losersRounds.length > 0 && (
+            <>
+              <h3 className={`text-lg font-bold ${theme.textPrimary} mb-3 mt-6`}>{t.bracket_losers_bracket}</h3>
+              <BracketView
+                rounds={losersRounds}
+                matchesByRound={matchesByRound}
+                setsByMatch={setsByMatch}
+                playerName={playerName}
+                pointsPerSet={tournament.points_per_set}
+              />
+            </>
+          )}
+        </div>
       )}
 
       {/* Tab: Rangliste */}

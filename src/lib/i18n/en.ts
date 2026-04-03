@@ -167,6 +167,83 @@ export const en: Translations = {
   format_elimination: "Elimination",
   format_random_doubles: "Random Partners",
   format_group_ko: "Group Stage + KO",
+  format_swiss: "Swiss System",
+  format_double_elimination: "Double Elimination",
+  format_monrad: "Monrad System",
+  format_king_of_court: "King of the Court",
+  format_waterfall: "Waterfall",
+
+  format_desc_round_robin: "Every player/team plays against every other. Best for small groups.",
+  format_desc_elimination: "Single elimination bracket. One loss and you're out.",
+  format_desc_random_doubles: "New random partner pairings each round. Fun social format.",
+  format_desc_group_ko: "Round robin in groups, then knockout with the top qualifiers.",
+  format_desc_swiss: "Players are paired by current standings each round. No elimination -- everyone plays all rounds. Best for larger fields.",
+  format_desc_double_elimination: "Two brackets: Winners and Losers. You must lose twice to be eliminated.",
+  format_desc_monrad: "Like Swiss, but strictly paired by ranking (#1 vs #2, #3 vs #4). Popular in Scandinavia.",
+  format_desc_king_of_court: "Winner stays on court, loser goes to the back of the queue. Fast-paced rotation format.",
+  format_desc_waterfall: "Players rotate through numbered courts. Winners move up, losers move down. Top court is the King.",
+
+  format_info_title: "Format Info",
+  format_info_best_for: "Best suited for",
+  format_info_pros: "Advantages",
+  format_info_cons: "Disadvantages",
+
+  format_detail_round_robin: "In Round Robin, every player or team plays against every other participant exactly once. This ensures maximum fairness as all matchups are played. The final ranking is determined by wins, set ratio, and point ratio.\n\nThe number of rounds equals the number of participants minus one (for odd numbers, one player gets a bye each round). This format requires the most matches but gives the most accurate ranking.",
+  format_detail_elimination: "Single Elimination (Knockout) is a bracket-based format where the loser of each match is immediately eliminated. The tournament progresses through rounds (Round of 16, Quarterfinals, Semifinals, Final) until one player remains.\n\nOptional seeding ensures top players don't meet in early rounds. Byes are added to reach a power of 2 (4, 8, 16, 32 players).",
+  format_detail_random_doubles: "Each round, new random partnerships are formed. This ensures everyone plays with different partners throughout the tournament. The system avoids repeating partnerships and distributes bye rounds fairly.\n\nIdeal for social club events where mixing players is the goal. Individual standings are tracked despite changing partners.",
+  format_detail_group_ko: "Players are divided into groups (2-8) for a round-robin group stage. The top qualifiers from each group (configurable: Top 1-4) advance to a knockout bracket.\n\nThis combines the fairness of round robin with the excitement of elimination. Groups can run simultaneously on multiple courts for time efficiency.",
+  format_detail_swiss: "In each round, players are paired based on their current standings -- leaders play against leaders, middle-ranked against middle-ranked. No one is eliminated; everyone plays all rounds.\n\nThe number of rounds is configurable (typically log2 of player count). This format efficiently determines a ranking with far fewer matches than Round Robin while being fairer than Knockout.",
+  format_detail_double_elimination: "Two parallel brackets: Winners and Losers. Every player starts in the Winners Bracket. Losing a match in the Winners Bracket drops you to the Losers Bracket. Losing in the Losers Bracket eliminates you.\n\nThe Grand Final is played between the Winners Bracket champion and the Losers Bracket champion. This format gives every player a second chance.",
+  format_detail_monrad: "Similar to Swiss System but with strict pairing: #1 plays #2, #3 plays #4, and so on based on current standings. No rematch avoidance is applied.\n\nPopular in Scandinavian countries. Simpler pairing logic than Swiss but can lead to rematches in later rounds. Equally efficient in determining rankings with a limited number of rounds.",
+  format_detail_king_of_court: "One court is the 'King Court'. The winner of each match stays on court as the defender, while the loser goes to the back of the queue. The next challenger comes from the front of the queue.\n\nMatches are played continuously one after another. This format keeps all players engaged with minimal waiting time and is perfect for casual club evenings.",
+  format_detail_waterfall: "Multiple courts are numbered from 1 (King Court) to N. Each round, all courts play simultaneously. Winners move up one court, losers move down one court. The player on Court 1 who wins stays at the top.\n\nAfter a set number of rounds, the player who spent the most time on the highest courts wins. Great for utilizing all available courts efficiently.",
+
+  format_best_round_robin: "4-10 players, when maximum fairness matters, enough time for all matches",
+  format_best_elimination: "8-32 players, limited time, exciting bracket progression",
+  format_best_random_doubles: "8-20 players, social events, mixing players from different skill levels",
+  format_best_group_ko: "12-32 players, balanced mix of group play and knockout excitement",
+  format_best_swiss: "10-40 players, fair ranking without playing every opponent",
+  format_best_double_elimination: "8-16 players, when everyone deserves a second chance",
+  format_best_monrad: "10-40 players, simple ranking system, Scandinavian-style tournaments",
+  format_best_king_of_court: "6-20 players, casual evenings, continuous play with one court",
+  format_best_waterfall: "8-24 players, multiple courts available, continuous rotation",
+
+  format_pros_round_robin: "Maximum fairness\nEvery matchup is played\nMost accurate ranking",
+  format_pros_elimination: "Fast completion\nExciting bracket drama\nClear progression path",
+  format_pros_random_doubles: "Social mixing\nDifferent partners each round\nFun and casual",
+  format_pros_group_ko: "Fair group stage + exciting knockout\nParallel group play\nFlexible group/qualifier config",
+  format_pros_swiss: "Efficient ranking with few rounds\nNo elimination\nFair pairings by skill",
+  format_pros_double_elimination: "Second chance for everyone\nMore matches per player\nTrue best player wins",
+  format_pros_monrad: "Simple pairing logic\nEfficient ranking\nNo elimination",
+  format_pros_king_of_court: "Continuous play\nMinimal waiting\nFun and fast-paced",
+  format_pros_waterfall: "All courts used simultaneously\nDynamic court progression\nContinuous action",
+
+  format_cons_round_robin: "Many matches needed\nTime-intensive for large groups\nCan feel slow toward the end",
+  format_cons_elimination: "One bad match = out\nLess play time for early losers\nNot ideal for small groups",
+  format_cons_random_doubles: "Luck-dependent pairings\nIndividual skill hard to judge\nNot for competitive ranking",
+  format_cons_group_ko: "Complex setup\nLonger tournament duration\nGroup balance depends on seeding",
+  format_cons_swiss: "Can feel abstract\nPairings may seem unfair to casual players\nNeeds enough rounds for accuracy",
+  format_cons_double_elimination: "Complex bracket management\nLonger than single elimination\nLosers bracket can feel secondary",
+  format_cons_monrad: "Rematches possible\nLess refined than Swiss\nTop players meet very early",
+  format_cons_king_of_court: "Only one court active\nWaiting time increases with more players\nNo structured rounds",
+  format_cons_waterfall: "Complex to manage manually\nPlayers on low courts may feel disadvantaged\nNeeds even player count ideally",
+
+  tournament_swiss_rounds: "Number of rounds",
+  tournament_swiss_rounds_hint: "Recommended: {count} rounds for {players} players",
+  tournament_view_next_swiss_round: "Next Swiss round",
+  tournament_view_swiss_round_counter: "Round {current} of {total}",
+
+  // Monrad specific
+  tournament_view_next_monrad_round: "Next Monrad round",
+  tournament_view_monrad_round_counter: "Round {current} of {total}",
+
+  // Double Elimination specific
+  tournament_view_advance_bracket: "Advance bracket",
+
+  // King of Court / Waterfall specific
+  tournament_view_next_kotc_match: "Next match",
+  tournament_view_next_waterfall_round: "Next rotation",
+  tournament_view_waterfall_round_counter: "Round {current} of {total}",
 
   // Status labels
   status_draft: "Draft",
@@ -294,6 +371,9 @@ export const en: Translations = {
   bracket_round_of_16: "Round of 16",
   bracket_round: "Round {n}",
   bracket_winner: "Winner",
+  bracket_winners_bracket: "Winners Bracket",
+  bracket_losers_bracket: "Losers Bracket",
+  bracket_grand_final: "Grand Final",
 
   // ===== Court Overview =====
   court_field: "Court {n}",

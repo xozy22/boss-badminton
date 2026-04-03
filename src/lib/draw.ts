@@ -1,4 +1,9 @@
-import type { Player, Match } from "./types";
+import type { Player, Match, StandingEntry, TeamStandingEntry } from "./types";
+
+// Re-export shuffle for use in TournamentView
+export function shufflePlayers<T>(arr: T[]): T[] {
+  return shuffle(arr);
+}
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -447,4 +452,271 @@ function nextPowerOf2(n: number): number {
   let p = 1;
   while (p < n) p *= 2;
   return p;
+}
+
+// --- Swiss System ---
+
+/** Returns the recommended number of rounds for a Swiss tournament. */
+export function recommendedSwissRounds(playerCount: number): number {
+  return Math.max(3, Math.ceil(Math.log2(playerCount)));
+}
+
+/** Generates the first round of a Swiss singles tournament (random pairing). */
+export function generateSwissFirstRound(
+  players: Player[]
+): { team1_p1: number; team2_p1: number }[] {
+  const shuffled = shuffle(players);
+  const ids = shuffled.map((p) => p.id);
+
+  // If odd count, last player gets a bye (excluded from matches)
+  if (ids.length % 2 !== 0) ids.pop();
+
+  const matches: { team1_p1: number; team2_p1: number }[] = [];
+  for (let i = 0; i < ids.length - 1; i += 2) {
+    matches.push({ team1_p1: ids[i], team2_p1: ids[i + 1] });
+  }
+  return matches;
+}
+
+/**
+ * Generates a Swiss round based on current standings and previous matchups.
+ * Pairs by ranking (#1 vs #2, #3 vs #4, etc.) with conflict resolution.
+ */
+export function generateSwissRound(
+  standings: StandingEntry[],
+  previousMatchups: Set<string>
+): { team1_p1: number; team2_p1: number }[] {
+  const ids = standings.map((s) => s.player.id);
+
+  // If odd count, lowest-ranked player not yet having a bye should get the bye.
+  // For simplicity, remove the last player (lowest ranked).
+  if (ids.length % 2 !== 0) ids.pop();
+
+  const matches: { team1_p1: number; team2_p1: number }[] = [];
+
+  const used = new Set<number>();
+
+  for (let i = 0; i < ids.length; i++) {
+    if (used.has(ids[i])) continue;
+
+    // Find the best opponent: next unused player, preferring one not yet matched
+    let bestJ = -1;
+    for (let j = i + 1; j < ids.length; j++) {
+      if (used.has(ids[j])) continue;
+      if (bestJ === -1) bestJ = j; // fallback: first available
+
+      const key = pairingKey(ids[i], ids[j]);
+      if (!previousMatchups.has(key)) {
+        bestJ = j;
+        break; // ideal: no previous matchup
+      }
+    }
+
+    if (bestJ === -1) continue;
+
+    used.add(ids[i]);
+    used.add(ids[bestJ]);
+    matches.push({ team1_p1: ids[i], team2_p1: ids[bestJ] });
+  }
+
+  return matches;
+}
+
+/** Generates the first round of a Swiss doubles tournament (random pairing). */
+export function generateSwissFirstRoundDoubles(
+  teams: [number, number][]
+): { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number }[] {
+  const shuffled = shuffle(teams);
+
+  // If odd count, last team gets a bye
+  const active = shuffled.length % 2 !== 0 ? shuffled.slice(0, -1) : shuffled;
+
+  const matches: { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number }[] = [];
+  for (let i = 0; i < active.length - 1; i += 2) {
+    matches.push({
+      team1_p1: active[i][0], team1_p2: active[i][1],
+      team2_p1: active[i + 1][0], team2_p2: active[i + 1][1],
+    });
+  }
+  return matches;
+}
+
+/**
+ * Generates a Swiss doubles round based on current team standings and previous matchups.
+ * Matchup key: sorted team keys joined by "-".
+ */
+export function generateSwissRoundDoubles(
+  standings: TeamStandingEntry[],
+  previousMatchups: Set<string>
+): { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number }[] {
+  const teamKeys = standings.map((s) => s.teamKey);
+
+  // If odd count, remove last (lowest-ranked) team for bye
+  if (teamKeys.length % 2 !== 0) teamKeys.pop();
+
+  // Build a lookup from teamKey -> standing entry
+  const lookup = new Map<string, TeamStandingEntry>();
+  for (const s of standings) lookup.set(s.teamKey, s);
+
+  const matches: { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number }[] = [];
+  const used = new Set<string>();
+
+  for (let i = 0; i < teamKeys.length; i++) {
+    if (used.has(teamKeys[i])) continue;
+
+    let bestJ = -1;
+    for (let j = i + 1; j < teamKeys.length; j++) {
+      if (used.has(teamKeys[j])) continue;
+      if (bestJ === -1) bestJ = j;
+
+      const parts = [teamKeys[i], teamKeys[j]].sort();
+      const key = `${parts[0]}-${parts[1]}`;
+      if (!previousMatchups.has(key)) {
+        bestJ = j;
+        break;
+      }
+    }
+
+    if (bestJ === -1) continue;
+
+    const t1 = lookup.get(teamKeys[i])!;
+    const t2 = lookup.get(teamKeys[bestJ])!;
+    used.add(teamKeys[i]);
+    used.add(teamKeys[bestJ]);
+
+    matches.push({
+      team1_p1: t1.player1.id, team1_p2: t1.player2.id,
+      team2_p1: t2.player1.id, team2_p2: t2.player2.id,
+    });
+  }
+
+  return matches;
+}
+
+// --- Monrad System ---
+// Like Swiss but strictly pairs by ranking (#1 vs #2, #3 vs #4) without rematch avoidance.
+
+/** Generates a Monrad round based on current standings (strict ranking pairing). */
+export function generateMonradRound(
+  standings: StandingEntry[],
+): { team1_p1: number; team2_p1: number }[] {
+  const ids = standings.map((s) => s.player.id);
+
+  // If odd count, lowest-ranked player gets a bye
+  if (ids.length % 2 !== 0) ids.pop();
+
+  const matches: { team1_p1: number; team2_p1: number }[] = [];
+  for (let i = 0; i < ids.length - 1; i += 2) {
+    matches.push({ team1_p1: ids[i], team2_p1: ids[i + 1] });
+  }
+  return matches;
+}
+
+/** Generates a Monrad doubles round based on current team standings (strict ranking pairing). */
+export function generateMonradRoundDoubles(
+  standings: TeamStandingEntry[],
+): { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number }[] {
+  const entries = [...standings];
+
+  // If odd count, lowest-ranked team gets a bye
+  if (entries.length % 2 !== 0) entries.pop();
+
+  const matches: { team1_p1: number; team1_p2: number; team2_p1: number; team2_p2: number }[] = [];
+  for (let i = 0; i < entries.length - 1; i += 2) {
+    const t1 = entries[i];
+    const t2 = entries[i + 1];
+    matches.push({
+      team1_p1: t1.player1.id, team1_p2: t1.player2.id,
+      team2_p1: t2.player1.id, team2_p2: t2.player2.id,
+    });
+  }
+  return matches;
+}
+
+// --- King of the Court ---
+// Winner stays on court, loser goes to back of queue. One match at a time.
+
+/** Generates ONE King of the Court match from the queue. */
+export function generateKingOfCourtMatch(
+  queue: number[],
+): { team1_p1: number; team2_p1: number; remainingQueue: number[] } {
+  if (queue.length < 2) throw new Error("Need at least 2 players in queue");
+  const [king, challenger, ...rest] = queue;
+  return {
+    team1_p1: king,
+    team2_p1: challenger,
+    remainingQueue: rest,
+  };
+}
+
+// --- Waterfall ---
+// Multiple courts, numbered 1 to N. Each round all courts play simultaneously.
+// Winners move up one court, losers move down one court. Court 1 is the "King" court.
+
+/** Generates matches for all courts simultaneously from court assignments. */
+export function generateWaterfallRound(
+  courtAssignments: number[],
+): { court: number; team1_p1: number; team2_p1: number }[] {
+  const matches: { court: number; team1_p1: number; team2_p1: number }[] = [];
+  for (let i = 0; i < courtAssignments.length - 1; i += 2) {
+    const courtNum = Math.floor(i / 2) + 1;
+    matches.push({
+      court: courtNum,
+      team1_p1: courtAssignments[i],
+      team2_p1: courtAssignments[i + 1],
+    });
+  }
+  return matches;
+}
+
+/** Advances waterfall court assignments based on results.
+ * Winners move up (lower index), losers move down (higher index).
+ * Court 1 winner stays, Court 1 loser goes to court 2.
+ * Returns new court assignments array.
+ */
+export function advanceWaterfall(
+  courtAssignments: number[],
+  results: { court: number; winner: number; loser: number }[],
+): number[] {
+  const sorted = [...results].sort((a, b) => a.court - b.court);
+  const numCourts = sorted.length;
+
+  if (numCourts === 0) return courtAssignments;
+
+  const winners: number[] = sorted.map((r) => r.winner);
+  const losers: number[] = sorted.map((r) => r.loser);
+
+  const newAssignments: number[] = [];
+
+  for (let c = 0; c < numCourts; c++) {
+    if (c === 0) {
+      // Court 1: court 1 winner stays, court 2 winner moves up
+      newAssignments.push(winners[0]);
+      if (numCourts > 1) {
+        newAssignments.push(winners[1]);
+      }
+    } else if (c === numCourts - 1) {
+      // Last court: previous court's loser moves down, this court's loser stays
+      newAssignments.push(losers[c - 1]);
+      newAssignments.push(losers[c]);
+    } else {
+      // Middle court: previous court's loser moves down, next court's winner moves up
+      newAssignments.push(losers[c - 1]);
+      newAssignments.push(winners[c + 1]);
+    }
+  }
+
+  // Add any players not in matches (odd player sitting out)
+  const inResults = new Set<number>();
+  for (const r of results) {
+    inResults.add(r.winner);
+    inResults.add(r.loser);
+  }
+  for (const pid of courtAssignments) {
+    if (!inResults.has(pid)) {
+      newAssignments.push(pid);
+    }
+  }
+
+  return newAssignments;
 }

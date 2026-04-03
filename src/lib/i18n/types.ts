@@ -165,6 +165,86 @@ export interface Translations {
   format_elimination: string;
   format_random_doubles: string;
   format_group_ko: string;
+  format_swiss: string;
+  format_double_elimination: string;
+  format_monrad: string;
+  format_king_of_court: string;
+  format_waterfall: string;
+
+  // Format descriptions
+  format_desc_round_robin: string;
+  format_desc_elimination: string;
+  format_desc_random_doubles: string;
+  format_desc_group_ko: string;
+  format_desc_swiss: string;
+  format_desc_double_elimination: string;
+  format_desc_monrad: string;
+  format_desc_king_of_court: string;
+  format_desc_waterfall: string;
+
+  // Format detailed descriptions (for info modal)
+  format_info_title: string;
+  format_info_best_for: string;
+  format_info_pros: string;
+  format_info_cons: string;
+
+  format_detail_round_robin: string;
+  format_detail_elimination: string;
+  format_detail_random_doubles: string;
+  format_detail_group_ko: string;
+  format_detail_swiss: string;
+  format_detail_double_elimination: string;
+  format_detail_monrad: string;
+  format_detail_king_of_court: string;
+  format_detail_waterfall: string;
+
+  format_best_round_robin: string;
+  format_best_elimination: string;
+  format_best_random_doubles: string;
+  format_best_group_ko: string;
+  format_best_swiss: string;
+  format_best_double_elimination: string;
+  format_best_monrad: string;
+  format_best_king_of_court: string;
+  format_best_waterfall: string;
+
+  format_pros_round_robin: string;
+  format_pros_elimination: string;
+  format_pros_random_doubles: string;
+  format_pros_group_ko: string;
+  format_pros_swiss: string;
+  format_pros_double_elimination: string;
+  format_pros_monrad: string;
+  format_pros_king_of_court: string;
+  format_pros_waterfall: string;
+
+  format_cons_round_robin: string;
+  format_cons_elimination: string;
+  format_cons_random_doubles: string;
+  format_cons_group_ko: string;
+  format_cons_swiss: string;
+  format_cons_double_elimination: string;
+  format_cons_monrad: string;
+  format_cons_king_of_court: string;
+  format_cons_waterfall: string;
+
+  // Monrad specific
+  tournament_view_next_monrad_round: string;
+  tournament_view_monrad_round_counter: string;
+
+  // King of Court / Waterfall specific
+  tournament_view_next_kotc_match: string;
+  tournament_view_next_waterfall_round: string;
+  tournament_view_waterfall_round_counter: string;
+
+  // Swiss specific
+  tournament_swiss_rounds: string;
+  tournament_swiss_rounds_hint: string;
+  tournament_view_next_swiss_round: string;
+  tournament_view_swiss_round_counter: string;
+
+  // Double Elimination specific
+  tournament_view_advance_bracket: string;
 
   // Status labels
   status_draft: string;
@@ -292,6 +372,9 @@ export interface Translations {
   bracket_round_of_16: string;
   bracket_round: string;
   bracket_winner: string;
+  bracket_winners_bracket: string;
+  bracket_losers_bracket: string;
+  bracket_grand_final: string;
 
   // ===== Court Overview =====
   court_field: string;
