@@ -314,6 +314,9 @@ export const en: Translations = {
   retire_message: "Mark {name} as injured or retired?",
   retire_details: "The player will be eliminated for the rest of the tournament. All open matches will be awarded as walkovers to the opponent.",
   retire_confirm: "Mark as injured",
+  retire_undo: "Restore player",
+  retire_undo_confirm: "Restore",
+  retire_undo_message: "Player will be available for future rounds again. Previous walkover results remain unchanged.",
 
   // ===== Template Export Modal =====
   template_export_title: "Export as template",

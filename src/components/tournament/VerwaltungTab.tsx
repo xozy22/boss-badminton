@@ -28,6 +28,7 @@ interface VerwaltungTabProps {
   setPaymentData: (data: TournamentPlayerInfo[]) => void;
   setCollapsedClubs: React.Dispatch<React.SetStateAction<Set<string>>>;
   setRetireTarget: (target: { player: Player; partnerNote: string } | null) => void;
+  onUnretire: (playerId: number) => void;
   playerName: (id: number | null) => string;
 }
 
@@ -46,6 +47,7 @@ export default function VerwaltungTab({
   setPaymentData,
   setCollapsedClubs,
   setRetireTarget,
+  onUnretire,
   playerName,
 }: VerwaltungTabProps) {
   const { t } = useT();
@@ -310,6 +312,15 @@ export default function VerwaltungTab({
                                   className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-amber-500 hover:text-amber-700 ml-1"
                                 >
                                   {"\u{1F3E5}"}
+                                </button>
+                              )}
+                              {tournament.status === "active" && isRetired && (
+                                <button
+                                  onClick={() => onUnretire(pd.player.id)}
+                                  title={t.retire_undo}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-emerald-500 hover:text-emerald-700 ml-1"
+                                >
+                                  ✅
                                 </button>
                               )}
                             </div>

@@ -315,6 +315,9 @@ export interface Translations {
   retire_message: string;
   retire_details: string;
   retire_confirm: string;
+  retire_undo: string;
+  retire_undo_confirm: string;
+  retire_undo_message: string;
 
   // ===== Template Export Modal =====
   template_export_title: string;

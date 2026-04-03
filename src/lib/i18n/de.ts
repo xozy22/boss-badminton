@@ -314,6 +314,9 @@ export const de: Translations = {
   retire_message: "{name} als verletzt oder aufgegeben markieren?",
   retire_details: "Der Spieler scheidet fuer das gesamte restliche Turnier aus. Alle offenen Spiele werden als Freilos fuer den Gegner gewertet.",
   retire_confirm: "Als verletzt markieren",
+  retire_undo: "Spieler wiederherstellen",
+  retire_undo_confirm: "Wiederherstellen",
+  retire_undo_message: "Spieler ist wieder fuer zukuenftige Runden verfuegbar. Bisherige Walkover-Ergebnisse bleiben bestehen.",
 
   // ===== Template Export Modal =====
   template_export_title: "Als Vorlage exportieren",

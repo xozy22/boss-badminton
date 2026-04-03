@@ -33,6 +33,7 @@ import {
   addPlayerToTournament,
   removePlayerFromTournament,
   retirePlayerFromTournament,
+  unretirePlayerFromTournament,
   getRetiredPlayerIds,
   getTournamentPlayersDetailed,
 } from "../lib/db";
@@ -1207,6 +1208,24 @@ export default function TournamentView() {
     loadAll();
   };
 
+  const handlePlayerUnretire = async (playerId: number) => {
+    if (!tournament) return;
+    // Unretire the player (and partner for fixed teams)
+    const playersToUnretire: number[] = [playerId];
+    if (tournament.format !== "random_doubles" && tournament.mode !== "singles") {
+      for (const m of allMatches) {
+        if (m.team1_p1 === playerId && m.team1_p2) { playersToUnretire.push(m.team1_p2); break; }
+        if (m.team1_p2 === playerId) { playersToUnretire.push(m.team1_p1); break; }
+        if (m.team2_p1 === playerId && m.team2_p2) { playersToUnretire.push(m.team2_p2); break; }
+        if (m.team2_p2 === playerId) { playersToUnretire.push(m.team2_p1); break; }
+      }
+    }
+    for (const pid of playersToUnretire) {
+      await unretirePlayerFromTournament(tournamentId, pid);
+    }
+    loadAll();
+  };
+
   const handleCompleteTournament = async () => {
     await updateTournamentStatus(tournamentId, "completed");
     loadAll();
@@ -2052,6 +2071,7 @@ export default function TournamentView() {
           setPaymentData={setPaymentData}
           setCollapsedClubs={setCollapsedClubs}
           setRetireTarget={setRetireTarget}
+          onUnretire={handlePlayerUnretire}
           playerName={playerName}
         />
       )}

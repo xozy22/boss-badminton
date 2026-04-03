@@ -468,6 +468,26 @@ export async function retirePlayerFromTournament(
   saveStore(store);
 }
 
+export async function unretirePlayerFromTournament(
+  tournamentId: number,
+  playerId: number
+): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute(
+      "UPDATE tournament_players SET retired = 0 WHERE tournament_id = $1 AND player_id = $2",
+      [tournamentId, playerId]
+    );
+    return;
+  }
+  const store = loadStore();
+  const tp = store.tournamentPlayers.find(
+    (tp) => tp.tournament_id === tournamentId && tp.player_id === playerId
+  );
+  if (tp) (tp as any).retired = 0;
+  saveStore(store);
+}
+
 export async function getRetiredPlayerIds(tournamentId: number): Promise<number[]> {
   if (isTauri()) {
     const d = await getTauriDb();
