@@ -31,7 +31,8 @@
 
 ### Tournament Management
 - **3 Modes**: Singles, Doubles, Mixed
-- **5 Formats**: Round Robin, Elimination (KO), Random Doubles, Group Stage + KO, Fixed Doubles
+- **9 Formats**: Round Robin, Elimination (KO), Random Doubles, Group Stage + KO, Swiss System, Double Elimination, Monrad, King of the Court, Waterfall
+- **Format Info Modal**: Detailed description, ASCII diagram, pros/cons for each format
 - **Group Stage + KO**: Configurable group count (2-8), qualifiers per group (Top 1-4), then KO round
   - Singles: Individual players qualify
   - Doubles/Mixed: Fixed teams persist through group stage and KO
@@ -39,6 +40,11 @@
   - **Smart Queue**: "All Groups" mode shows matches from all groups simultaneously - no unnecessary waiting
   - **Group Buttons**: Navigate per group, line break between groups
   - **Print View**: Group tables with Q badge, separate group/KO headings
+- **Swiss System**: Pairings based on current standings each round, no elimination, configurable round count
+- **Double Elimination**: Winners + Losers bracket, lose twice to be eliminated, Grand Final
+- **Monrad System**: Strict ranking-based pairing (#1 vs #2), popular in Scandinavia
+- **King of the Court**: Winner stays on court, loser goes to back of queue, continuous play
+- **Waterfall**: Players rotate through numbered courts, winners rise, losers fall
 - **KO Bracket View**: Visual tournament tree as its own tab, possible participants in grey, confirmed winners immediately visible
 - **Configurable**: Sets (Best of 1/3/5), points per set, courts (1-8)
 - **Seeding**: Optional seeding for KO tournaments via Drag & Drop or arrow keys

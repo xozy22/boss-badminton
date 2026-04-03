@@ -31,7 +31,8 @@
 
 ### Turnierverwaltung
 - **3 Modi**: Einzel, Doppel, Mixed
-- **5 Formate**: Jeder gegen Jeden, KO-System, Wechselnde Partner, Gruppenphase + KO, Feste Doppel
+- **9 Formate**: Jeder gegen Jeden, KO-System, Wechselnde Partner, Gruppenphase + KO, Schweizer System, Doppel-KO, Monrad, King of the Court, Waterfall
+- **Format-Info-Modal**: Ausfuehrliche Beschreibung, ASCII-Diagramm, Vor-/Nachteile fuer jedes Format
 - **Gruppenphase + KO**: Konfigurierbare Gruppenanzahl (2-8), Qualifikanten pro Gruppe (Top 1-4), dann KO-Runde
   - Einzel: Individuelle Spieler qualifizieren sich
   - Doppel/Mixed: Feste Teams bleiben durch Gruppenphase und KO bestehen
@@ -39,6 +40,11 @@
   - **Intelligente Warteschlange**: "Alle Gruppen"-Modus zeigt Spiele aus allen Gruppen gleichzeitig - kein unnoetiges Warten
   - **Gruppen-Buttons**: Pro Gruppe navigierbar, Zeilenumbruch zwischen Gruppen
   - **Druckansicht**: Gruppentabellen mit Q-Badge, separate Gruppen-/KO-Ueberschriften
+- **Schweizer System**: Paarungen nach aktuellem Tabellenstand, kein Ausscheiden, konfigurierbare Rundenanzahl
+- **Doppel-KO**: Gewinner- + Verlierer-Klammer, erst nach zwei Niederlagen ausgeschieden, Grosses Finale
+- **Monrad-System**: Strikte Paarung nach Platzierung (#1 vs #2), beliebt in Skandinavien
+- **King of the Court**: Gewinner bleibt auf dem Feld, Verlierer in die Warteschlange, Dauerspiel
+- **Waterfall**: Spieler rotieren durch nummerierte Felder, Gewinner steigt auf, Verlierer ab
 - **KO-Bracket-Ansicht**: Visueller Turnierbaum als eigener Tab, moegliche Teilnehmer in Grau, bestaetigte Gewinner sofort sichtbar
 - **Konfigurierbar**: Saetze (Best of 1/3/5), Punkte pro Satz, Spielfelder (1-8)
 - **Setzliste/Seeding**: Optionales Seeding fuer KO-Turniere per Drag & Drop oder Pfeiltasten
