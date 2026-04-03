@@ -42,6 +42,44 @@ const GENDER_MAP: Record<string, Gender> = {
   D: "f",
 };
 
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function similarity(a: string, b: string): number {
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen === 0) return 1;
+  return 1 - levenshtein(a, b) / maxLen;
+}
+
+function findFuzzyMatch(name: string, existingNames: { lower: string; original: string }[], threshold = 0.75): string | null {
+  const lower = name.toLowerCase();
+  let bestMatch: string | null = null;
+  let bestScore = 0;
+  for (const existing of existingNames) {
+    if (existing.lower === lower) continue; // exact match handled separately
+    const score = similarity(lower, existing.lower);
+    if (score >= threshold && score > bestScore) {
+      bestScore = score;
+      bestMatch = existing.original;
+    }
+  }
+  return bestMatch;
+}
+
 function parseGender(val: unknown): Gender | null {
   if (val == null) return null;
   const str = String(val).trim();
@@ -70,7 +108,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
   // Preview
   const [previewRows, setPreviewRows] = useState<
-    { name: string; gender: Gender; age: number | null; club: string | null; valid: boolean; duplicate: boolean }[]
+    { name: string; gender: Gender; age: number | null; club: string | null; valid: boolean; duplicate: boolean; fuzzyMatch: string | null; skipFuzzy: boolean }[]
   >([]);
   const [importCount, setImportCount] = useState(0);
   const [importing, setImporting] = useState(false);
@@ -146,6 +184,10 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
     const existingNames = new Set(
       existingPlayers.map((p) => p.name.toLowerCase().trim())
     );
+    const existingNameList = existingPlayers.map((p) => ({
+      lower: p.name.toLowerCase().trim(),
+      original: p.name,
+    }));
     const seenInImport = new Set<string>();
 
     const rows = rawData.map((row) => {
@@ -164,6 +206,11 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
         name.length > 0 &&
         (existingNames.has(nameLower) || seenInImport.has(nameLower));
 
+      // Fuzzy match only if not an exact duplicate
+      const fuzzyMatch = !duplicate && name.length > 0
+        ? findFuzzyMatch(name, existingNameList)
+        : null;
+
       if (name.length > 0) seenInImport.add(nameLower);
 
       const rawAge = ageCol ? row[ageCol] : null;
@@ -171,7 +218,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
       const rawClub = clubCol ? row[clubCol] : null;
       const club = rawClub != null ? String(rawClub).trim() || null : null;
 
-      return { name, gender, age, club, valid: name.length > 0, duplicate };
+      return { name, gender, age, club, valid: name.length > 0, duplicate, fuzzyMatch, skipFuzzy: false };
     });
 
     setPreviewRows(rows);
@@ -183,7 +230,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
     let count = 0;
 
     for (const row of previewRows) {
-      if (!row.valid || row.duplicate) continue;
+      if (!row.valid || row.duplicate || (row.fuzzyMatch && row.skipFuzzy)) continue;
       try {
         await createPlayer(row.name, row.gender, row.age, row.club);
         count++;
@@ -427,7 +474,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
             <div>
               <div className={`mb-3 text-sm ${theme.textSecondary}`}>
                 {t.import_will_import
-                  .replace("{count}", String(previewRows.filter((r) => r.valid && !r.duplicate).length))
+                  .replace("{count}", String(previewRows.filter((r) => r.valid && !r.duplicate && !(r.fuzzyMatch && r.skipFuzzy)).length))
                   .replace("{total}", String(previewRows.length))}
                 {previewRows.some((r) => !r.valid) && (
                   <span className="text-red-500 ml-1">
@@ -437,6 +484,11 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                 {previewRows.some((r) => r.duplicate) && (
                   <span className="text-orange-500 ml-1">
                     ({previewRows.filter((r) => r.duplicate).length} {t.import_duplicate})
+                  </span>
+                )}
+                {previewRows.some((r) => r.fuzzyMatch) && (
+                  <span className="text-amber-500 ml-1">
+                    ({t.import_fuzzy_count.replace("{count}", String(previewRows.filter((r) => r.fuzzyMatch).length))})
                   </span>
                 )}
               </div>
@@ -461,12 +513,19 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                             ? `bg-red-500/10 ${theme.textMuted}`
                             : row.duplicate
                             ? `bg-orange-500/10 ${theme.textMuted}`
+                            : row.fuzzyMatch
+                            ? `bg-amber-500/10`
                             : ""
                         }`}
                       >
                         <td className={`px-3 py-1.5 ${theme.textMuted}`}>{i + 1}</td>
                         <td className="px-3 py-1.5">
-                          {row.name || <em>{t.import_empty}</em>}
+                          <div>{row.name || <em>{t.import_empty}</em>}</div>
+                          {row.fuzzyMatch && (
+                            <div className="text-[10px] text-amber-500 mt-0.5">
+                              {t.import_fuzzy_match.replace("{name}", row.fuzzyMatch)}
+                            </div>
+                          )}
                         </td>
                         <td className="px-3 py-1.5">
                           {row.gender === "m" ? t.common_gender_male : t.common_gender_female}
@@ -476,6 +535,21 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                             <span className="text-orange-500 text-xs">
                               {t.import_duplicate}
                             </span>
+                          ) : row.fuzzyMatch ? (
+                            <button
+                              onClick={() => {
+                                setPreviewRows(prev => prev.map((r, idx) =>
+                                  idx === i ? { ...r, skipFuzzy: !r.skipFuzzy } : r
+                                ));
+                              }}
+                              className={`text-xs font-medium px-2 py-0.5 rounded-full transition-colors ${
+                                row.skipFuzzy
+                                  ? "bg-red-500/20 text-red-500"
+                                  : "bg-emerald-500/20 text-emerald-600"
+                              }`}
+                            >
+                              {row.skipFuzzy ? t.import_fuzzy_skip : t.import_fuzzy_keep}
+                            </button>
                           ) : row.valid ? (
                             <span className="text-green-600 text-xs">OK</span>
                           ) : (

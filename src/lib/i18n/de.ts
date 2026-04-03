@@ -653,6 +653,12 @@ export const de: Translations = {
   stats_all_tournaments: "Alle Turniere",
   stats_filter_tournament: "Nach Turnier filtern",
 
+  // ===== Import fuzzy duplicates =====
+  import_fuzzy_match: "Aehnlich wie: {name}",
+  import_fuzzy_keep: "Trotzdem importieren",
+  import_fuzzy_skip: "Ueberspringen",
+  import_fuzzy_count: "{count} moegliche Duplikate",
+
   // ===== Auto-Update Banner =====
   update_available_banner: "Version {version} ist verfuegbar!",
   update_go_to_settings: "Aktualisieren",

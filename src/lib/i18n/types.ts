@@ -654,6 +654,12 @@ export interface Translations {
   stats_all_tournaments: string;
   stats_filter_tournament: string;
 
+  // ===== Import fuzzy duplicates =====
+  import_fuzzy_match: string;
+  import_fuzzy_keep: string;
+  import_fuzzy_skip: string;
+  import_fuzzy_count: string;
+
   // ===== Auto-Update Banner =====
   update_available_banner: string;
   update_go_to_settings: string;

@@ -653,6 +653,12 @@ export const en: Translations = {
   stats_all_tournaments: "All Tournaments",
   stats_filter_tournament: "Filter by tournament",
 
+  // ===== Import fuzzy duplicates =====
+  import_fuzzy_match: "Similar to: {name}",
+  import_fuzzy_keep: "Import anyway",
+  import_fuzzy_skip: "Skip",
+  import_fuzzy_count: "{count} possible duplicates",
+
   // ===== Auto-Update Banner =====
   update_available_banner: "Version {version} is available!",
   update_go_to_settings: "Update",
