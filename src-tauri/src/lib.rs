@@ -261,6 +261,15 @@ pub fn run() {
             ",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 2,
+            description: "add match duration tracking columns",
+            sql: "
+                ALTER TABLE matches ADD COLUMN started_at TEXT;
+                ALTER TABLE matches ADD COLUMN completed_at TEXT;
+            ",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

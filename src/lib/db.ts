@@ -608,11 +608,12 @@ export async function createMatch(
   court: number | null = null
 ): Promise<number> {
   const assignedAt = court ? new Date().toISOString() : null;
+  const startedAt = court ? new Date().toISOString() : null;
   if (isTauri()) {
     const d = await getTauriDb();
     const result = await d.execute(
-      "INSERT INTO matches (round_id, team1_p1, team1_p2, team2_p1, team2_p2, court, court_assigned_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      [roundId, team1P1, team1P2, team2P1, team2P2, court, assignedAt]
+      "INSERT INTO matches (round_id, team1_p1, team1_p2, team2_p1, team2_p2, court, court_assigned_at, started_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      [roundId, team1P1, team1P2, team2P1, team2P2, court, assignedAt, startedAt]
     );
     return result.lastInsertId!;
   }
@@ -629,6 +630,8 @@ export async function createMatch(
     team2_p2: team2P2,
     winner_team: null,
     status: "pending",
+    started_at: startedAt,
+    completed_at: null,
   });
   saveStore(store);
   return id;
@@ -636,9 +639,10 @@ export async function createMatch(
 
 export async function updateMatchCourt(matchId: number, court: number | null): Promise<void> {
   const assignedAt = court ? new Date().toISOString() : null;
+  const startedAt = court ? new Date().toISOString() : null;
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute("UPDATE matches SET court = $1, court_assigned_at = $2 WHERE id = $3", [court, assignedAt, matchId]);
+    await d.execute("UPDATE matches SET court = $1, court_assigned_at = $2, started_at = $3 WHERE id = $4", [court, assignedAt, startedAt, matchId]);
     return;
   }
   const store = loadStore();
@@ -646,6 +650,7 @@ export async function updateMatchCourt(matchId: number, court: number | null): P
   if (m) {
     m.court = court;
     m.court_assigned_at = assignedAt;
+    m.started_at = startedAt;
   }
   saveStore(store);
 }
@@ -663,11 +668,12 @@ export async function clearMatchCourt(matchId: number): Promise<void> {
 }
 
 export async function updateMatchResult(matchId: number, winnerTeam: 1 | 2): Promise<void> {
+  const completedAt = new Date().toISOString();
   if (isTauri()) {
     const d = await getTauriDb();
     await d.execute(
-      "UPDATE matches SET winner_team = $1, status = 'completed' WHERE id = $2",
-      [winnerTeam, matchId]
+      "UPDATE matches SET winner_team = $1, status = 'completed', completed_at = $2 WHERE id = $3",
+      [winnerTeam, completedAt, matchId]
     );
     return;
   }
@@ -676,6 +682,7 @@ export async function updateMatchResult(matchId: number, winnerTeam: 1 | 2): Pro
   if (m) {
     m.winner_team = winnerTeam;
     m.status = "completed";
+    m.completed_at = completedAt;
   }
   saveStore(store);
 }
@@ -828,4 +835,35 @@ export async function deleteAppSetting(key: string): Promise<void> {
     return;
   }
   localStorage.removeItem(`app_setting_${key}`);
+}
+
+// --- Match Duration Queries ---
+
+export async function getAllMatchesWithTournament(): Promise<(Match & { tournament_id: number; tournament_name: string })[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    return d.select(
+      "SELECT m.*, r.tournament_id, t.name as tournament_name FROM matches m JOIN rounds r ON m.round_id = r.id JOIN tournaments t ON r.tournament_id = t.id WHERE m.status = 'completed'"
+    );
+  }
+  const store = loadStore();
+  const completedMatches = store.matches.filter((m) => m.status === "completed");
+  return completedMatches.map((m) => {
+    const round = store.rounds.find((r) => r.id === m.round_id);
+    const tournament = store.tournaments.find((t) => t.id === round?.tournament_id);
+    return {
+      ...m,
+      tournament_id: round?.tournament_id ?? 0,
+      tournament_name: tournament?.name ?? "",
+    };
+  });
+}
+
+export async function getAllSetsFlat(): Promise<GameSet[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    return d.select("SELECT * FROM sets");
+  }
+  const store = loadStore();
+  return [...store.sets];
 }

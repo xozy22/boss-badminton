@@ -1,6 +1,9 @@
 import { useState, useRef } from "react";
 import PrintView from "./PrintView";
 import type { PrintMode } from "./PrintView";
+import { generateCertificates } from "./CertificateGenerator";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import type {
   Tournament,
   Player,
@@ -36,6 +39,8 @@ export default function PrintDialog({
   const { theme, themeId } = useTheme();
   const { t } = useT();
   const [mode, setMode] = useState<PrintMode>("full");
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [certLoading, setCertLoading] = useState(false);
 
   const PRINT_OPTIONS: { value: PrintMode; label: string; desc: string }[] = [
     { value: "report", label: `📊 ${t.print_report}`, desc: t.print_report_desc },
@@ -45,6 +50,124 @@ export default function PrintDialog({
     { value: "standings", label: t.print_standings, desc: t.print_standings_desc },
   ];
   const printRef = useRef<HTMLDivElement>(null);
+
+  const handleSavePdf = async () => {
+    if (!printRef.current) return;
+    setPdfLoading(true);
+    try {
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth - 20; // 10mm margins
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      const pageContentHeight = pdfHeight - 20;
+
+      if (imgHeight <= pageContentHeight) {
+        pdf.addImage(imgData, "JPEG", 10, 10, imgWidth, imgHeight);
+      } else {
+        let remainingHeight = imgHeight;
+        let pageNum = 0;
+        while (remainingHeight > 0) {
+          if (pageNum > 0) pdf.addPage();
+          const sourceY =
+            (pageNum * pageContentHeight / imgHeight) * canvas.height;
+          const sourceHeight = Math.min(
+            (pageContentHeight / imgHeight) * canvas.height,
+            canvas.height - sourceY,
+          );
+
+          const sliceCanvas = document.createElement("canvas");
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = sourceHeight;
+          const ctx = sliceCanvas.getContext("2d")!;
+          ctx.drawImage(
+            canvas,
+            0,
+            sourceY,
+            canvas.width,
+            sourceHeight,
+            0,
+            0,
+            canvas.width,
+            sourceHeight,
+          );
+
+          const sliceData = sliceCanvas.toDataURL("image/jpeg", 0.95);
+          const sliceImgHeight = (sourceHeight * imgWidth) / canvas.width;
+          pdf.addImage(sliceData, "JPEG", 10, 10, imgWidth, sliceImgHeight);
+
+          remainingHeight -= pageContentHeight;
+          pageNum++;
+        }
+      }
+
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const { writeFile } = await import("@tauri-apps/plugin-fs");
+      const path = await save({
+        defaultPath: `${tournament.name.replace(/[^a-zA-Z0-9-_ ]/g, "")}_report.pdf`,
+        filters: [{ name: "PDF", extensions: ["pdf"] }],
+      });
+      if (path) {
+        const arrayBuffer = pdf.output("arraybuffer");
+        await writeFile(path, new Uint8Array(arrayBuffer));
+      }
+    } catch (err) {
+      console.error("PDF export error:", err);
+    }
+    setPdfLoading(false);
+  };
+
+  const handleCertificates = async () => {
+    if (standings.length < 1) return;
+    setCertLoading(true);
+    try {
+      const modeLabel = {
+        singles: t.mode_singles,
+        doubles: t.mode_doubles,
+        mixed: t.mode_mixed,
+      }[tournament.mode];
+      const formatLabel = {
+        round_robin: t.format_round_robin,
+        elimination: t.format_elimination,
+        random_doubles: t.format_random_doubles,
+        group_ko: t.format_group_ko,
+        swiss: t.format_swiss,
+        double_elimination: t.format_double_elimination,
+        monrad: t.format_monrad,
+        king_of_court: t.format_king_of_court,
+        waterfall: t.format_waterfall,
+      }[tournament.format];
+
+      const pdfBytes = await generateCertificates(
+        tournament,
+        standings,
+        t,
+        modeLabel,
+        formatLabel,
+      );
+
+      const { save } = await import("@tauri-apps/plugin-dialog");
+      const { writeFile } = await import("@tauri-apps/plugin-fs");
+      const path = await save({
+        defaultPath: `${tournament.name.replace(/[^a-zA-Z0-9-_ ]/g, "")}_certificates.pdf`,
+        filters: [{ name: "PDF", extensions: ["pdf"] }],
+      });
+      if (path) {
+        await writeFile(path, pdfBytes);
+      }
+    } catch (err) {
+      console.error("Certificate generation error:", err);
+    }
+    setCertLoading(false);
+  };
 
   const handlePrint = () => {
     if (!printRef.current) return;
@@ -142,6 +265,20 @@ export default function PrintDialog({
             className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-5 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
           >
             {t.common_cancel}
+          </button>
+          <button
+            onClick={handleSavePdf}
+            disabled={pdfLoading}
+            className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-5 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium disabled:opacity-50`}
+          >
+            📄 {pdfLoading ? t.pdf_saving : t.pdf_save}
+          </button>
+          <button
+            onClick={handleCertificates}
+            disabled={certLoading || standings.length < 1}
+            className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-5 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium disabled:opacity-50`}
+          >
+            🏆 {certLoading ? t.pdf_saving : t.certificate_generate}
           </button>
           <button
             onClick={handlePrint}

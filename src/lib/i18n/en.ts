@@ -602,4 +602,64 @@ export const en: Translations = {
 
   // ===== Sportstaetten Hall summary =====
   hall_summary: "{halls} {hallLabel}, {courts} {courtLabel}",
+
+  // ===== Statistics Page =====
+  nav_statistics: "Statistics",
+  stats_title: "Statistics",
+  stats_subtitle: "Tournament and player analytics.",
+
+  stats_tournaments_overview: "Tournament Overview",
+  stats_total_tournaments: "Total Tournaments",
+  stats_by_status: "By Status",
+  stats_by_format: "By Format",
+  stats_by_mode: "By Mode",
+
+  stats_match_statistics: "Match Statistics",
+  stats_total_matches: "Completed Matches",
+  stats_avg_duration: "Average Duration",
+  stats_longest_match: "Longest Match",
+  stats_shortest_match: "Shortest Match",
+  stats_avg_points_per_set: "Avg. Points per Set",
+  stats_closest_match: "Closest Match",
+  stats_total_sets: "Total Sets",
+  stats_total_points: "Total Points",
+  stats_minutes: "{n} min",
+  stats_points_diff: "{n} pts difference",
+  stats_no_duration_data: "No duration data yet",
+
+  stats_court_utilization: "Court Utilization",
+  stats_courts_used: "Courts Used",
+  stats_matches_per_court: "Matches per Court",
+  stats_avg_matches_per_court: "Avg. Matches per Court",
+  stats_avg_time_per_court: "Avg. Time per Court",
+
+  stats_player_demographics: "Player Demographics",
+  stats_gender_split: "Gender Split",
+  stats_age_distribution: "Age Distribution",
+  stats_top_clubs: "Top Clubs",
+  stats_no_club: "No Club",
+  stats_players_total: "{count} Players",
+
+  stats_player_rankings: "Player Rankings",
+  stats_rank: "#",
+  stats_player: "Player",
+  stats_matches_played: "Matches",
+  stats_win_rate: "Win Rate",
+  stats_points_avg: "Pts/Match",
+  stats_no_data: "No data available yet. Complete some tournaments to see statistics.",
+
+  // ===== PDF Export & Certificates =====
+  pdf_save: "Save as PDF",
+  pdf_saving: "Generating PDF...",
+  certificate_generate: "Certificates",
+  certificate_achievement: "Certificate of Achievement",
+  certificate_place_1: "1st Place",
+  certificate_place_2: "2nd Place",
+  certificate_place_3: "3rd Place",
+  certificate_tournament: "Tournament",
+  certificate_date: "Date",
+  certificate_signature: "Tournament Director",
+  certificate_congratulations: "Congratulations!",
+  certificate_mode: "Mode",
+  certificate_format: "Format",
 };

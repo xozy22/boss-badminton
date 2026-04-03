@@ -603,4 +603,64 @@ export interface Translations {
 
   // ===== Sportstaetten Hall summary =====
   hall_summary: string;
+
+  // ===== Statistics Page =====
+  nav_statistics: string;
+  stats_title: string;
+  stats_subtitle: string;
+
+  stats_tournaments_overview: string;
+  stats_total_tournaments: string;
+  stats_by_status: string;
+  stats_by_format: string;
+  stats_by_mode: string;
+
+  stats_match_statistics: string;
+  stats_total_matches: string;
+  stats_avg_duration: string;
+  stats_longest_match: string;
+  stats_shortest_match: string;
+  stats_avg_points_per_set: string;
+  stats_closest_match: string;
+  stats_total_sets: string;
+  stats_total_points: string;
+  stats_minutes: string;
+  stats_points_diff: string;
+  stats_no_duration_data: string;
+
+  stats_court_utilization: string;
+  stats_courts_used: string;
+  stats_matches_per_court: string;
+  stats_avg_matches_per_court: string;
+  stats_avg_time_per_court: string;
+
+  stats_player_demographics: string;
+  stats_gender_split: string;
+  stats_age_distribution: string;
+  stats_top_clubs: string;
+  stats_no_club: string;
+  stats_players_total: string;
+
+  stats_player_rankings: string;
+  stats_rank: string;
+  stats_player: string;
+  stats_matches_played: string;
+  stats_win_rate: string;
+  stats_points_avg: string;
+  stats_no_data: string;
+
+  // ===== PDF Export & Certificates =====
+  pdf_save: string;
+  pdf_saving: string;
+  certificate_generate: string;
+  certificate_achievement: string;
+  certificate_place_1: string;
+  certificate_place_2: string;
+  certificate_place_3: string;
+  certificate_tournament: string;
+  certificate_date: string;
+  certificate_signature: string;
+  certificate_congratulations: string;
+  certificate_mode: string;
+  certificate_format: string;
 }

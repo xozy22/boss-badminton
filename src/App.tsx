@@ -8,6 +8,7 @@ import TournamentView from "./pages/TournamentView";
 import TvMode from "./pages/TvMode";
 import Settings from "./pages/Settings";
 import Sportstaetten from "./pages/Sportstaetten";
+import Statistics from "./pages/Statistics";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/tournaments/new" element={<TournamentCreate />} />
           <Route path="/tournaments/:id/edit" element={<TournamentCreate />} />
           <Route path="/tournaments/:id" element={<TournamentView />} />
+          <Route path="/statistics" element={<Statistics />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>

@@ -112,6 +112,8 @@ export interface Match {
   team2_p2: number | null;
   winner_team: 1 | 2 | null;
   status: MatchStatus;
+  started_at: string | null;
+  completed_at: string | null;
 }
 
 export interface GameSet {

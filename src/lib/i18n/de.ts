@@ -602,4 +602,64 @@ export const de: Translations = {
 
   // ===== Sportstaetten Hall summary =====
   hall_summary: "{halls} {hallLabel}, {courts} {courtLabel}",
+
+  // ===== Statistics Page =====
+  nav_statistics: "Statistiken",
+  stats_title: "Statistiken",
+  stats_subtitle: "Turnier- und Spielerauswertungen.",
+
+  stats_tournaments_overview: "Turnier-Uebersicht",
+  stats_total_tournaments: "Turniere gesamt",
+  stats_by_status: "Nach Status",
+  stats_by_format: "Nach Format",
+  stats_by_mode: "Nach Modus",
+
+  stats_match_statistics: "Spiel-Statistiken",
+  stats_total_matches: "Abgeschlossene Spiele",
+  stats_avg_duration: "Durchschnittliche Dauer",
+  stats_longest_match: "Laengstes Spiel",
+  stats_shortest_match: "Kuerzestes Spiel",
+  stats_avg_points_per_set: "Durchschn. Punkte pro Satz",
+  stats_closest_match: "Knappstes Spiel",
+  stats_total_sets: "Saetze gesamt",
+  stats_total_points: "Punkte gesamt",
+  stats_minutes: "{n} Min",
+  stats_points_diff: "{n} Pkt Unterschied",
+  stats_no_duration_data: "Noch keine Zeitdaten vorhanden",
+
+  stats_court_utilization: "Feldauslastung",
+  stats_courts_used: "Felder genutzt",
+  stats_matches_per_court: "Spiele pro Feld",
+  stats_avg_matches_per_court: "Durchschn. Spiele pro Feld",
+  stats_avg_time_per_court: "Durchschn. Zeit pro Feld",
+
+  stats_player_demographics: "Teilnehmer-Statistiken",
+  stats_gender_split: "Geschlechterverteilung",
+  stats_age_distribution: "Altersverteilung",
+  stats_top_clubs: "Top-Vereine",
+  stats_no_club: "Kein Verein",
+  stats_players_total: "{count} Spieler",
+
+  stats_player_rankings: "Spieler-Rangliste",
+  stats_rank: "#",
+  stats_player: "Spieler",
+  stats_matches_played: "Spiele",
+  stats_win_rate: "Siegquote",
+  stats_points_avg: "Pkt/Spiel",
+  stats_no_data: "Noch keine Daten vorhanden. Schliesse einige Turniere ab, um Statistiken zu sehen.",
+
+  // ===== PDF Export & Certificates =====
+  pdf_save: "Als PDF speichern",
+  pdf_saving: "PDF wird erstellt...",
+  certificate_generate: "Urkunden",
+  certificate_achievement: "Urkunde",
+  certificate_place_1: "1. Platz",
+  certificate_place_2: "2. Platz",
+  certificate_place_3: "3. Platz",
+  certificate_tournament: "Turnier",
+  certificate_date: "Datum",
+  certificate_signature: "Turnierleitung",
+  certificate_congratulations: "Herzlichen Glueckwunsch!",
+  certificate_mode: "Modus",
+  certificate_format: "Format",
 };
