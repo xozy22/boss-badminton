@@ -687,7 +687,27 @@ export async function clearMatchCourt(matchId: number): Promise<void> {
   saveStore(store);
 }
 
-export async function updateMatchResult(matchId: number, winnerTeam: 1 | 2): Promise<void> {
+export async function updateMatchResult(matchId: number, winnerTeam: 1 | 2 | null): Promise<void> {
+  if (winnerTeam === null) {
+    // Reset match to active (scores changed, no winner yet)
+    if (isTauri()) {
+      const d = await getTauriDb();
+      await d.execute(
+        "UPDATE matches SET winner_team = NULL, status = 'active', completed_at = NULL WHERE id = $1",
+        [matchId]
+      );
+      return;
+    }
+    const store = loadStore();
+    const m = store.matches.find((m) => m.id === matchId);
+    if (m) {
+      m.winner_team = null;
+      m.status = "active";
+      m.completed_at = null;
+    }
+    saveStore(store);
+    return;
+  }
   const completedAt = new Date().toISOString();
   if (isTauri()) {
     const d = await getTauriDb();

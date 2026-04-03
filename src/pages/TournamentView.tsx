@@ -1075,6 +1075,7 @@ export default function TournamentView() {
       tournament.sets_to_win,
       tournament.points_per_set
     );
+    const currentMatch = allMatches.find(m => m.id === matchId);
     if (winner) {
       await updateMatchResult(matchId, winner);
       const wasEditing = editingMatchIds.has(matchId);
@@ -1095,6 +1096,9 @@ export default function TournamentView() {
           });
         }, 3000);
       }
+    } else if (currentMatch && currentMatch.winner_team !== null) {
+      // Match was completed but scores were changed so no winner anymore — reset
+      await updateMatchResult(matchId, null);
     }
 
     loadAll();
