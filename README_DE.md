@@ -170,7 +170,7 @@
 
 ### Technisch
 - **Installer**: Wahl zwischen Installation fuer alle Benutzer (Programme) oder nur aktuellen Benutzer
-- **Auto-Update**: Manueller Check ueber Einstellungen, signierte Updates von GitHub Releases
+- **Auto-Update**: Automatische Update-Pruefung beim Start (Banner-Benachrichtigung), manueller Check ueber Einstellungen, signierte Updates von GitHub Releases
 - **Offline-faehig**: Laeuft komplett lokal, kein Internet noetig (Font lokal gebundelt)
 - **Cross-Platform**: Windows + macOS (via GitHub Actions CI/CD)
 - **SQLite-Datenbank**: Robuste, persistente Datenspeicherung
