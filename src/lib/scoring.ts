@@ -280,19 +280,20 @@ export function calculateStandings(
 
   const result = Array.from(entries.values());
   result.sort((a, b) => {
-    if (b.wins !== a.wins) return b.wins - a.wins;
+    // 1. Match win percentage (wins / total matches)
+    const matchPctA = (a.wins + a.losses) > 0 ? a.wins / (a.wins + a.losses) : 0;
+    const matchPctB = (b.wins + b.losses) > 0 ? b.wins / (b.wins + b.losses) : 0;
+    if (matchPctB !== matchPctA) return matchPctB - matchPctA;
 
-    const aSetRatio =
-      a.setsLost === 0 ? a.setsWon : a.setsWon / a.setsLost;
-    const bSetRatio =
-      b.setsLost === 0 ? b.setsWon : b.setsWon / b.setsLost;
-    if (bSetRatio !== aSetRatio) return bSetRatio - aSetRatio;
+    // 2. Set win percentage (setsWon / total sets)
+    const setPctA = (a.setsWon + a.setsLost) > 0 ? a.setsWon / (a.setsWon + a.setsLost) : 0;
+    const setPctB = (b.setsWon + b.setsLost) > 0 ? b.setsWon / (b.setsWon + b.setsLost) : 0;
+    if (setPctB !== setPctA) return setPctB - setPctA;
 
-    const aPointRatio =
-      a.pointsLost === 0 ? a.pointsWon : a.pointsWon / a.pointsLost;
-    const bPointRatio =
-      b.pointsLost === 0 ? b.pointsWon : b.pointsWon / b.pointsLost;
-    return bPointRatio - aPointRatio;
+    // 3. Point win percentage (pointsWon / total points)
+    const ptPctA = (a.pointsWon + a.pointsLost) > 0 ? a.pointsWon / (a.pointsWon + a.pointsLost) : 0;
+    const ptPctB = (b.pointsWon + b.pointsLost) > 0 ? b.pointsWon / (b.pointsWon + b.pointsLost) : 0;
+    return ptPctB - ptPctA;
   });
 
   return result;
@@ -369,13 +370,20 @@ export function calculateTeamStandings(
 
   const result = Array.from(entries.values());
   result.sort((a, b) => {
-    if (b.wins !== a.wins) return b.wins - a.wins;
-    const aR = a.setsLost === 0 ? a.setsWon : a.setsWon / a.setsLost;
-    const bR = b.setsLost === 0 ? b.setsWon : b.setsWon / b.setsLost;
-    if (bR !== aR) return bR - aR;
-    const aPR = a.pointsLost === 0 ? a.pointsWon : a.pointsWon / a.pointsLost;
-    const bPR = b.pointsLost === 0 ? b.pointsWon : b.pointsWon / b.pointsLost;
-    return bPR - aPR;
+    // 1. Match win percentage
+    const matchPctA = (a.wins + a.losses) > 0 ? a.wins / (a.wins + a.losses) : 0;
+    const matchPctB = (b.wins + b.losses) > 0 ? b.wins / (b.wins + b.losses) : 0;
+    if (matchPctB !== matchPctA) return matchPctB - matchPctA;
+
+    // 2. Set win percentage
+    const setPctA = (a.setsWon + a.setsLost) > 0 ? a.setsWon / (a.setsWon + a.setsLost) : 0;
+    const setPctB = (b.setsWon + b.setsLost) > 0 ? b.setsWon / (b.setsWon + b.setsLost) : 0;
+    if (setPctB !== setPctA) return setPctB - setPctA;
+
+    // 3. Point win percentage
+    const ptPctA = (a.pointsWon + a.pointsLost) > 0 ? a.pointsWon / (a.pointsWon + a.pointsLost) : 0;
+    const ptPctB = (b.pointsWon + b.pointsLost) > 0 ? b.pointsWon / (b.pointsWon + b.pointsLost) : 0;
+    return ptPctB - ptPctA;
   });
 
   return result;

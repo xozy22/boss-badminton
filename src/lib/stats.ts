@@ -290,8 +290,14 @@ export function calculatePlayerRankings(
   }
 
   result.sort((a, b) => {
-    if (b.wins !== a.wins) return b.wins - a.wins;
-    return b.winRate - a.winRate;
+    // 1. Match win percentage
+    if (b.winRate !== a.winRate) return b.winRate - a.winRate;
+    // 2. Point win percentage
+    const ptPctA = (a.totalPointsWon + a.totalPointsLost) > 0 ? a.totalPointsWon / (a.totalPointsWon + a.totalPointsLost) : 0;
+    const ptPctB = (b.totalPointsWon + b.totalPointsLost) > 0 ? b.totalPointsWon / (b.totalPointsWon + b.totalPointsLost) : 0;
+    if (ptPctB !== ptPctA) return ptPctB - ptPctA;
+    // 3. Total wins as final tiebreaker
+    return b.wins - a.wins;
   });
 
   return result;
