@@ -1041,18 +1041,17 @@ export default function TournamentView() {
     let t2 = existing.team2_score;
 
     // Auto-Fill: Gegner-Score automatisch setzen
-    // onlyIfFresh=true wenn Gegner noch 0 (Scores <= 21 nur bei Neueingabe)
-    // onlyIfFresh=false fuer Verlaengerung 22-30 (immer eindeutig)
+    // Only auto-fill if the OTHER team's score is still 0 (truly fresh entry)
+    // This prevents overwriting when tabbing through already-filled fields
     const enteredScore = team === 1 ? t1 : t2;
     const currentOther = team === 1 ? t2 : t1;
-    if (enteredScore > 0) {
-      const isFresh = currentOther === 0;
+    if (enteredScore > 0 && currentOther === 0) {
       const autoScore = autoFillOpponentScore(
         enteredScore,
         tournament.points_per_set,
-        isFresh
+        true
       );
-      if (autoScore !== null && currentOther !== autoScore) {
+      if (autoScore !== null) {
         if (team === 1) t2 = autoScore;
         else t1 = autoScore;
         await upsertSet(matchId, setNumber, t1, t2);
