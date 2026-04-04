@@ -48,6 +48,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
+          APPLE_SIGNING_IDENTITY: ${{ contains(matrix.platform, 'macos') && '-' || '' }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: ${{ github.ref_name }}
@@ -55,11 +56,6 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
-
-      - name: Ad-hoc sign macOS app
-        if: matrix.platform == 'macos-latest' || matrix.platform == 'macos-13'
-        run: |
-          find src-tauri/target -name "*.app" -exec codesign --force --deep --sign - {} \; 2>/dev/null || true
 
   cleanup:
     needs: build

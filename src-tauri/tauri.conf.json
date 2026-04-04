@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "BOSS",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "identifier": "com.badminton.turnierplaner",
   "build": {
     "frontendDist": "../dist",
@@ -35,6 +35,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "macOS": {
+      "signingIdentity": "-"
+    },
     "windows": {
       "nsis": {
         "installMode": "both"
