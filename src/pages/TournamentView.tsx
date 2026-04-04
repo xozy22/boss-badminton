@@ -820,6 +820,13 @@ export default function TournamentView() {
   };
 
   // Start KO phase after group phase is complete
+  // Helper: next power of 2 (e.g. 6 → 8, 5 → 8, 8 → 8)
+  const nextPowerOf2 = (n: number): number => {
+    let p = 1;
+    while (p < n) p *= 2;
+    return p;
+  };
+
   const startKoPhase = async () => {
     if (!tournament || tournament.format !== "group_ko") return;
 
@@ -836,15 +843,45 @@ export default function TournamentView() {
     if (isDoubles) {
       // Doppel/Mixed: Qualifizierte TEAMS sammeln
       const qualifiedTeams: [number, number][] = [];
+      const runnersUp: { team: [number, number]; wins: number; setsWon: number; setsLost: number; pointsWon: number; pointsLost: number }[] = [];
+
       for (let g = 1; g <= numGroups; g++) {
         const { gMatches, gSets, pIds } = getGroupData(g);
         const gPlayers = players.filter((p) => pIds.has(p.id));
         const teamStandings = calculateTeamStandings(gPlayers, gMatches, gSets);
-        for (let i = 0; i < Math.min(qualifyPerGroup, teamStandings.length); i++) {
+        for (let i = 0; i < teamStandings.length; i++) {
           const ts = teamStandings[i];
-          qualifiedTeams.push([ts.player1.id, ts.player2.id]);
+          if (i < qualifyPerGroup) {
+            qualifiedTeams.push([ts.player1.id, ts.player2.id]);
+          } else {
+            // Collect runners-up for potential wild card
+            runnersUp.push({
+              team: [ts.player1.id, ts.player2.id],
+              wins: ts.wins, setsWon: ts.setsWon, setsLost: ts.setsLost,
+              pointsWon: ts.pointsWon, pointsLost: ts.pointsLost,
+            });
+          }
         }
       }
+
+      // Fill up to next power of 2 with best runners-up
+      const target = nextPowerOf2(qualifiedTeams.length);
+      if (qualifiedTeams.length < target && runnersUp.length > 0) {
+        runnersUp.sort((a, b) => {
+          if (b.wins !== a.wins) return b.wins - a.wins;
+          const ratioA = a.setsLost > 0 ? a.setsWon / a.setsLost : a.setsWon;
+          const ratioB = b.setsLost > 0 ? b.setsWon / b.setsLost : b.setsWon;
+          if (ratioB !== ratioA) return ratioB - ratioA;
+          const pRatioA = a.pointsLost > 0 ? a.pointsWon / a.pointsLost : a.pointsWon;
+          const pRatioB = b.pointsLost > 0 ? b.pointsWon / b.pointsLost : b.pointsWon;
+          return pRatioB - pRatioA;
+        });
+        const needed = target - qualifiedTeams.length;
+        for (let i = 0; i < Math.min(needed, runnersUp.length); i++) {
+          qualifiedTeams.push(runnersUp[i].team);
+        }
+      }
+
       if (qualifiedTeams.length < 2) return;
       const koMatches = generateEliminationBracketDoubles(qualifiedTeams);
       for (const m of koMatches) {
@@ -854,14 +891,44 @@ export default function TournamentView() {
     } else {
       // Einzel: Qualifizierte SPIELER sammeln
       const qualified: number[] = [];
+      const runnersUp: { playerId: number; wins: number; setsWon: number; setsLost: number; pointsWon: number; pointsLost: number }[] = [];
+
       for (let g = 1; g <= numGroups; g++) {
         const { gMatches, gSets, pIds } = getGroupData(g);
         const gPlayers = players.filter((p) => pIds.has(p.id));
         const gStandings = calculateStandings(gPlayers, gMatches, gSets);
-        for (let i = 0; i < Math.min(qualifyPerGroup, gStandings.length); i++) {
-          qualified.push(gStandings[i].player.id);
+        for (let i = 0; i < gStandings.length; i++) {
+          if (i < qualifyPerGroup) {
+            qualified.push(gStandings[i].player.id);
+          } else {
+            const s = gStandings[i];
+            runnersUp.push({
+              playerId: s.player.id,
+              wins: s.wins, setsWon: s.setsWon, setsLost: s.setsLost,
+              pointsWon: s.pointsWon, pointsLost: s.pointsLost,
+            });
+          }
         }
       }
+
+      // Fill up to next power of 2 with best runners-up
+      const target = nextPowerOf2(qualified.length);
+      if (qualified.length < target && runnersUp.length > 0) {
+        runnersUp.sort((a, b) => {
+          if (b.wins !== a.wins) return b.wins - a.wins;
+          const ratioA = a.setsLost > 0 ? a.setsWon / a.setsLost : a.setsWon;
+          const ratioB = b.setsLost > 0 ? b.setsWon / b.setsLost : b.setsWon;
+          if (ratioB !== ratioA) return ratioB - ratioA;
+          const pRatioA = a.pointsLost > 0 ? a.pointsWon / a.pointsLost : a.pointsWon;
+          const pRatioB = b.pointsLost > 0 ? b.pointsWon / b.pointsLost : b.pointsWon;
+          return pRatioB - pRatioA;
+        });
+        const needed = target - qualified.length;
+        for (let i = 0; i < Math.min(needed, runnersUp.length); i++) {
+          qualified.push(runnersUp[i].playerId);
+        }
+      }
+
       if (qualified.length < 2) return;
       const qualifiedPlayers = qualified
         .map((id) => players.find((p) => p.id === id))
