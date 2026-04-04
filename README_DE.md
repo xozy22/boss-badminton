@@ -70,10 +70,12 @@
 - **Auto-Benennung**: Turniername wird automatisch generiert (Datum - Modus - Format), editierbar
 
 ### Spielerverwaltung
-- Spieler anlegen, bearbeiten, loeschen mit **Geburtsjahr** (Alter wird automatisch berechnet) und **Vereinszugehoerigkeit**
-- **Excel-Import** mit Spaltenmapping (Name, Geschlecht, Geburtsjahr/Alter, Verein) und Fuzzy-Duplikaterkennung
+- Spieler anlegen, bearbeiten, loeschen mit **Geburtsdatum** (Alter wird automatisch tagesgenau berechnet) und **Vereinszugehoerigkeit**
+- **Excel-Import** mit Spaltenmapping (Name, Geschlecht, Geburtsdatum/Alter, Verein) und Fuzzy-Duplikaterkennung
 - **Fuzzy-Duplikaterkennung**: Levenshtein-basierte Aehnlichkeitspruefung erkennt Tippfehler (z.B. "Schmidt" vs "Schmitt")
-- **Excel-Export** mit nativem Speichern-Dialog (inkl. Geburtsjahr + Alter + Verein)
+- **Excel-Import im Turnier-Wizard**: Spieler direkt bei Turniererstellung importieren, alle automatisch ausgewaehlt
+- **Excel-Export** mit nativem Speichern-Dialog (inkl. Geburtsdatum + Alter + Verein)
+- **Startgeld-Tracking**: Bezahlter Betrag (gruen) und offener Betrag (rot) in Turnierverwaltung sichtbar
 - Geschlechter-Filter und Suchfunktion bei der Spielerauswahl
 - **Verletzung/Aufgabe**: Spieler als verletzt markieren - scheidet fuer restliches Turnier aus
   - Gestylter Modal-Dialog (kein Browser-Popup) mit Warnung bei Team-Auswirkungen

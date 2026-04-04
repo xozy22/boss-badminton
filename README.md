@@ -70,10 +70,12 @@
 - **Auto-Naming**: Tournament name automatically generated (Date - Mode - Format), editable
 
 ### Player Management
-- Create, edit, delete players with **Birth Year** (age calculated automatically) and **Club affiliation**
-- **Excel Import** with column mapping (Name, Gender, Birth Year/Age, Club) and fuzzy duplicate detection
+- Create, edit, delete players with **Date of Birth** (age calculated automatically, precise to the day) and **Club affiliation**
+- **Excel Import** with column mapping (Name, Gender, Date of Birth/Age, Club) and fuzzy duplicate detection
 - **Fuzzy Duplicate Detection**: Levenshtein-based similarity check catches near-matches (e.g. "Schmidt" vs "Schmitt")
-- **Excel Export** with native save dialog (incl. Age + Club)
+- **Excel Import in Tournament Wizard**: Import players directly during tournament creation, all auto-selected
+- **Excel Export** with native save dialog (incl. Date of Birth, Age + Club)
+- **Entry Fee Tracking**: Paid amount (green) and open amount (red) visible in tournament management
 - Gender filter and search function for player selection
 - **Injury/Retirement**: Mark player as injured - excluded from remaining tournament
   - Styled modal dialog (no browser popup) with warning for team impact
