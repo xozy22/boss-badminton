@@ -682,22 +682,37 @@ export default function TournamentCreate() {
                     </div>
                     <div>
                       <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                        {t.tournament_qualify_per_group}
+                        {t.tournament_ko_size}
                       </label>
-                      <select
-                        value={qualifyPerGroup}
-                        onChange={(e) => setQualifyPerGroup(Number(e.target.value))}
-                        className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-                      >
-                        {[1, 2, 3, 4].map((n) => (
-                          <option key={n} value={n}>
-                            {t.top_n.replace("{n}", String(n))}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="text-xs text-gray-400 mt-1">
-                        → {t.tournament_qualify_ko_count.replace("{count}", String(numGroups * qualifyPerGroup))}
-                      </div>
+                      {(() => {
+                        // Calculate possible KO sizes (powers of 2 that make sense)
+                        const totalPlayers = selectedPlayerIds.size;
+                        const possibleSizes = [4, 8, 16, 32].filter(s => s <= totalPlayers && s >= numGroups);
+                        const currentKoSize = qualifyPerGroup; // repurpose qualifyPerGroup to store KO size directly
+                        const effectiveSize = possibleSizes.includes(currentKoSize) ? currentKoSize : (possibleSizes.find(s => s >= numGroups * 2) || possibleSizes[0] || 8);
+                        const perGroup = Math.floor(effectiveSize / numGroups);
+                        const wildcards = effectiveSize - (perGroup * numGroups);
+                        return (
+                          <>
+                            <select
+                              value={effectiveSize}
+                              onChange={(e) => setQualifyPerGroup(Number(e.target.value))}
+                              className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+                            >
+                              {possibleSizes.map((n) => (
+                                <option key={n} value={n}>
+                                  {t.tournament_qualify_ko_count.replace("{count}", String(n))}
+                                </option>
+                              ))}
+                            </select>
+                            <div className={`text-xs ${theme.textMuted} mt-1`}>
+                              {t.tournament_ko_size_hint
+                                .replace("{perGroup}", String(perGroup))
+                                .replace("{wildcards}", String(wildcards))}
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}

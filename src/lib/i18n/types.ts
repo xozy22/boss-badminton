@@ -121,6 +121,8 @@ export interface Translations {
   tournament_num_groups: string;
   tournament_qualify_per_group: string;
   tournament_qualify_ko_count: string;
+  tournament_ko_size: string;
+  tournament_ko_size_hint: string;
   tournament_seeding_enable: string;
   tournament_seeding_hint: string;
   tournament_entry_fee_enable: string;

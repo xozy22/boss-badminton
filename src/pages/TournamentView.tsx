@@ -214,10 +214,10 @@ function EditTournamentModal({
                 </select>
               </div>
               <div>
-                <label className={labelClass}>{t.edit_tournament_qualify_group}</label>
+                <label className={labelClass}>{t.tournament_ko_size}</label>
                 <select value={qualifyPerGroup} onChange={(e) => setQualifyPerGroup(Number(e.target.value))} className={inputClass}>
-                  {[1, 2, 3, 4].map((n) => (
-                    <option key={n} value={n}>{t.top_n.replace("{n}", String(n))}</option>
+                  {[4, 8, 16, 32].map((n) => (
+                    <option key={n} value={n}>{t.tournament_qualify_ko_count.replace("{count}", String(n))}</option>
                   ))}
                 </select>
               </div>
@@ -830,9 +830,15 @@ export default function TournamentView() {
   const startKoPhase = async () => {
     if (!tournament || tournament.format !== "group_ko") return;
 
-    const qualifyPerGroup = tournament.qualify_per_group || 2;
     const numGroups = tournament.num_groups || 2;
     const isDoubles = tournament.mode !== "singles";
+    // qualify_per_group now stores the total KO size (power of 2), e.g. 8
+    // Fall back to old behavior: if value is small (1-4), it's the old "per group" count
+    const rawQualify = tournament.qualify_per_group || 2;
+    const koSize = rawQualify >= 4 && (rawQualify & (rawQualify - 1)) === 0
+      ? rawQualify  // power of 2 → new format (total KO size)
+      : rawQualify * numGroups; // old format (per group) → calculate total
+    const qualifyPerGroup = Math.floor(koSize / numGroups);
 
     await updateTournamentPhase(tournamentId, "ko");
 
@@ -865,7 +871,7 @@ export default function TournamentView() {
       }
 
       // Fill up to next power of 2 with best runners-up
-      const target = nextPowerOf2(qualifiedTeams.length);
+      const target = koSize > qualifiedTeams.length ? koSize : nextPowerOf2(qualifiedTeams.length);
       if (qualifiedTeams.length < target && runnersUp.length > 0) {
         runnersUp.sort((a, b) => {
           if (b.wins !== a.wins) return b.wins - a.wins;
@@ -912,7 +918,7 @@ export default function TournamentView() {
       }
 
       // Fill up to next power of 2 with best runners-up
-      const target = nextPowerOf2(qualified.length);
+      const target = koSize > qualified.length ? koSize : nextPowerOf2(qualified.length);
       if (qualified.length < target && runnersUp.length > 0) {
         runnersUp.sort((a, b) => {
           if (b.wins !== a.wins) return b.wins - a.wins;

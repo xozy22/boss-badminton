@@ -123,6 +123,8 @@ export const de: Translations = {
   tournament_num_groups: "Anzahl Gruppen",
   tournament_qualify_per_group: "Qualifikanten pro Gruppe",
   tournament_qualify_ko_count: "{count} Spieler im KO",
+  tournament_ko_size: "KO-Bracket Groesse",
+  tournament_ko_size_hint: "Top {perGroup} pro Gruppe + {wildcards} beste Nachrücker",
   tournament_seeding_enable: "Setzliste aktivieren",
   tournament_seeding_hint: "Gesetzte Spieler treffen erst in spaeteren Runden aufeinander",
   tournament_entry_fee_enable: "Startgeld erheben",
