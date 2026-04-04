@@ -178,7 +178,7 @@
 - **Installer**: Choice between installation for all users (Program Files) or current user only
 - **Auto-Update**: Automatic update check on app start (banner notification), manual check via Settings, signed updates from GitHub Releases
 - **Offline-capable**: Runs completely locally, no internet needed (font bundled locally)
-- **Cross-Platform**: Windows + macOS (via GitHub Actions CI/CD)
+- **Cross-Platform**: Windows + macOS Intel + macOS Apple Silicon (native builds via GitHub Actions CI/CD)
 - **SQLite Database**: Robust, persistent data storage
 - **Backup & Restore**: Save and restore database with native dialog
 - **Configurable Storage Location**: Database at any location (e.g. USB stick)

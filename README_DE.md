@@ -178,7 +178,7 @@
 - **Installer**: Wahl zwischen Installation fuer alle Benutzer (Programme) oder nur aktuellen Benutzer
 - **Auto-Update**: Automatische Update-Pruefung beim Start (Banner-Benachrichtigung), manueller Check ueber Einstellungen, signierte Updates von GitHub Releases
 - **Offline-faehig**: Laeuft komplett lokal, kein Internet noetig (Font lokal gebundelt)
-- **Cross-Platform**: Windows + macOS (via GitHub Actions CI/CD)
+- **Cross-Platform**: Windows + macOS Intel + macOS Apple Silicon (native Builds via GitHub Actions CI/CD)
 - **SQLite-Datenbank**: Robuste, persistente Datenspeicherung
 - **Backup & Restore**: Datenbank sichern und wiederherstellen mit nativem Dialog
 - **Konfigurierbarer Speicherort**: Datenbank an beliebigem Ort (z.B. USB-Stick)
