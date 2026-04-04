@@ -411,6 +411,8 @@ export const de: Translations = {
   management_no_club: "Kein Verein",
   management_paid_count_label: "{paid}/{total} bezahlt",
   management_open: "Offen",
+  management_paid_amount: "Bezahlt: {amount} EUR",
+  management_open_amount: "Offen: {amount} EUR",
   management_remove_from_tournament: "Aus Turnier entfernen",
   management_retire_title: "Verletzt / Aufgabe",
   management_partner_also_retires: "Da dies ein festes Team ist, scheidet auch {name} aus.",

@@ -59,14 +59,26 @@ export default function VerwaltungTab({
       <div className={`px-5 py-3 border-b ${theme.cardBorder} ${theme.headerGradient} flex justify-between items-center`}>
         <span className={`font-semibold text-sm ${theme.standingsHeaderText}`}>
           {"\u{1F465}"} {t.management_participants.replace("{count}", String(players.length))}
-          {(tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0) && (
-            <span className={`ml-2 font-normal text-xs ${theme.textSecondary}`}>
-              {"\u{1F4B0}"} {t.management_paid_count.replace("{paid}", String(paymentData.filter((p) => p.payment_status === "paid").length)).replace("{total}", String(paymentData.length))}
-              &middot; {paymentData.filter((p) => p.payment_status === "paid").length *
-                (tournament.mode === "singles" ? tournament.entry_fee_single : tournament.entry_fee_double)
-              } EUR
-            </span>
-          )}
+          {(tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0) && (() => {
+            const fee = tournament.mode === "singles" ? tournament.entry_fee_single : tournament.entry_fee_double;
+            const paidCount = paymentData.filter((p) => p.payment_status === "paid").length;
+            const openCount = paymentData.length - paidCount;
+            const paidAmount = paidCount * fee;
+            const openAmount = openCount * fee;
+            return (
+              <span className={`ml-2 font-normal text-xs ${theme.textSecondary}`}>
+                {"\u{1F4B0}"} {t.management_paid_count.replace("{paid}", String(paidCount)).replace("{total}", String(paymentData.length))}
+                &nbsp;&middot;&nbsp;
+                <span className="text-emerald-500">{t.management_paid_amount.replace("{amount}", String(paidAmount))}</span>
+                {openAmount > 0 && (
+                  <>
+                    &nbsp;&middot;&nbsp;
+                    <span className="text-rose-500">{t.management_open_amount.replace("{amount}", String(openAmount))}</span>
+                  </>
+                )}
+              </span>
+            );
+          })()}
         </span>
         {tournament.status === "draft" && (
           <button

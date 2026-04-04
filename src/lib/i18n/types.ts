@@ -412,6 +412,8 @@ export interface Translations {
   management_no_club: string;
   management_paid_count_label: string;
   management_open: string;
+  management_paid_amount: string;
+  management_open_amount: string;
   management_remove_from_tournament: string;
   management_retire_title: string;
   management_partner_also_retires: string;

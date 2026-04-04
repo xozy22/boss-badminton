@@ -411,6 +411,8 @@ export const en: Translations = {
   management_no_club: "No club",
   management_paid_count_label: "{paid}/{total} paid",
   management_open: "Open",
+  management_paid_amount: "Paid: {amount} EUR",
+  management_open_amount: "Open: {amount} EUR",
   management_remove_from_tournament: "Remove from tournament",
   management_retire_title: "Injured / Retired",
   management_partner_also_retires: "Since this is a fixed team, {name} will also be eliminated.",
