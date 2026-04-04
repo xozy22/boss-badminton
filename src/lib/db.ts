@@ -130,6 +130,12 @@ export async function updatePlayer(id: number, name: string, gender: Gender, bir
 export async function deletePlayer(id: number): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();
+    // Remove player references from matches (set to NULL) to avoid FK issues
+    await d.execute("UPDATE matches SET team1_p1 = NULL WHERE team1_p1 = $1", [id]);
+    await d.execute("UPDATE matches SET team1_p2 = NULL WHERE team1_p2 = $1", [id]);
+    await d.execute("UPDATE matches SET team2_p1 = NULL WHERE team2_p1 = $1", [id]);
+    await d.execute("UPDATE matches SET team2_p2 = NULL WHERE team2_p2 = $1", [id]);
+    await d.execute("DELETE FROM tournament_players WHERE player_id = $1", [id]);
     await d.execute("DELETE FROM players WHERE id = $1", [id]);
     return;
   }

@@ -63,9 +63,13 @@ export default function Players() {
 
   const handleSave = async () => {
     if (editingId === null || !editName.trim()) return;
-    await updatePlayer(editingId, editName.trim(), editGender, editBirthYear ? Number(editBirthYear) : null, editClub.trim() || null);
-    setEditingId(null);
-    load();
+    try {
+      await updatePlayer(editingId, editName.trim(), editGender, editBirthYear ? Number(editBirthYear) : null, editClub.trim() || null);
+      setEditingId(null);
+      load();
+    } catch (err) {
+      console.error("Error updating player:", err);
+    }
   };
 
   // Single delete with confirmation
@@ -82,11 +86,15 @@ export default function Players() {
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    for (const id of deleteTarget.ids) {
-      await deletePlayer(id);
+    try {
+      for (const id of deleteTarget.ids) {
+        await deletePlayer(id);
+      }
+      setDeleteTarget(null);
+      load();
+    } catch (err) {
+      console.error("Error deleting player:", err);
     }
-    setDeleteTarget(null);
-    load();
   };
 
   // Toggle selection

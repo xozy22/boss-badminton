@@ -272,10 +272,10 @@ pub fn run() {
         },
         Migration {
             version: 3,
-            description: "convert age to birth_year",
+            description: "add birth_year column and migrate age data",
             sql: "
-                ALTER TABLE players RENAME COLUMN age TO birth_year;
-                UPDATE players SET birth_year = (CAST(strftime('%Y', 'now') AS INTEGER) - birth_year) WHERE birth_year IS NOT NULL AND birth_year < 200;
+                ALTER TABLE players ADD COLUMN birth_year INTEGER;
+                UPDATE players SET birth_year = (CAST(strftime('%Y', 'now') AS INTEGER) - age) WHERE age IS NOT NULL AND age > 0 AND age < 200;
             ",
             kind: MigrationKind::Up,
         },
