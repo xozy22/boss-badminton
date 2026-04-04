@@ -1057,18 +1057,10 @@ export default function TournamentCreate() {
       {showExcelImport && (
         <ExcelImport
           onImportDone={async () => {
-            const oldIds = new Set(players.map(p => p.id));
             const freshPlayers = await getPlayers();
             setPlayers(freshPlayers);
-            // Auto-select newly imported players
-            const newIds = freshPlayers.filter(p => !oldIds.has(p.id)).map(p => p.id);
-            if (newIds.length > 0) {
-              setSelectedPlayerIds(prev => {
-                const next = new Set(prev);
-                for (const id of newIds) next.add(id);
-                return next;
-              });
-            }
+            // Auto-select ALL players after import
+            setSelectedPlayerIds(new Set(freshPlayers.map(p => p.id)));
           }}
           onClose={() => setShowExcelImport(false)}
         />
