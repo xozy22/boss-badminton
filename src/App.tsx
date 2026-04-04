@@ -28,8 +28,8 @@ function UpdateBanner() {
         if (update?.available) {
           setUpdateVersion(update.version);
         }
-      } catch {
-        // Silently fail — offline or not in Tauri
+      } catch (err) {
+        console.log("Auto-update check skipped:", err);
       }
     };
     // Delay check by 3 seconds to not slow down app startup
