@@ -1234,9 +1234,10 @@ export default function TournamentView() {
     loadAll();
   };
 
+  const [showReopenConfirm, setShowReopenConfirm] = useState(false);
   const handleReopenTournament = async () => {
-    if (!confirm(t.tournament_view_reopen_confirm)) return;
     await updateTournamentStatus(tournamentId, "active");
+    setShowReopenConfirm(false);
     loadAll();
   };
 
@@ -1587,7 +1588,7 @@ export default function TournamentView() {
           )}
           {tournament.status === "completed" && (
             <button
-              onClick={handleReopenTournament}
+              onClick={() => setShowReopenConfirm(true)}
               className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:border-emerald-300 hover:text-emerald-600 transition-all text-sm font-medium`}
             >
               🔓 {t.tournament_view_reopen}
@@ -1715,6 +1716,20 @@ export default function TournamentView() {
           onClose={() => setRetireTarget(null)}
           onConfirm={handlePlayerRetire}
         />
+      )}
+
+      {showReopenConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className={`${theme.cardBg} rounded-2xl shadow-2xl p-6 max-w-sm border ${theme.cardBorder} text-center`}>
+            <div className="text-4xl mb-3">🔓</div>
+            <h3 className={`font-bold text-lg ${theme.textPrimary} mb-2`}>{t.tournament_view_reopen}</h3>
+            <p className={`text-sm ${theme.textSecondary} mb-5`}>{t.tournament_view_reopen_confirm}</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setShowReopenConfirm(false)} className={`px-4 py-2 rounded-xl text-sm ${theme.textSecondary} border ${theme.cardBorder} hover:opacity-80`}>{t.common_cancel}</button>
+              <button onClick={handleReopenTournament} className={`${theme.primaryBg} text-white px-4 py-2 rounded-xl text-sm font-medium ${theme.primaryHoverBg}`}>{t.tournament_view_reopen}</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Round Tabs - above everything */}
