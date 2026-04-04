@@ -16,10 +16,13 @@ jobs:
         include:
           - platform: windows-latest
             args: ''
+            rust_targets: ''
           - platform: macos-latest
             args: '--target aarch64-apple-darwin'
-          - platform: macos-latest
+            rust_targets: 'aarch64-apple-darwin'
+          - platform: macos-13
             args: '--target x86_64-apple-darwin'
+            rust_targets: 'x86_64-apple-darwin'
 
     runs-on: ${{ matrix.platform }}
 
@@ -34,7 +37,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.rust_targets }}
 
       - name: Install dependencies
         run: npm ci
@@ -52,6 +55,11 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Ad-hoc sign macOS app
+        if: matrix.platform == 'macos-latest' || matrix.platform == 'macos-13'
+        run: |
+          find src-tauri/target -name "*.app" -exec codesign --force --deep --sign - {} \; 2>/dev/null || true
 
   cleanup:
     needs: build
