@@ -15,12 +15,12 @@ export default function Players() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [name, setName] = useState("");
   const [gender, setGender] = useState<Gender>("m");
-  const [birthYear, setBirthYear] = useState<string>("");
+  const [birthDate, setBirthDate] = useState<string>("");
   const [club, setClub] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editGender, setEditGender] = useState<Gender>("m");
-  const [editBirthYear, setEditBirthYear] = useState<string>("");
+  const [editBirthDate, setEditBirthDate] = useState<string>("");
   const [editClub, setEditClub] = useState("");
   const [showImport, setShowImport] = useState(false);
 
@@ -46,9 +46,9 @@ export default function Players() {
 
   const handleAdd = async () => {
     if (!name.trim()) return;
-    await createPlayer(name.trim(), gender, birthYear ? Number(birthYear) : null, club.trim() || null);
+    await createPlayer(name.trim(), gender, birthDate || null, club.trim() || null);
     setName("");
-    setBirthYear("");
+    setBirthDate("");
     setClub("");
     load();
   };
@@ -57,14 +57,14 @@ export default function Players() {
     setEditingId(p.id);
     setEditName(p.name);
     setEditGender(p.gender);
-    setEditBirthYear(p.birth_year != null ? String(p.birth_year) : "");
+    setEditBirthDate(p.birth_date ?? "");
     setEditClub(p.club ?? "");
   };
 
   const handleSave = async () => {
     if (editingId === null || !editName.trim()) return;
     try {
-      await updatePlayer(editingId, editName.trim(), editGender, editBirthYear ? Number(editBirthYear) : null, editClub.trim() || null);
+      await updatePlayer(editingId, editName.trim(), editGender, editBirthDate || null, editClub.trim() || null);
       setEditingId(null);
       load();
     } catch (err) {
@@ -134,8 +134,8 @@ export default function Players() {
     const data = players.map((p) => ({
       Name: p.name,
       Geschlecht: p.gender === "m" ? t.common_gender_male : t.common_gender_female,
-      [t.common_birth_year]: p.birth_year ?? "",
-      [t.common_age]: calculateAge(p.birth_year) ?? "",
+      [t.common_birth_date]: p.birth_date ?? "",
+      [t.common_age]: calculateAge(p.birth_date) ?? "",
       Verein: p.club ?? "",
     }));
     const ws = XLSX.utils.json_to_sheet(data);
@@ -238,17 +238,15 @@ export default function Players() {
           </div>
           <div>
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-              {t.common_birth_year}
+              {t.common_birth_date}
             </label>
             <input
-              type="number"
-              value={birthYear}
-              onChange={(e) => setBirthYear(e.target.value)}
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-              className={`w-24 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-              placeholder="z.B. 1990"
-              min={1900}
-              max={new Date().getFullYear()}
+              className={`w-40 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+              max={new Date().toISOString().split("T")[0]}
             />
           </div>
           <div className="flex-1">
@@ -437,18 +435,16 @@ export default function Players() {
                   <td className={`px-3 py-3 text-center ${theme.textSecondary}`}>
                     {editingId === p.id ? (
                       <input
-                        type="number"
-                        value={editBirthYear}
-                        onChange={(e) => setEditBirthYear(e.target.value)}
-                        className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-2 py-1.5 text-sm w-20 text-center`}
-                        min={1900}
-                        max={new Date().getFullYear()}
-                        placeholder="z.B. 1990"
+                        type="date"
+                        value={editBirthDate}
+                        onChange={(e) => setEditBirthDate(e.target.value)}
+                        className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-2 py-1.5 text-sm w-36 text-center`}
+                        max={new Date().toISOString().split("T")[0]}
                       />
                     ) : (
-                      p.birth_year != null ? (
-                        <span className="text-sm" title={`${t.common_birth_year}: ${p.birth_year}`}>
-                          {calculateAge(p.birth_year)}
+                      p.birth_date != null ? (
+                        <span className="text-sm" title={`${t.common_birth_date}: ${new Date(p.birth_date).toLocaleDateString()}`}>
+                          {calculateAge(p.birth_date)}
                         </span>
                       ) : (
                         <span className="text-sm">-</span>

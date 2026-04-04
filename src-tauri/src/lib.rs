@@ -279,6 +279,15 @@ pub fn run() {
             ",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "rename birth_year to birth_date",
+            sql: "
+                ALTER TABLE players ADD COLUMN birth_date TEXT;
+                UPDATE players SET birth_date = (birth_year || '-01-01') WHERE birth_year IS NOT NULL;
+            ",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

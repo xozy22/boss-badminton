@@ -176,7 +176,7 @@ export function calculatePlayerDemographics(players: Player[]): DemoStats {
     if (p.gender === "m") male++;
     else female++;
 
-    const age = calculateAge(p.birth_year);
+    const age = calculateAge(p.birth_date);
     if (age !== null) {
       if (age < 18) ageBuckets["<18"]++;
       else if (age <= 30) ageBuckets["18-30"]++;

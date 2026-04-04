@@ -49,6 +49,7 @@ export interface Translations {
   common_gender: string;
   common_age: string;
   common_birth_year: string;
+  common_birth_date: string;
   common_club: string;
   common_action_irreversible: string;
   common_confirm_type: string;

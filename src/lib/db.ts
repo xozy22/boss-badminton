@@ -92,10 +92,10 @@ export async function getPlayers(): Promise<Player[]> {
   return [...store.players].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function createPlayer(name: string, gender: Gender, birthYear?: number | null, club?: string | null): Promise<void> {
+export async function createPlayer(name: string, gender: Gender, birthDate?: string | null, club?: string | null): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute("INSERT INTO players (name, gender, birth_year, club) VALUES ($1, $2, $3, $4)", [name, gender, birthYear ?? null, club ?? null]);
+    await d.execute("INSERT INTO players (name, gender, birth_date, club) VALUES ($1, $2, $3, $4)", [name, gender, birthDate ?? null, club ?? null]);
     return;
   }
   const store = loadStore();
@@ -103,17 +103,17 @@ export async function createPlayer(name: string, gender: Gender, birthYear?: num
     id: nextId(store, "players"),
     name,
     gender,
-    birth_year: birthYear ?? null,
+    birth_date: birthDate ?? null,
     club: club ?? null,
     created_at: new Date().toISOString(),
   });
   saveStore(store);
 }
 
-export async function updatePlayer(id: number, name: string, gender: Gender, birthYear?: number | null, club?: string | null): Promise<void> {
+export async function updatePlayer(id: number, name: string, gender: Gender, birthDate?: string | null, club?: string | null): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute("UPDATE players SET name = $1, gender = $2, birth_year = $3, club = $4 WHERE id = $5", [name, gender, birthYear ?? null, club ?? null, id]);
+    await d.execute("UPDATE players SET name = $1, gender = $2, birth_date = $3, club = $4 WHERE id = $5", [name, gender, birthDate ?? null, club ?? null, id]);
     return;
   }
   const store = loadStore();
@@ -121,7 +121,7 @@ export async function updatePlayer(id: number, name: string, gender: Gender, bir
   if (p) {
     p.name = name;
     p.gender = gender;
-    p.birth_year = birthYear ?? null;
+    p.birth_date = birthDate ?? null;
     p.club = club ?? null;
   }
   saveStore(store);
@@ -522,7 +522,7 @@ export async function getTournamentPlayersDetailed(tournamentId: number): Promis
       [tournamentId]
     );
     return rows.map((r) => ({
-      player: { id: r.id, name: r.name, gender: r.gender, birth_year: r.birth_year, club: r.club, created_at: r.created_at },
+      player: { id: r.id, name: r.name, gender: r.gender, birth_date: r.birth_date, club: r.club, created_at: r.created_at },
       payment_status: r.payment_status ?? "unpaid",
       payment_method: r.payment_method ?? null,
       paid_date: r.paid_date ?? null,

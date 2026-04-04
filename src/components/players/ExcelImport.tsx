@@ -99,7 +99,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
   // Mapping
   const [nameCol, setNameCol] = useState("");
   const [genderCol, setGenderCol] = useState("");
-  const [birthYearCol, setBirthYearCol] = useState("");
+  const [birthDateCol, setBirthDateCol] = useState("");
   const [clubCol, setClubCol] = useState("");
   const [defaultGender, setDefaultGender] = useState<Gender>("m");
 
@@ -108,7 +108,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
   // Preview
   const [previewRows, setPreviewRows] = useState<
-    { name: string; gender: Gender; birthYear: number | null; club: string | null; valid: boolean; duplicate: boolean; fuzzyMatch: string | null; skipFuzzy: boolean }[]
+    { name: string; gender: Gender; birthDate: string | null; club: string | null; valid: boolean; duplicate: boolean; fuzzyMatch: string | null; skipFuzzy: boolean }[]
   >([]);
   const [importCount, setImportCount] = useState(0);
   const [importing, setImporting] = useState(false);
@@ -127,7 +127,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
     const reader = new FileReader();
     reader.onload = (evt) => {
       const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: "array" });
+      const wb = XLSX.read(data, { type: "array", cellDates: true });
       workbookRef.current = wb;
 
       setSheets(wb.SheetNames);
@@ -159,7 +159,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
       );
 
       const ageLower = cols.find((c) =>
-        ["alter", "age", "jahrgang", "geburtsjahr", "birth_year", "birth year", "born", "geb", "geb."].includes(c.toLowerCase())
+        ["alter", "age", "jahrgang", "geburtsjahr", "geburtsdatum", "geburtstag", "birthday", "date of birth", "dob", "birth_year", "birth year", "birth_date", "birth date", "born", "geb", "geb."].includes(c.toLowerCase())
       );
       const clubLower = cols.find((c) =>
         ["verein", "club", "team", "mannschaft"].includes(c.toLowerCase())
@@ -167,7 +167,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
       setNameCol(nameLower ?? cols[0] ?? "");
       setGenderCol(genderLower ?? "");
-      setBirthYearCol(ageLower ?? "");
+      setBirthDateCol(ageLower ?? "");
       setClubCol(clubLower ?? "");
     }
 
@@ -213,19 +213,50 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
       if (name.length > 0) seenInImport.add(nameLower);
 
-      const rawBirthYear = birthYearCol ? row[birthYearCol] : null;
-      let birthYear: number | null = null;
-      if (rawBirthYear != null) {
-        const num = Number(rawBirthYear);
-        if (num) {
-          // Smart detection: values > 1900 are birth years, values < 200 are ages to convert
-          birthYear = num > 1900 ? num : (num < 200 ? new Date().getFullYear() - num : null);
+      const rawBirthDate = birthDateCol ? row[birthDateCol] : null;
+      let birthDate: string | null = null;
+      if (rawBirthDate != null) {
+        const raw = rawBirthDate;
+        if (raw instanceof Date) {
+          // XLSX may return JS Date objects
+          birthDate = raw.toISOString().split("T")[0];
+        } else if (typeof raw === "number") {
+          if (raw > 59000 && raw < 100000) {
+            // Excel serial date number: convert to JS date
+            // Excel epoch is 1900-01-01, but off by 1 due to Lotus 1-2-3 bug
+            const excelEpoch = new Date(1899, 11, 30);
+            const d = new Date(excelEpoch.getTime() + raw * 86400000);
+            birthDate = d.toISOString().split("T")[0];
+          } else if (raw > 1900 && raw < 2100) {
+            // Birth year only: convert to YYYY-01-01
+            birthDate = `${raw}-01-01`;
+          } else if (raw > 0 && raw < 200) {
+            // Age: convert to birth year, then YYYY-01-01
+            const year = new Date().getFullYear() - raw;
+            birthDate = `${year}-01-01`;
+          }
+        } else {
+          const str = String(raw).trim();
+          // Try parsing as date string
+          const parsed = new Date(str);
+          if (!isNaN(parsed.getTime()) && str.length > 4) {
+            birthDate = parsed.toISOString().split("T")[0];
+          } else {
+            // Try as number (year or age)
+            const num = Number(str);
+            if (num > 1900 && num < 2100) {
+              birthDate = `${num}-01-01`;
+            } else if (num > 0 && num < 200) {
+              const year = new Date().getFullYear() - num;
+              birthDate = `${year}-01-01`;
+            }
+          }
         }
       }
       const rawClub = clubCol ? row[clubCol] : null;
       const club = rawClub != null ? String(rawClub).trim() || null : null;
 
-      return { name, gender, birthYear, club, valid: name.length > 0, duplicate, fuzzyMatch, skipFuzzy: false };
+      return { name, gender, birthDate, club, valid: name.length > 0, duplicate, fuzzyMatch, skipFuzzy: false };
     });
 
     setPreviewRows(rows);
@@ -239,7 +270,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
     for (const row of previewRows) {
       if (!row.valid || row.duplicate || (row.fuzzyMatch && row.skipFuzzy)) continue;
       try {
-        await createPlayer(row.name, row.gender, row.birthYear, row.club);
+        await createPlayer(row.name, row.gender, row.birthDate, row.club);
         count++;
       } catch (err) {
         console.error("Import error:", err);
@@ -392,8 +423,8 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                   {t.import_column_age}
                 </label>
                 <select
-                  value={birthYearCol}
-                  onChange={(e) => setBirthYearCol(e.target.value)}
+                  value={birthDateCol}
+                  onChange={(e) => setBirthDateCol(e.target.value)}
                   className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
                 >
                   <option value="">{t.import_not_available}</option>
