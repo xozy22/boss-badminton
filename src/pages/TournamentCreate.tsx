@@ -81,7 +81,7 @@ export default function TournamentCreate() {
   const [sportstaetten, setSportstaetten] = useState<Sportstaette[]>([]);
   const [selectedVenueId, setSelectedVenueId] = useState<number | "">("");
   const [numGroups, setNumGroups] = useState(2);
-  const [qualifyPerGroup, setQualifyPerGroup] = useState(2);
+  const [qualifyPerGroup, setQualifyPerGroup] = useState(8);
   const [useEntryFee, setUseEntryFee] = useState(false);
   const [entryFeeSingle, setEntryFeeSingle] = useState<string>("5");
   const [entryFeeDouble, setEntryFeeDouble] = useState<string>("10");
@@ -132,7 +132,7 @@ export default function TournamentCreate() {
         setSelectedHallIndices(new Set([0]));
       }
       setNumGroups(td.num_groups || 2);
-      setQualifyPerGroup(td.qualify_per_group || 2);
+      setQualifyPerGroup(td.qualify_per_group || 8);
       if (td.entry_fee_single > 0 || td.entry_fee_double > 0) {
         setUseEntryFee(true);
         setEntryFeeSingle(String(td.entry_fee_single));
@@ -685,17 +685,14 @@ export default function TournamentCreate() {
                         {t.tournament_ko_size}
                       </label>
                       {(() => {
-                        // Calculate possible KO sizes (powers of 2 that make sense)
-                        const totalPlayers = selectedPlayerIds.size;
-                        const possibleSizes = [4, 8, 16, 32].filter(s => s <= totalPlayers && s >= numGroups);
-                        const currentKoSize = qualifyPerGroup; // repurpose qualifyPerGroup to store KO size directly
-                        const effectiveSize = possibleSizes.includes(currentKoSize) ? currentKoSize : (possibleSizes.find(s => s >= numGroups * 2) || possibleSizes[0] || 8);
-                        const perGroup = Math.floor(effectiveSize / numGroups);
-                        const wildcards = effectiveSize - (perGroup * numGroups);
+                        const possibleSizes = [4, 8, 16, 32];
+                        const koSize = possibleSizes.includes(qualifyPerGroup) ? qualifyPerGroup : 8;
+                        const perGroup = Math.floor(koSize / numGroups);
+                        const wildcards = koSize - (perGroup * numGroups);
                         return (
                           <>
                             <select
-                              value={effectiveSize}
+                              value={koSize}
                               onChange={(e) => setQualifyPerGroup(Number(e.target.value))}
                               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                             >
