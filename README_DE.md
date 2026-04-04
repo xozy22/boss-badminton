@@ -120,8 +120,9 @@
 - Passt sich an das gewaehlte Farbdesign an
 
 ### Rangliste & Auswertung
-- **Live-Rangliste**: Sortiert nach Siegen, Satzverhaeltnis, Punkteverhaeltnis
+- **Live-Rangliste**: Sortiert nach prozentualer Siegquote, Satzquote, Punktequote
 - **Gruppen-Tabellen**: Bei Gruppenphase separate Tabelle pro Gruppe mit Qualifikanten-Markierung (Q)
+- **Smarte KO-Qualifikation**: KO-Bracket-Groesse waehlbar (4/8/16/32), automatisch mit besten Nachrueckern aufgefuellt
 - **Team-Standings**: Bei Doppel-Gruppenphase werden Teams (nicht Einzelspieler) gewertet
 - **Medaillen**: Gold/Silber/Bronze fuer die Top 3
 - **Turnierbericht**: Druckbarer Bericht mit Highlights (knappstes Spiel, hoechster Sieg, meiste Punkte)

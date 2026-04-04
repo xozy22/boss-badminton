@@ -120,8 +120,9 @@
 - Adapts to selected color theme
 
 ### Standings & Evaluation
-- **Live Standings**: Sorted by wins, set ratio, point ratio
+- **Live Standings**: Sorted by percentage-based match win rate, set win rate, point win rate
 - **Group Tables**: In group stage, separate table per group with qualifier marking (Q)
+- **Smart KO Qualification**: Configurable KO bracket size (4/8/16/32), auto-filled with best runners-up across groups
 - **Team Standings**: In doubles group stage, teams (not individual players) are ranked
 - **Medals**: Gold/Silver/Bronze for Top 3
 - **Tournament Report**: Printable report with highlights (closest match, biggest win, most points)
