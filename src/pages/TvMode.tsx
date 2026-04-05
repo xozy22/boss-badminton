@@ -253,16 +253,20 @@ export default function TvMode() {
               const match = courtMatches.find((m) => m.court === courtNum);
               const isFree = !match;
 
+              // Badminton court SVG background (same as CourtOverview)
+              const courtBgSvg = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 134" fill="none" opacity="0.12"><rect x="2" y="2" width="256" height="130" rx="2" stroke="#9CA3AF" stroke-width="1.5"/><line x1="130" y1="2" x2="130" y2="132" stroke="#9CA3AF" stroke-width="2"/><rect x="2" y="17" width="256" height="100" rx="1" stroke="#9CA3AF" stroke-width="1"/><line x1="46" y1="17" x2="46" y2="117" stroke="#9CA3AF" stroke-width="1"/><line x1="214" y1="17" x2="214" y2="117" stroke="#9CA3AF" stroke-width="1"/><line x1="46" y1="67" x2="214" y2="67" stroke="#9CA3AF" stroke-width="1"/><line x1="236" y1="2" x2="236" y2="132" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="4 3"/><line x1="24" y1="2" x2="24" y2="132" stroke="#9CA3AF" stroke-width="1" stroke-dasharray="4 3"/></svg>`)}`;
+
               if (isFree) {
                 return (
                   <div
                     key={courtNum}
-                    className="rounded-2xl border-2 border-dashed border-gray-700 bg-gray-900/50 p-6 flex flex-col items-center justify-center min-h-[180px]"
+                    className="rounded-2xl border-2 border-dashed border-gray-700 bg-gray-900/50 p-5 flex flex-col items-center justify-center min-h-[140px]"
+                    style={{ backgroundImage: `url("${courtBgSvg}")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'auto 85%' }}
                   >
-                    <div className="text-2xl font-bold text-gray-600 mb-2">
+                    <span className="text-xs font-bold text-amber-700 bg-amber-900/50 px-2.5 py-0.5 rounded-md mb-2">
                       {t.tv_court_label.replace("{n}", String(courtNum))}
-                    </div>
-                    <div className="text-gray-600 text-lg">{t.tv_free}</div>
+                    </span>
+                    <div className="text-gray-600 text-sm">{t.tv_free}</div>
                   </div>
                 );
               }
@@ -280,25 +284,26 @@ export default function TvMode() {
               return (
                 <div
                   key={courtNum}
-                  className={`rounded-2xl border-2 ${tv.courtBorder} ${tv.courtBg} p-5 min-h-[180px] flex flex-col`}
+                  className={`rounded-2xl border-2 ${tv.courtBorder} ${tv.courtBg} p-5 min-h-[140px] flex flex-col relative overflow-hidden`}
+                  style={{ backgroundImage: `url("${courtBgSvg}")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'auto 85%' }}
                 >
-                  {/* Court header */}
-                  <div className="flex justify-between items-center mb-4">
-                    <span className={`text-sm font-bold ${tv.courtBadge} text-white px-3 py-1 rounded-full`}>
+                  {/* Court header - same style as tournament view */}
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs font-bold text-amber-700 bg-amber-900/50 px-2.5 py-0.5 rounded-md">
                       {t.tv_court_label.replace("{n}", String(courtNum))}
                     </span>
-                    <span className="text-lg font-mono font-bold text-amber-400">
+                    <span className="text-sm font-mono font-bold text-amber-400">
                       ⏱ {formatTimer(match.court_assigned_at)}
                     </span>
                   </div>
 
                   {/* Teams */}
                   <div className="flex-1 flex flex-col justify-center">
-                    <div className="text-xl font-bold text-white leading-tight mb-1">
+                    <div className="text-lg font-bold text-white leading-tight truncate">
                       {team1}
                     </div>
-                    <div className="text-gray-500 text-sm my-1">{t.common_vs}</div>
-                    <div className="text-xl font-bold text-white leading-tight">
+                    <div className="text-gray-500 text-xs my-0.5">{t.common_vs}</div>
+                    <div className="text-lg font-bold text-white leading-tight truncate">
                       {team2}
                     </div>
                   </div>
