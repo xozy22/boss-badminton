@@ -55,69 +55,78 @@ export default function PrintDialog({
     if (!printRef.current) return;
     setPdfLoading(true);
     try {
-      const canvas = await html2canvas(printRef.current, {
+      // Clone the print content into an off-screen container to avoid scroll/clip issues
+      const offscreen = document.createElement("div");
+      offscreen.style.position = "absolute";
+      offscreen.style.left = "-9999px";
+      offscreen.style.top = "0";
+      offscreen.style.width = "800px";
+      offscreen.style.background = "#ffffff";
+      offscreen.style.color = "#000000";
+      offscreen.innerHTML = printRef.current.innerHTML;
+      document.body.appendChild(offscreen);
+
+      const canvas = await html2canvas(offscreen, {
         scale: 2,
         useCORS: true,
         backgroundColor: "#ffffff",
+        width: 800,
+        windowWidth: 800,
       });
 
-      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      document.body.removeChild(offscreen);
+
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth - 20; // 10mm margins
+      const imgWidth = pdfWidth - 20;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
       const pageContentHeight = pdfHeight - 20;
 
       if (imgHeight <= pageContentHeight) {
+        const imgData = canvas.toDataURL("image/jpeg", 0.92);
         pdf.addImage(imgData, "JPEG", 10, 10, imgWidth, imgHeight);
       } else {
-        let remainingHeight = imgHeight;
-        let pageNum = 0;
-        while (remainingHeight > 0) {
-          if (pageNum > 0) pdf.addPage();
-          const sourceY =
-            (pageNum * pageContentHeight / imgHeight) * canvas.height;
-          const sourceHeight = Math.min(
+        // Multi-page: slice canvas into page-sized chunks
+        const totalPages = Math.ceil(imgHeight / pageContentHeight);
+        for (let page = 0; page < totalPages; page++) {
+          if (page > 0) pdf.addPage();
+
+          const sourceY = Math.round((page * pageContentHeight / imgHeight) * canvas.height);
+          const sourceH = Math.round(Math.min(
             (pageContentHeight / imgHeight) * canvas.height,
-            canvas.height - sourceY,
-          );
+            canvas.height - sourceY
+          ));
+          if (sourceH <= 0) break;
 
           const sliceCanvas = document.createElement("canvas");
           sliceCanvas.width = canvas.width;
-          sliceCanvas.height = sourceHeight;
+          sliceCanvas.height = sourceH;
           const ctx = sliceCanvas.getContext("2d")!;
-          ctx.drawImage(
-            canvas,
-            0,
-            sourceY,
-            canvas.width,
-            sourceHeight,
-            0,
-            0,
-            canvas.width,
-            sourceHeight,
-          );
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          ctx.drawImage(canvas, 0, sourceY, canvas.width, sourceH, 0, 0, canvas.width, sourceH);
 
-          const sliceData = sliceCanvas.toDataURL("image/jpeg", 0.95);
-          const sliceImgHeight = (sourceHeight * imgWidth) / canvas.width;
-          pdf.addImage(sliceData, "JPEG", 10, 10, imgWidth, sliceImgHeight);
-
-          remainingHeight -= pageContentHeight;
-          pageNum++;
+          const sliceData = sliceCanvas.toDataURL("image/jpeg", 0.92);
+          const sliceImgH = (sourceH * imgWidth) / canvas.width;
+          pdf.addImage(sliceData, "JPEG", 10, 10, imgWidth, sliceImgH);
         }
       }
 
-      const { save } = await import("@tauri-apps/plugin-dialog");
-      const { writeFile } = await import("@tauri-apps/plugin-fs");
-      const path = await save({
-        defaultPath: `${tournament.name.replace(/[^a-zA-Z0-9-_ ]/g, "")}_report.pdf`,
-        filters: [{ name: "PDF", extensions: ["pdf"] }],
-      });
-      if (path) {
-        const arrayBuffer = pdf.output("arraybuffer");
-        await writeFile(path, new Uint8Array(arrayBuffer));
+      // Save via Tauri dialog
+      try {
+        const { save } = await import("@tauri-apps/plugin-dialog");
+        const { writeFile } = await import("@tauri-apps/plugin-fs");
+        const path = await save({
+          defaultPath: `${tournament.name.replace(/[^a-zA-Z0-9-_ ]/g, "")}_report.pdf`,
+          filters: [{ name: "PDF", extensions: ["pdf"] }],
+        });
+        if (path) {
+          await writeFile(path, new Uint8Array(pdf.output("arraybuffer")));
+        }
+      } catch {
+        // Fallback: browser download if not in Tauri
+        pdf.save(`${tournament.name.replace(/[^a-zA-Z0-9-_ ]/g, "")}_report.pdf`);
       }
     } catch (err) {
       console.error("PDF export error:", err);
@@ -154,14 +163,25 @@ export default function PrintDialog({
         formatLabel,
       );
 
-      const { save } = await import("@tauri-apps/plugin-dialog");
-      const { writeFile } = await import("@tauri-apps/plugin-fs");
-      const path = await save({
-        defaultPath: `${tournament.name.replace(/[^a-zA-Z0-9-_ ]/g, "")}_certificates.pdf`,
-        filters: [{ name: "PDF", extensions: ["pdf"] }],
-      });
-      if (path) {
-        await writeFile(path, pdfBytes);
+      try {
+        const { save } = await import("@tauri-apps/plugin-dialog");
+        const { writeFile } = await import("@tauri-apps/plugin-fs");
+        const path = await save({
+          defaultPath: `${tournament.name.replace(/[^a-zA-Z0-9-_ ]/g, "")}_certificates.pdf`,
+          filters: [{ name: "PDF", extensions: ["pdf"] }],
+        });
+        if (path) {
+          await writeFile(path, pdfBytes);
+        }
+      } catch {
+        // Fallback: browser download if not in Tauri
+        const blob = new Blob([new Uint8Array(pdfBytes) as BlobPart], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${tournament.name.replace(/[^a-zA-Z0-9-_ ]/g, "")}_certificates.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
       }
     } catch (err) {
       console.error("Certificate generation error:", err);
