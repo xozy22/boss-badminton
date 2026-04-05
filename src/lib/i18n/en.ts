@@ -505,6 +505,7 @@ export const en: Translations = {
   settings_database: "Database",
   settings_color_scheme: "Color Scheme",
   settings_font_size: "Font Size",
+  settings_font_family: "Font",
   settings_language: "Language",
   settings_club_logo: "Club Logo",
   settings_logo_upload: "Upload logo",

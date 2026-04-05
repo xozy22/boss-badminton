@@ -505,6 +505,7 @@ export const de: Translations = {
   settings_database: "Datenbank",
   settings_color_scheme: "Farbschema",
   settings_font_size: "Schriftgroesse",
+  settings_font_family: "Schriftart",
   settings_language: "Sprache",
   settings_club_logo: "Vereinslogo",
   settings_logo_upload: "Logo hochladen",

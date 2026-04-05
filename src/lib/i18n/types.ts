@@ -506,6 +506,7 @@ export interface Translations {
   settings_database: string;
   settings_color_scheme: string;
   settings_font_size: string;
+  settings_font_family: string;
   settings_language: string;
   settings_club_logo: string;
   settings_logo_upload: string;

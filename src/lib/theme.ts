@@ -306,6 +306,29 @@ export function saveFontSize(id: FontSizeId): void {
   localStorage.setItem(FONTSIZE_KEY, id);
 }
 
+// Font family
+export type FontFamilyId = "inter" | "nunito" | "roboto";
+
+export const FONT_FAMILIES: Record<FontFamilyId, { label: string; family: string }> = {
+  inter:  { label: "Inter",  family: "'Inter', system-ui, -apple-system, sans-serif" },
+  nunito: { label: "Nunito", family: "'Nunito', system-ui, -apple-system, sans-serif" },
+  roboto: { label: "Roboto", family: "'Roboto', system-ui, -apple-system, sans-serif" },
+};
+
+const FONTFAMILY_KEY = "boss_fontfamily";
+
+export function loadFontFamily(): FontFamilyId {
+  try {
+    const stored = localStorage.getItem(FONTFAMILY_KEY);
+    if (stored && stored in FONT_FAMILIES) return stored as FontFamilyId;
+  } catch {}
+  return "inter";
+}
+
+export function saveFontFamily(id: FontFamilyId): void {
+  localStorage.setItem(FONTFAMILY_KEY, id);
+}
+
 const THEME_KEY = "turnierplaner_theme";
 
 export function loadThemeId(): ThemeId {

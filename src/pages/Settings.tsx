@@ -3,7 +3,7 @@ import { wipeAllPlayers, wipeAllTournaments, getAppSetting, setAppSetting, delet
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
 import type { Lang } from "../lib/I18nContext";
-import { THEMES, type ThemeId, FONT_SIZES, type FontSizeId } from "../lib/theme";
+import { THEMES, type ThemeId, FONT_SIZES, type FontSizeId, FONT_FAMILIES, type FontFamilyId } from "../lib/theme";
 import type { HallConfig } from "../lib/types";
 
 function isTauri(): boolean {
@@ -279,6 +279,7 @@ export default function Settings() {
       {/* ===== Design ===== */}
       <Section title={t.settings_design} icon="🎨" defaultOpen={false}>
         <ThemeSelector />
+        <FontFamilySelector />
         <FontSizeSelector />
         <LogoUploader />
       </Section>
@@ -997,6 +998,40 @@ function LanguageSelector() {
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function FontFamilySelector() {
+  const { fontFamilyId, theme, setFontFamily } = useTheme();
+  const { t } = useT();
+
+  return (
+    <div className="mt-5">
+      <label className={`block text-xs font-medium ${theme.textSecondary} mb-3 uppercase tracking-wide`}>
+        {t.settings_font_family}
+      </label>
+      <div className="flex gap-2">
+        {(Object.entries(FONT_FAMILIES) as [FontFamilyId, typeof FONT_FAMILIES[FontFamilyId]][]).map(
+          ([id, { label, family }]) => {
+            const isActive = fontFamilyId === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setFontFamily(id)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 border-2 ${
+                  isActive
+                    ? `${theme.roundActiveBg} ${theme.roundActiveText} border-transparent shadow-md`
+                    : `${theme.cardBg} ${theme.textSecondary} ${theme.inputBorder} hover:opacity-80`
+                }`}
+                style={{ fontFamily: family }}
+              >
+                {label}
+              </button>
+            );
+          }
+        )}
       </div>
     </div>
   );
