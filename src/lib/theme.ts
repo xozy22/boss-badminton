@@ -307,12 +307,14 @@ export function saveFontSize(id: FontSizeId): void {
 }
 
 // Font family
-export type FontFamilyId = "inter" | "nunito" | "roboto";
+export type FontFamilyId = "inter" | "nunito" | "roboto" | "poppins" | "montserrat";
 
 export const FONT_FAMILIES: Record<FontFamilyId, { label: string; family: string }> = {
-  inter:  { label: "Inter",  family: "'Inter', system-ui, -apple-system, sans-serif" },
-  nunito: { label: "Nunito", family: "'Nunito', system-ui, -apple-system, sans-serif" },
-  roboto: { label: "Roboto", family: "'Roboto', system-ui, -apple-system, sans-serif" },
+  inter:      { label: "Inter",      family: "'Inter', system-ui, -apple-system, sans-serif" },
+  nunito:     { label: "Nunito",     family: "'Nunito', system-ui, -apple-system, sans-serif" },
+  roboto:     { label: "Roboto",     family: "'Roboto', system-ui, -apple-system, sans-serif" },
+  poppins:    { label: "Poppins",    family: "'Poppins', system-ui, -apple-system, sans-serif" },
+  montserrat: { label: "Montserrat", family: "'Montserrat', system-ui, -apple-system, sans-serif" },
 };
 
 const FONTFAMILY_KEY = "boss_fontfamily";

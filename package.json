@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
+    "@fontsource/montserrat": "^5.2.8",
     "@fontsource/nunito": "^5.2.7",
+    "@fontsource/poppins": "^5.2.7",
     "@fontsource/roboto": "^5.2.10",
     "@tailwindcss/vite": "^4.2.2",
     "@tauri-apps/api": "^2.10.1",
