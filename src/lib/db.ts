@@ -862,6 +862,29 @@ export async function wipeAllTournaments(): Promise<void> {
   saveStore(store);
 }
 
+export async function wipeEntireDatabase(): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("DELETE FROM sets");
+    await d.execute("DELETE FROM matches");
+    await d.execute("DELETE FROM rounds");
+    await d.execute("DELETE FROM tournament_players");
+    await d.execute("DELETE FROM tournaments");
+    await d.execute("DELETE FROM players");
+    await d.execute("DELETE FROM sportstaetten");
+    return;
+  }
+  const store = loadStore();
+  store.sets = [];
+  store.matches = [];
+  store.rounds = [];
+  store.tournamentPlayers = [];
+  store.tournaments = [];
+  store.players = [];
+  store.sportstaetten = [];
+  saveStore(store);
+}
+
 // --- App Settings (key-value store in DB) ---
 
 export async function getAppSetting(key: string): Promise<string | null> {

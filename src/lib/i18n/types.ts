@@ -661,6 +661,13 @@ export interface Translations {
   stats_all_tournaments: string;
   stats_filter_tournament: string;
 
+  // ===== Database wipe =====
+  settings_wipe_database: string;
+  settings_wipe_database_hint: string;
+  settings_confirm_wipe: string;
+  settings_confirm_word_wipe: string;
+  settings_wipe_success: string;
+
   // ===== Undo last round =====
   tournament_view_undo_round: string;
   tournament_view_undo_round_confirm: string;

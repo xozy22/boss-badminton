@@ -660,6 +660,13 @@ export const de: Translations = {
   stats_all_tournaments: "Alle Turniere",
   stats_filter_tournament: "Nach Turnier filtern",
 
+  // ===== Database wipe =====
+  settings_wipe_database: "Gesamte Datenbank zuruecksetzen",
+  settings_wipe_database_hint: "Loescht ALLE Daten: Spieler, Turniere, Sportstaetten, Spiele, Ergebnisse",
+  settings_confirm_wipe: "Hiermit werden ALLE Daten in der Datenbank unwiderruflich geloescht!",
+  settings_confirm_word_wipe: "RESET",
+  settings_wipe_success: "Datenbank wurde komplett zurueckgesetzt.",
+
   // ===== Undo last round =====
   tournament_view_undo_round: "Letzte Runde rueckgaengig",
   tournament_view_undo_round_confirm: "Die letzte Runde und alle zugehoerigen Spiele werden endgueltig geloescht.",

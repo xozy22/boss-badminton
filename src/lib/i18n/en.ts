@@ -660,6 +660,13 @@ export const en: Translations = {
   stats_all_tournaments: "All Tournaments",
   stats_filter_tournament: "Filter by tournament",
 
+  // ===== Database wipe =====
+  settings_wipe_database: "Reset entire database",
+  settings_wipe_database_hint: "Deletes ALL data: players, tournaments, venues, matches, results",
+  settings_confirm_wipe: "This will permanently delete ALL data in the database. This cannot be undone!",
+  settings_confirm_word_wipe: "RESET",
+  settings_wipe_success: "Database has been completely reset.",
+
   // ===== Undo last round =====
   tournament_view_undo_round: "Undo last round",
   tournament_view_undo_round_confirm: "The last round and all its matches will be permanently deleted.",

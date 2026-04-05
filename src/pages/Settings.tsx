@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { wipeAllPlayers, wipeAllTournaments, getAppSetting, setAppSetting, deleteAppSetting } from "../lib/db";
+import { wipeAllPlayers, wipeAllTournaments, wipeEntireDatabase, getAppSetting, setAppSetting, deleteAppSetting } from "../lib/db";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
 import type { Lang } from "../lib/I18nContext";
@@ -10,7 +10,7 @@ function isTauri(): boolean {
   return !!(window as any).__TAURI_INTERNALS__;
 }
 
-type ConfirmTarget = "players" | "tournaments" | null;
+type ConfirmTarget = "players" | "tournaments" | "wipe" | null;
 
 const SETTINGS_KEY = "turnierplaner_settings";
 
@@ -238,9 +238,12 @@ export default function Settings() {
       if (confirmTarget === "players") {
         await wipeAllPlayers();
         setMessage({ type: "success", text: t.settings_players_deleted });
-      } else {
+      } else if (confirmTarget === "tournaments") {
         await wipeAllTournaments();
         setMessage({ type: "success", text: t.settings_tournaments_deleted });
+      } else if (confirmTarget === "wipe") {
+        await wipeEntireDatabase();
+        setMessage({ type: "success", text: t.settings_wipe_success });
       }
     } catch (err) {
       setMessage({ type: "error", text: `${err}` });
@@ -249,7 +252,7 @@ export default function Settings() {
     setConfirmText("");
   };
 
-  const CONFIRM_WORD = confirmTarget === "players" ? t.settings_confirm_word_players : t.settings_confirm_word_tournaments;
+  const CONFIRM_WORD = confirmTarget === "players" ? t.settings_confirm_word_players : confirmTarget === "wipe" ? t.settings_confirm_word_wipe : t.settings_confirm_word_tournaments;
 
   if (loading) return <div>{t.common_loading}</div>;
 
@@ -502,6 +505,18 @@ export default function Settings() {
                 {t.common_delete}
               </button>
             </div>
+            <div className={`flex items-center justify-between bg-rose-500/20 rounded-xl p-3 border border-rose-500/30`}>
+              <div>
+                <div className={`text-sm font-medium text-rose-600`}>{t.settings_wipe_database}</div>
+                <div className="text-xs text-rose-400">{t.settings_wipe_database_hint}</div>
+              </div>
+              <button
+                onClick={() => { setConfirmTarget("wipe"); setConfirmText(""); setMessage(null); }}
+                className="bg-rose-600 text-white px-3 py-1.5 rounded-lg hover:bg-rose-700 transition-all text-xs font-medium whitespace-nowrap ml-3"
+              >
+                RESET
+              </button>
+            </div>
           </div>
         </div>
       </Section>
@@ -529,6 +544,8 @@ export default function Settings() {
               <p className={`text-sm ${theme.textSecondary} mt-2`}>
                 {confirmTarget === "players"
                   ? t.settings_confirm_players
+                  : confirmTarget === "wipe"
+                  ? t.settings_confirm_wipe
                   : t.settings_confirm_tournaments}
               </p>
             </div>
