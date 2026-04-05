@@ -147,6 +147,7 @@
 - **4 Color Themes**: Emerald (Green), Sapphire (Blue), Amber (Orange), Dark (Dark Mode)
 - Theme switch via Settings -> Design, applied instantly
 - Full Dark Mode: All pages, modals, inputs, tables, bracket view
+- **5 Fonts**: Inter, Nunito, Roboto, Poppins, Montserrat (all bundled locally)
 - **Font Size**: 7 levels (XXS to XXL), persistently saved
 - Theme is persistently saved
 - **Theme-aware Print View**: Print report adapts to selected color scheme
@@ -167,7 +168,7 @@
 - **Design**: 4 color schemes (expandable), custom club logo with cropper
 - **Defaults**: Default courts, timer thresholds (warning yellow, critical red)
 - **Database**: Show/change storage location, backup & restore
-- **Danger Zone**: Delete all players or tournaments (with safety confirmation)
+- **Danger Zone**: Delete all players, tournaments, or complete database reset (with safety confirmation)
 
 ### Keyboard Navigation
 - **Enter/Tab**: Jump to next score field (Team1 -> Team2 -> next set -> next match)

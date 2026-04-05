@@ -147,6 +147,7 @@
 - **4 Farbdesigns**: Smaragd (Gruen), Saphir (Blau), Bernstein (Orange), Dunkel (Dark Mode)
 - Theme-Wechsel ueber Einstellungen -> Design, wird sofort angewendet
 - Vollstaendiger Dark Mode: Alle Seiten, Modals, Inputs, Tabellen, Bracket-Ansicht
+- **5 Schriftarten**: Inter, Nunito, Roboto, Poppins, Montserrat (alle lokal gebundelt)
 - **Schriftgroesse**: 7 Stufen (XXS bis XXL), persistent gespeichert
 - Theme wird persistent gespeichert
 - **Theme-konforme Druckansicht**: Druck-Report passt sich dem gewaehlten Farbschema an
@@ -167,7 +168,7 @@
 - **Design**: 4 Farbschemas (aufklappbar), Custom Vereinslogo mit Cropper
 - **Voreinstellungen**: Standard-Spielfelder, Timer-Schwellenwerte (Warnung gelb, Kritisch rot)
 - **Datenbank**: Speicherort anzeigen/aendern, Backup & Wiederherstellung
-- **Gefahrenzone**: Spieler oder Turniere komplett loeschen (mit Sicherheitsabfrage)
+- **Gefahrenzone**: Spieler, Turniere oder komplette Datenbank loeschen (mit Sicherheitsabfrage)
 
 ### Tastatur-Navigation
 - **Enter/Tab**: Springt zum naechsten Score-Feld (Team1 -> Team2 -> naechster Satz -> naechstes Match)
