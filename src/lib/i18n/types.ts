@@ -661,6 +661,10 @@ export interface Translations {
   stats_all_tournaments: string;
   stats_filter_tournament: string;
 
+  // ===== Undo last round =====
+  tournament_view_undo_round: string;
+  tournament_view_undo_round_confirm: string;
+
   // ===== Reopen tournament =====
   tournament_view_reopen: string;
   tournament_view_reopen_confirm: string;

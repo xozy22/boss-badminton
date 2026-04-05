@@ -660,6 +660,10 @@ export const en: Translations = {
   stats_all_tournaments: "All Tournaments",
   stats_filter_tournament: "Filter by tournament",
 
+  // ===== Undo last round =====
+  tournament_view_undo_round: "Undo last round",
+  tournament_view_undo_round_confirm: "The last round and all its matches will be permanently deleted.",
+
   // ===== Reopen tournament =====
   tournament_view_reopen: "Reopen tournament",
   tournament_view_reopen_confirm: "Tournament will be set back to active.",

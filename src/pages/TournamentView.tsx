@@ -34,6 +34,7 @@ import {
   removePlayerFromTournament,
   retirePlayerFromTournament,
   unretirePlayerFromTournament,
+  deleteRound,
   getRetiredPlayerIds,
   getTournamentPlayersDetailed,
 } from "../lib/db";
@@ -1323,6 +1324,20 @@ export default function TournamentView() {
     loadAll();
   };
 
+  const [showUndoRound, setShowUndoRound] = useState(false);
+  const handleUndoLastRound = async () => {
+    if (rounds.length === 0) return;
+    // Find the last round (non-group phase for group_ko, otherwise just last)
+    const lastRound = rounds[rounds.length - 1];
+    await deleteRound(lastRound.id);
+    setShowUndoRound(false);
+    // If we deleted the only round, set tournament back to draft
+    if (rounds.length === 1) {
+      await updateTournamentStatus(tournamentId, "draft");
+    }
+    loadAll();
+  };
+
   const allRoundMatchesCompleted = (roundId: number): boolean => {
     const matches = matchesByRound.get(roundId) || [];
     return matches.length > 0 && matches.every((m) => m.status === "completed");
@@ -1654,6 +1669,14 @@ export default function TournamentView() {
               ➡️ {t.tournament_view_advance_bracket}
             </button>
           )}
+          {tournament.status === "active" && rounds.length > 0 && (
+            <button
+              onClick={() => setShowUndoRound(true)}
+              className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:border-amber-300 hover:text-amber-600 transition-all text-sm font-medium`}
+            >
+              ↩️ {t.tournament_view_undo_round}
+            </button>
+          )}
           {tournament.status === "active" && (
             <button
               onClick={handleCompleteTournament}
@@ -1809,6 +1832,20 @@ export default function TournamentView() {
             <div className="flex gap-3 justify-center">
               <button onClick={() => setShowReopenConfirm(false)} className={`px-4 py-2 rounded-xl text-sm ${theme.textSecondary} border ${theme.cardBorder} hover:opacity-80`}>{t.common_cancel}</button>
               <button onClick={handleReopenTournament} className={`${theme.primaryBg} text-white px-4 py-2 rounded-xl text-sm font-medium ${theme.primaryHoverBg}`}>{t.tournament_view_reopen}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showUndoRound && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className={`${theme.cardBg} rounded-2xl shadow-2xl p-6 max-w-sm border ${theme.cardBorder} text-center`}>
+            <div className="text-4xl mb-3">↩️</div>
+            <h3 className={`font-bold text-lg ${theme.textPrimary} mb-2`}>{t.tournament_view_undo_round}</h3>
+            <p className={`text-sm ${theme.textSecondary} mb-5`}>{t.tournament_view_undo_round_confirm}</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setShowUndoRound(false)} className={`px-4 py-2 rounded-xl text-sm ${theme.textSecondary} border ${theme.cardBorder} hover:opacity-80`}>{t.common_cancel}</button>
+              <button onClick={handleUndoLastRound} className="bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-amber-600">{t.tournament_view_undo_round}</button>
             </div>
           </div>
         </div>

@@ -613,6 +613,27 @@ export async function createRound(
   return id;
 }
 
+export async function deleteRound(roundId: number): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    const matches: { id: number }[] = await d.select(
+      "SELECT id FROM matches WHERE round_id = $1", [roundId]
+    );
+    for (const m of matches) {
+      await d.execute("DELETE FROM sets WHERE match_id = $1", [m.id]);
+    }
+    await d.execute("DELETE FROM matches WHERE round_id = $1", [roundId]);
+    await d.execute("DELETE FROM rounds WHERE id = $1", [roundId]);
+    return;
+  }
+  const store = loadStore();
+  const matchIds = store.matches.filter((m) => m.round_id === roundId).map((m) => m.id);
+  store.sets = store.sets.filter((s) => !matchIds.includes(s.match_id));
+  store.matches = store.matches.filter((m) => m.round_id !== roundId);
+  store.rounds = store.rounds.filter((r) => r.id !== roundId);
+  saveStore(store);
+}
+
 // --- Matches ---
 
 export async function getMatchesByRound(roundId: number): Promise<Match[]> {
