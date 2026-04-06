@@ -125,6 +125,46 @@ export default function TournamentCreate() {
     return () => clearTimeout(timer);
   }, [isEditMode, editLoaded, editId, name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, useEntryFee, entryFeeSingle, entryFeeDouble]);
 
+  // Auto-save player selection when it changes
+  useEffect(() => {
+    if (!isEditMode || !editLoaded) return;
+    const id = Number(editId);
+    const timer = setTimeout(async () => {
+      try {
+        const existingPlayers = await getTournamentPlayers(id);
+        const existingIds = new Set(existingPlayers.map((p) => p.id));
+        for (const ep of existingPlayers) {
+          if (!selectedPlayerIds.has(ep.id)) {
+            await removePlayerFromTournament(id, ep.id);
+          }
+        }
+        for (const pid of selectedPlayerIds) {
+          if (!existingIds.has(pid)) {
+            await addPlayerToTournament(id, pid);
+          }
+        }
+      } catch (err) {
+        console.error("Auto-save players error:", err);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [isEditMode, editLoaded, editId, selectedPlayerIds]);
+
+  // Auto-save team config + hall config when they change
+  useEffect(() => {
+    if (!isEditMode || !editLoaded) return;
+    const id = Number(editId);
+    const timer = setTimeout(async () => {
+      try {
+        await updateTeamConfig(id, manualTeams.length > 0 ? manualTeams : null);
+        await updateHallConfig(id, selectedHalls.length > 0 ? selectedHalls : null);
+      } catch (err) {
+        console.error("Auto-save config error:", err);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [isEditMode, editLoaded, editId, manualTeams, selectedHalls]);
+
   useEffect(() => {
     getPlayers().then(setPlayers);
     getSportstaetten().then(setSportstaetten);
