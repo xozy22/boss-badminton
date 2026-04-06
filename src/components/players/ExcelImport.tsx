@@ -273,18 +273,38 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
           }
         } else {
           const str = String(raw).trim();
-          // Try parsing as date string
-          const parsed = new Date(str);
-          if (!isNaN(parsed.getTime()) && str.length > 4) {
-            birthDate = parsed.toISOString().split("T")[0];
+          // Try DD.MM.YYYY or DD/MM/YYYY (European format)
+          const euMatch = str.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+          if (euMatch) {
+            const [, day, month, year] = euMatch;
+            birthDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
           } else {
-            // Try as number (year or age)
-            const num = Number(str);
-            if (num > 1900 && num < 2100) {
-              birthDate = `${num}-01-01`;
-            } else if (num > 0 && num < 200) {
-              const year = new Date().getFullYear() - num;
-              birthDate = `${year}-01-01`;
+            // Try YYYY-MM-DD (ISO format)
+            const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+            if (isoMatch) {
+              birthDate = str;
+            } else {
+              // Try MM/DD/YYYY (US format)
+              const usMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+              if (usMatch) {
+                const [, month, day, year] = usMatch;
+                birthDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+              } else {
+                // Try generic JS Date parsing
+                const parsed = new Date(str);
+                if (!isNaN(parsed.getTime()) && str.length > 4) {
+                  birthDate = parsed.toISOString().split("T")[0];
+                } else {
+                  // Try as number (year or age)
+                  const num = Number(str);
+                  if (num > 1900 && num < 2100) {
+                    birthDate = `${num}-01-01`;
+                  } else if (num > 0 && num < 200) {
+                    const year = new Date().getFullYear() - num;
+                    birthDate = `${year}-01-01`;
+                  }
+                }
+              }
             }
           }
         }
