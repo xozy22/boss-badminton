@@ -967,8 +967,11 @@ export default function TournamentCreate() {
                         className="rounded accent-emerald-600 shrink-0 pointer-events-none"
                       />
                       <span className={`font-medium ${theme.textPrimary} flex-1`}>{p.name}</span>
+                      {p.club && (
+                        <span className={`text-[10px] ${theme.textMuted} truncate max-w-[120px]`}>{p.club}</span>
+                      )}
                       <span
-                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                        className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${
                           p.gender === "m"
                             ? "bg-blue-50 text-blue-500"
                             : "bg-pink-50 text-pink-500"
