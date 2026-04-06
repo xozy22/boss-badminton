@@ -49,10 +49,16 @@
 - **Konfigurierbar**: Saetze (Best of 1/3/5), Punkte pro Satz, Spielfelder (1-8)
 - **Setzliste/Seeding**: Optionales Seeding fuer KO-Turniere per Drag & Drop oder Pfeiltasten
 - **Turnier-Wizard**: Schrittweise Erstellung mit Tab-Navigation (Einstellungen -> Spieler -> Teams -> Setzliste -> Erstellen)
+  - Auto-Save: Alle Aenderungen werden automatisch gespeichert (kein Datenverlust bei Navigation)
+  - Draft-Zusammenfassung mit allen Einstellungen und Teilnehmern vor dem Start
+  - Start-Button erst nach Wizard-Abschluss aktiviert
+  - Vereinsfilter + Geschlechterfilter + Suche bei Spielerauswahl
+  - Ausgewaehlte Spieler als farbige Chips (blau/pink nach Geschlecht)
 - **Manuelle Team-Zuordnung**: Klick-Pairing fuer Doppel/Mixed - zwei Spieler nacheinander anklicken bildet ein Team
   - Im Mixed-Modus: Damen/Herren in getrennten Spalten, gleiches Geschlecht wird ausgegraut
   - "Restliche automatisch zuordnen" fuer schnelles Auffuellen
   - Teams werden persistiert und beim Bearbeiten wiederhergestellt
+  - Turniererstellung blockiert bis alle Teams gebildet sind
 - **Startgeld-Verwaltung**: Pro Turnier konfigurierbar (Einzel-/Doppel-Betrag)
   - Zahlungsstatus pro Spieler (Bar, Ueberweisung, PayPal)
   - Datum der Zahlung (editierbar)
@@ -67,6 +73,7 @@
 - **Archivierung**: Beendete Turniere archivieren und wiederherstellen
 - **Turnier wieder oeffnen**: Versehentlich beendet? Abgeschlossene Turniere wieder aktivieren
 - **Verletzung aufheben**: Verletzte Spieler fuer zukuenftige Runden wiederherstellen (Walkovers bleiben)
+- **Letzte Runde rueckgaengig**: Versehentlich neue Runde gestartet? Loeschen und zurueck
 - **Auto-Benennung**: Turniername wird automatisch generiert (Datum - Modus - Format), editierbar
 
 ### Spielerverwaltung

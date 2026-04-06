@@ -49,10 +49,16 @@
 - **Configurable**: Sets (Best of 1/3/5), points per set, courts (1-8)
 - **Seeding**: Optional seeding for KO tournaments via Drag & Drop or arrow keys
 - **Tournament Wizard**: Step-by-step creation with tab navigation (Settings -> Players -> Teams -> Seeding -> Create)
+  - Auto-save: All changes saved automatically (no data loss on navigation)
+  - Draft summary with all settings and participants before starting
+  - Start button only enabled after wizard completion
+  - Club filter + gender filter + search for player selection
+  - Selected players shown as colored chips (blue/pink by gender)
 - **Manual Team Pairing**: Click-pairing for Doubles/Mixed - click two players to form a team
   - In Mixed mode: Women/Men in separate columns, same gender is greyed out
   - "Auto-assign remaining" for quick fill
   - Teams are persisted and restored when editing
+  - Tournament creation blocked until all teams are formed
 - **Entry Fee Management**: Configurable per tournament (Singles/Doubles amount)
   - Payment status per player (Cash, Transfer, PayPal)
   - Payment date (editable)
@@ -67,6 +73,7 @@
 - **Archiving**: Archive and restore completed tournaments
 - **Reopen Tournament**: Accidentally ended? Reopen completed tournaments
 - **Injury/Retirement Undo**: Restore injured players for future rounds (walkovers remain)
+- **Undo Last Round**: Accidentally started a new round? Delete it and go back
 - **Auto-Naming**: Tournament name automatically generated (Date - Mode - Format), editable
 
 ### Player Management
