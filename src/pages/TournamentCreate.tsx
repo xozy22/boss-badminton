@@ -101,6 +101,7 @@ export default function TournamentCreate() {
   // Filter state
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
+  const [clubFilter, setClubFilter] = useState<string>("all");
 
   // Track if user has made changes (dirty state)
   const hasChangesRef = useRef(false);
@@ -173,14 +174,24 @@ export default function TournamentCreate() {
     }
   }, [mode, format, editLoaded]);
 
+  const availableClubs = useMemo(() => {
+    const clubs = new Set<string>();
+    for (const p of players) { if (p.club) clubs.add(p.club); }
+    return Array.from(clubs).sort();
+  }, [players]);
+
   const filteredPlayers = useMemo(() => {
     return players.filter((p) => {
       if (genderFilter !== "all" && p.gender !== genderFilter) return false;
+      if (clubFilter !== "all") {
+        if (clubFilter === "__none__") { if (p.club) return false; }
+        else { if (p.club !== clubFilter) return false; }
+      }
       if (search.trim() && !p.name.toLowerCase().includes(search.toLowerCase()))
         return false;
       return true;
     });
-  }, [players, search, genderFilter]);
+  }, [players, search, genderFilter, clubFilter]);
 
   const selectAllFiltered = () => {
     setSelectedPlayerIds((prev) => {
@@ -854,13 +865,13 @@ export default function TournamentCreate() {
                     onClick={selectAllFiltered}
                     className={`${theme.activeBadgeText} text-sm font-medium`}
                   >
-                    {genderFilter !== "all" || search ? t.tournament_select_filtered : t.tournament_select_all}
+                    {genderFilter !== "all" || clubFilter !== "all" || search ? t.tournament_select_filtered : t.tournament_select_all}
                   </button>
                   <button
                     onClick={selectNoneFiltered}
                     className="text-gray-400 hover:text-gray-600 text-sm"
                   >
-                    {genderFilter !== "all" || search ? t.tournament_deselect_filtered : t.tournament_deselect_all}
+                    {genderFilter !== "all" || clubFilter !== "all" || search ? t.tournament_deselect_filtered : t.tournament_deselect_all}
                   </button>
                 </div>
               </div>
@@ -906,10 +917,23 @@ export default function TournamentCreate() {
                     </button>
                   ))}
                 </div>
+                {availableClubs.length > 0 && (
+                  <select
+                    value={clubFilter}
+                    onChange={(e) => setClubFilter(e.target.value)}
+                    className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-3 py-2 text-sm ${theme.focusBorder} outline-none`}
+                  >
+                    <option value="all">{t.common_all} {t.common_club}</option>
+                    {availableClubs.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                    <option value="__none__">{t.stats_no_club}</option>
+                  </select>
+                )}
               </div>
 
               {/* Info bar */}
-              {(genderFilter !== "all" || search) && (
+              {(genderFilter !== "all" || clubFilter !== "all" || search) && (
                 <div className="text-xs text-gray-400 mb-2">
                   {t.tournament_players_shown.replace("{shown}", String(filteredPlayers.length)).replace("{total}", String(players.length))}
                   {filteredSelectedCount > 0 && (
