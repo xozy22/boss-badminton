@@ -134,6 +134,8 @@ export const en: Translations = {
   tournament_entry_fee_hint: "Manage payments per participant",
   tournament_entry_fee_per_person: "Per person (EUR)",
   tournament_entry_fee_per_team: "Per team (EUR)",
+  tournament_entry_fee_hint_person: "Manage payments per participant",
+  tournament_entry_fee_hint_team: "One payment per team — partner is automatically marked as paid",
   tournament_entry_fee_single: "Singles (EUR)",
   tournament_entry_fee_double: "Doubles (EUR)",
   tournament_load_template: "Load template",

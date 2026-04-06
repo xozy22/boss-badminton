@@ -863,7 +863,11 @@ export default function TournamentCreate() {
               />
               <div className="flex-1">
                 <span className={`text-sm font-medium ${theme.textPrimary}`}>💰 {t.tournament_entry_fee_enable}</span>
-                <p className={`text-xs ${theme.textMuted}`}>{t.tournament_entry_fee_hint}</p>
+                <p className={`text-xs ${theme.textMuted}`}>{(() => {
+                  const fixedFmts: TournamentFormat[] = ["elimination", "group_ko", "double_elimination"];
+                  const isFixed = mode !== "singles" && fixedFmts.includes(format);
+                  return isFixed ? t.tournament_entry_fee_hint_team : t.tournament_entry_fee_hint_person;
+                })()}</p>
                 {useEntryFee && (() => {
                   const fixedTeamFormats: TournamentFormat[] = ["elimination", "group_ko", "double_elimination"];
                   const isFixedTeam = mode !== "singles" && fixedTeamFormats.includes(format);

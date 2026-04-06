@@ -132,6 +132,8 @@ export interface Translations {
   tournament_entry_fee_hint: string;
   tournament_entry_fee_per_person: string;
   tournament_entry_fee_per_team: string;
+  tournament_entry_fee_hint_person: string;
+  tournament_entry_fee_hint_team: string;
   tournament_entry_fee_single: string;
   tournament_entry_fee_double: string;
   tournament_load_template: string;
