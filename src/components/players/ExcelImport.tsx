@@ -616,9 +616,9 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                     <tr>
                       <th className="px-3 py-2 text-left text-xs">#</th>
                       <th className="px-3 py-2 text-left text-xs">{t.common_name}</th>
-                      <th className="px-3 py-2 text-left text-xs">
-                        {t.common_gender}
-                      </th>
+                      <th className="px-3 py-2 text-left text-xs">{t.common_gender}</th>
+                      {previewRows.some(r => r.birthDate) && <th className="px-3 py-2 text-left text-xs">{t.common_birth_date}</th>}
+                      {previewRows.some(r => r.club) && <th className="px-3 py-2 text-left text-xs">{t.common_club}</th>}
                       <th className="px-3 py-2 text-left text-xs">Status</th>
                     </tr>
                   </thead>
@@ -648,6 +648,12 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                         <td className="px-3 py-1.5">
                           {row.gender === "m" ? t.common_gender_male : t.common_gender_female}
                         </td>
+                        {previewRows.some(r => r.birthDate) && (
+                          <td className={`px-3 py-1.5 ${theme.textMuted} text-xs`}>{row.birthDate || "-"}</td>
+                        )}
+                        {previewRows.some(r => r.club) && (
+                          <td className={`px-3 py-1.5 ${theme.textMuted} text-xs`}>{row.club || "-"}</td>
+                        )}
                         <td className="px-3 py-1.5">
                           {row.duplicate ? (
                             <span className="text-orange-500 text-xs">
