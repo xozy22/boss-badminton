@@ -539,9 +539,10 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                   <table className={`w-full text-xs border ${theme.cardBorder} ${theme.inputText}`}>
                     <thead>
                       <tr className={theme.headerGradient}>
-                        <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_first_name}</th>
-                        <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_last_name}</th>
+                        <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_name}</th>
                         <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_gender}</th>
+                        {birthDateCol && <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_birth_date}</th>}
+                        {clubCol && <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_club}</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -556,22 +557,26 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                           fn = idx > 0 ? full.substring(0, idx) : full;
                           ln = idx > 0 ? full.substring(idx + 1) : "";
                         }
+                        const displayName = ln ? `${fn} ${ln}` : fn;
                         const gender = genderCol
                           ? parseGender(row[genderCol]) ?? defaultGender
                           : defaultGender;
+                        const rawBirth = birthDateCol ? row[birthDateCol] : null;
+                        const birthStr = rawBirth != null ? String(rawBirth).trim() : "";
+                        const rawClub = clubCol ? row[clubCol] : null;
+                        const clubStr = rawClub != null ? String(rawClub).trim() : "";
                         return (
                           <tr key={i} className={`border-t ${theme.cardBorder}`}>
                             <td className={`px-2 py-1 border ${theme.cardBorder}`}>
-                              {fn || (
+                              {displayName || (
                                 <span className={theme.textMuted}>{t.import_empty}</span>
                               )}
                             </td>
                             <td className={`px-2 py-1 border ${theme.cardBorder}`}>
-                              {ln || <span className={theme.textMuted}>-</span>}
-                            </td>
-                            <td className={`px-2 py-1 border ${theme.cardBorder}`}>
                               {gender === "m" ? t.common_gender_male : t.common_gender_female}
                             </td>
+                            {birthDateCol && <td className={`px-2 py-1 border ${theme.cardBorder}`}>{birthStr || "-"}</td>}
+                            {clubCol && <td className={`px-2 py-1 border ${theme.cardBorder}`}>{clubStr || "-"}</td>}
                           </tr>
                         );
                       })}
