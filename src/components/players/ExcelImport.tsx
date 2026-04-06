@@ -306,10 +306,10 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
     for (const row of previewRows) {
       if (!row.valid || row.duplicate || (row.fuzzyMatch && row.skipFuzzy)) continue;
       try {
-        await createPlayer(row.firstName, row.lastName, row.gender, row.birthDate, row.club);
+        await createPlayer(row.firstName, row.lastName || "", row.gender, row.birthDate || null, row.club || null);
         count++;
       } catch (err) {
-        console.error("Import error:", err);
+        console.error("Import error for", row.firstName, row.lastName, ":", err);
       }
     }
 

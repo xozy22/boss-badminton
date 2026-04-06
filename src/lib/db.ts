@@ -107,10 +107,12 @@ export async function getPlayers(): Promise<Player[]> {
 }
 
 export async function createPlayer(firstName: string, lastName: string, gender: Gender, birthDate?: string | null, club?: string | null): Promise<void> {
-  const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+  const fn = (firstName || "").trim();
+  const ln = (lastName || "").trim();
+  const fullName = ln ? `${fn} ${ln}` : fn;
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute("INSERT INTO players (name, first_name, last_name, gender, birth_date, club) VALUES ($1, $2, $3, $4, $5, $6)", [fullName, firstName, lastName, gender, birthDate ?? null, club ?? null]);
+    await d.execute("INSERT INTO players (name, first_name, last_name, gender, birth_date, club) VALUES ($1, $2, $3, $4, $5, $6)", [fullName, fn, ln, gender, birthDate || null, club || null]);
     return;
   }
   const store = loadStore();
