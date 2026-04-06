@@ -28,7 +28,6 @@ export default function Tournaments() {
     }
   };
   const [deleteTarget, setDeleteTarget] = useState<Tournament | null>(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   const load = () => getTournaments().then(setTournaments);
 
@@ -37,10 +36,9 @@ export default function Tournaments() {
   }, []);
 
   const handleDeleteConfirm = async () => {
-    if (!deleteTarget || deleteConfirmText !== t.tournaments_delete_confirm_word) return;
+    if (!deleteTarget) return;
     await deleteTournament(deleteTarget.id);
     setDeleteTarget(null);
-    setDeleteConfirmText("");
     load();
   };
 
@@ -113,7 +111,7 @@ export default function Tournaments() {
           </button>
         )}
         <button
-          onClick={() => { setDeleteTarget(tr); setDeleteConfirmText(""); }}
+          onClick={() => setDeleteTarget(tr)}
           className="text-gray-400 hover:text-rose-600 text-sm transition-colors"
           title={t.tournaments_delete_title}
         >
@@ -187,41 +185,25 @@ export default function Tournaments() {
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
-            <div className="text-center mb-5">
-              <div className="text-4xl mb-3">⚠️</div>
-              <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
-                {t.tournaments_delete_title}
-              </h3>
-              <p className={`text-sm ${theme.textSecondary} mt-2`}>
-                <span className={`font-semibold ${theme.textPrimary}`}>"{deleteTarget.name}"</span>{" "}
-                {t.tournaments_delete_message.replace(`"{name}"`, "").trim()}
-              </p>
-            </div>
-            <div className="mb-5">
-              <label className={`block text-xs font-medium ${theme.textSecondary} mb-1.5`}>
-                {t.tournaments_delete_confirm_label.replace("{word}", "")} <span className="font-bold text-rose-600">{t.tournaments_delete_confirm_word}</span>
-              </label>
-              <input
-                type="text"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm focus:border-rose-400 focus:ring-2 focus:ring-rose-100 outline-none transition-all text-center font-mono tracking-widest`}
-                placeholder={t.tournaments_delete_confirm_word}
-                autoFocus
-              />
-            </div>
+          <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-sm p-6 border ${theme.cardBorder} text-center`}>
+            <div className="text-4xl mb-3">⚠️</div>
+            <h3 className={`text-lg font-bold ${theme.textPrimary} mb-2`}>
+              {t.tournaments_delete_title}
+            </h3>
+            <p className={`text-sm ${theme.textSecondary} mb-5`}>
+              <span className={`font-semibold ${theme.textPrimary}`}>"{deleteTarget.name}"</span>{" "}
+              {t.tournaments_delete_message.replace(`"{name}"`, "").trim()}
+            </p>
             <div className="flex gap-3">
               <button
-                onClick={() => { setDeleteTarget(null); setDeleteConfirmText(""); }}
+                onClick={() => setDeleteTarget(null)}
                 className={`flex-1 ${theme.cardBg} border ${theme.inputBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
               >
                 {t.common_cancel}
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                disabled={deleteConfirmText !== t.tournaments_delete_confirm_word}
-                className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-all text-sm font-medium disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+                className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-all text-sm font-medium"
               >
                 {t.common_delete_permanently}
               </button>
