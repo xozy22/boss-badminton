@@ -279,6 +279,7 @@ export default function TournamentCreate() {
 
   const handleCreate = async () => {
     if (selectedPlayerIds.size < minPlayers) return;
+    if (needsTeamPairing && poolPlayers.length >= 2) return; // Teams not complete
 
     const finalName = name.trim() || generateName(mode, format);
     const feeSingle = useEntryFee ? (Number(entryFeeSingle) || 0) : 0;
@@ -1166,13 +1167,18 @@ export default function TournamentCreate() {
             {/* Create button */}
             <button
               onClick={handleCreate}
-              disabled={selectedPlayerIds.size < minPlayers}
+              disabled={selectedPlayerIds.size < minPlayers || (needsTeamPairing && poolPlayers.length >= 2)}
               className={`w-full ${theme.primaryBg} text-white px-5 py-3.5 rounded-2xl ${theme.primaryHoverBg} shadow-sm hover:shadow-lg transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none font-semibold text-base`}
             >
               {isEditMode ? `💾 ${t.tournament_save_changes}` : `🏆 ${t.tournament_create_button}`}
               {selectedPlayerIds.size < minPlayers && (
                 <span className="text-sm font-normal ml-2 opacity-70">
                   {t.tournament_min_players.replace("{count}", String(minPlayers))}
+                </span>
+              )}
+              {needsTeamPairing && poolPlayers.length >= 2 && (
+                <span className="text-sm font-normal ml-2 opacity-70">
+                  ({t.tournament_teams_open.replace("{count}", String(poolPlayers.length))})
                 </span>
               )}
             </button>
