@@ -868,7 +868,7 @@ export default function TournamentCreate() {
                   <div className="mt-3">
                     <div>
                       <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>
-                        {mode === "singles" ? t.tournament_entry_fee_single : t.tournament_entry_fee_double} (EUR)
+                        {mode === "singles" ? t.tournament_entry_fee_single : t.tournament_entry_fee_double}
                       </label>
                       <input
                         type="number"
