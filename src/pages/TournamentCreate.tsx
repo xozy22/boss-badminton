@@ -924,6 +924,22 @@ export default function TournamentCreate() {
                 </div>
               )}
 
+              {/* Selected players chips */}
+              {selectedPlayerIds.size > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {players.filter(p => selectedPlayerIds.has(p.id)).map(p => (
+                    <span
+                      key={p.id}
+                      onClick={() => togglePlayer(p.id)}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-all ${theme.activeBadgeBg} ${theme.activeBadgeText} hover:opacity-80`}
+                    >
+                      {p.name}
+                      <span className="text-[10px] opacity-60">✕</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Player List */}
               {players.length === 0 ? (
                 <p className="text-gray-400 text-sm py-4">
