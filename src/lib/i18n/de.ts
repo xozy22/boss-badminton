@@ -660,6 +660,9 @@ export const de: Translations = {
   stats_all_tournaments: "Alle Turniere",
   stats_filter_tournament: "Nach Turnier filtern",
 
+  // ===== Unsaved changes warning =====
+  tournament_unsaved_warning: "Du hast ungespeicherte Aenderungen. Willst du die Seite wirklich verlassen?",
+
   // ===== Database wipe =====
   settings_wipe_database: "Gesamte Datenbank zuruecksetzen",
   settings_wipe_database_hint: "Loescht ALLE Daten: Spieler, Turniere, Sportstaetten, Spiele, Ergebnisse",

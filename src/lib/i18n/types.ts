@@ -661,6 +661,9 @@ export interface Translations {
   stats_all_tournaments: string;
   stats_filter_tournament: string;
 
+  // ===== Unsaved changes warning =====
+  tournament_unsaved_warning: string;
+
   // ===== Database wipe =====
   settings_wipe_database: string;
   settings_wipe_database_hint: string;

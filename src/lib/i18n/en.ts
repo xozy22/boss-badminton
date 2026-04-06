@@ -660,6 +660,9 @@ export const en: Translations = {
   stats_all_tournaments: "All Tournaments",
   stats_filter_tournament: "Filter by tournament",
 
+  // ===== Unsaved changes warning =====
+  tournament_unsaved_warning: "You have unsaved changes. Do you really want to leave?",
+
   // ===== Database wipe =====
   settings_wipe_database: "Reset entire database",
   settings_wipe_database_hint: "Deletes ALL data: players, tournaments, venues, matches, results",

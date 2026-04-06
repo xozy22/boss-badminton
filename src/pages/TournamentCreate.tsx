@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useNavigate, useParams, useBlocker } from "react-router-dom";
 import {
   getPlayers,
   createTournament,
@@ -92,6 +92,7 @@ export default function TournamentCreate() {
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [showFormatInfo, setShowFormatInfo] = useState(false);
   const [showExcelImport, setShowExcelImport] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   // Team pairing state
   const [manualTeams, setManualTeams] = useState<[number, number][]>([]);
@@ -101,6 +102,25 @@ export default function TournamentCreate() {
   // Filter state
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
+
+  // Track if user has made changes (dirty state)
+  const hasChanges = selectedPlayerIds.size > 0 || nameManuallyEdited || manualTeams.length > 0;
+
+  // Block navigation when there are unsaved changes
+  const blocker = useBlocker(
+    useCallback(() => hasChanges && !submitted, [hasChanges, submitted])
+  );
+
+  // Also block browser/window close
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasChanges && !submitted) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [hasChanges, submitted]);
 
   useEffect(() => {
     getPlayers().then(setPlayers);
@@ -255,6 +275,7 @@ export default function TournamentCreate() {
     // Persist hall config
     await updateHallConfig(id, selectedHalls.length > 0 ? selectedHalls : null);
 
+    setSubmitted(true);
     navigate(`/tournaments/${id}`, { state: Object.keys(navState).length > 0 ? navState : undefined });
   };
 
@@ -1078,6 +1099,29 @@ export default function TournamentCreate() {
           }}
           onClose={() => setShowExcelImport(false)}
         />
+      )}
+
+      {blocker.state === "blocked" && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className={`${theme.cardBg} rounded-2xl shadow-2xl p-6 max-w-sm border ${theme.cardBorder} text-center`}>
+            <div className="text-4xl mb-3">⚠️</div>
+            <h3 className={`font-bold text-lg ${theme.textPrimary} mb-2`}>{t.tournament_unsaved_warning}</h3>
+            <div className="flex gap-3 justify-center mt-5">
+              <button
+                onClick={() => blocker.reset?.()}
+                className={`px-4 py-2 rounded-xl text-sm font-medium ${theme.primaryBg} text-white ${theme.primaryHoverBg}`}
+              >
+                {t.common_back}
+              </button>
+              <button
+                onClick={() => blocker.proceed?.()}
+                className={`px-4 py-2 rounded-xl text-sm font-medium ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} hover:border-rose-300 hover:text-rose-600`}
+              >
+                {t.common_close}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
