@@ -915,9 +915,10 @@ export default function TournamentCreate() {
               ) : (
                 <div className={`max-h-72 overflow-y-auto rounded-xl border ${theme.cardBorder}`}>
                   {filteredPlayers.map((p, i) => (
-                    <label
+                    <div
                       key={p.id}
-                      className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer text-sm transition-all duration-150 ${
+                      onClick={() => togglePlayer(p.id)}
+                      className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer text-sm transition-all duration-150 select-none ${
                         i > 0 ? `border-t ${theme.cardBorder}` : ""
                       } ${
                         selectedPlayerIds.has(p.id)
@@ -928,8 +929,9 @@ export default function TournamentCreate() {
                       <input
                         type="checkbox"
                         checked={selectedPlayerIds.has(p.id)}
-                        onChange={() => togglePlayer(p.id)}
-                        className="rounded accent-emerald-600 shrink-0"
+                        onChange={() => {}}
+                        tabIndex={-1}
+                        className="rounded accent-emerald-600 shrink-0 pointer-events-none"
                       />
                       <span className={`font-medium ${theme.textPrimary} flex-1`}>{p.name}</span>
                       <span
@@ -941,7 +943,7 @@ export default function TournamentCreate() {
                       >
                         {p.gender === "m" ? t.common_gender_male : t.common_gender_female}
                       </span>
-                    </label>
+                    </div>
                   ))}
                 </div>
               )}
