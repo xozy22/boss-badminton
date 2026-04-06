@@ -130,17 +130,22 @@ export default function TournamentCreate() {
     getSportstaetten().then(setSportstaetten);
   }, []);
 
-  // Auto-create draft tournament when navigating to /tournaments/new
+  // If navigated to /tournaments/new, create draft and redirect
+  const [autoCreating, setAutoCreating] = useState(false);
   useEffect(() => {
-    if (isEditMode) return; // Already editing
+    if (isEditMode || autoCreating) return;
+    let cancelled = false;
+    setAutoCreating(true);
     const autoCreate = async () => {
       const defaultName = generateName("doubles", "random_doubles");
       const id = await createTournament(defaultName, "doubles", "random_doubles", 2, 21, 2, 0, 0, 0, 0);
-      // Redirect to edit mode so all changes are auto-saved
-      navigate(`/tournaments/${id}/edit`, { replace: true });
+      if (!cancelled) {
+        navigate(`/tournaments/${id}/edit`, { replace: true });
+      }
     };
     autoCreate();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => { cancelled = true; };
+  }, [isEditMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load existing tournament data in edit mode
   useEffect(() => {
