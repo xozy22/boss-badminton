@@ -420,7 +420,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
               <div>
                 <label className={`block text-sm ${theme.textSecondary} mb-1`}>
-                  {firstNameCol ? t.import_column_first_name : `${t.import_column_name} *`}
+                  {firstNameCol ? t.import_column_first_name : t.import_column_name}
                 </label>
                 <select
                   value={firstNameCol || nameCol}
