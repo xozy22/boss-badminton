@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { useNavigate, useParams, useBlocker } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   getPlayers,
   createTournament,
@@ -104,28 +104,18 @@ export default function TournamentCreate() {
   const [clubFilter, setClubFilter] = useState<string>("all");
 
   // Track if user has made changes (dirty state)
-  const [mounted, setMounted] = useState(false);
   const submittedRef = useRef(false);
   const hasChanges = selectedPlayerIds.size > 0 || nameManuallyEdited || manualTeams.length > 0;
 
-  // Delay blocker activation to avoid blocking the initial navigation TO this page
+  // Block browser/window close + back button when there are unsaved changes
   useEffect(() => {
-    const timer = setTimeout(() => setMounted(true), 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Block in-app navigation when there are unsaved changes
-  const blocker = useBlocker(mounted && hasChanges && !submittedRef.current);
-
-  // Block browser/window close when there are unsaved changes
-  useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => {
+    const beforeUnload = (e: BeforeUnloadEvent) => {
       if (hasChanges && !submittedRef.current) {
         e.preventDefault();
       }
     };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
+    window.addEventListener("beforeunload", beforeUnload);
+    return () => window.removeEventListener("beforeunload", beforeUnload);
   }, [hasChanges]);
 
   useEffect(() => {
@@ -1149,28 +1139,6 @@ export default function TournamentCreate() {
         />
       )}
 
-      {blocker.state === "blocked" && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`${theme.cardBg} rounded-2xl shadow-2xl p-6 max-w-sm border ${theme.cardBorder} text-center`}>
-            <div className="text-4xl mb-3">⚠️</div>
-            <h3 className={`font-bold text-lg ${theme.textPrimary} mb-2`}>{t.tournament_unsaved_warning}</h3>
-            <div className="flex gap-3 justify-center mt-5">
-              <button
-                onClick={() => blocker.reset?.()}
-                className={`px-4 py-2 rounded-xl text-sm font-medium ${theme.primaryBg} text-white ${theme.primaryHoverBg}`}
-              >
-                {t.common_back}
-              </button>
-              <button
-                onClick={() => blocker.proceed?.()}
-                className={`px-4 py-2 rounded-xl text-sm font-medium ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} hover:border-rose-300 hover:text-rose-600`}
-              >
-                {t.common_close}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
