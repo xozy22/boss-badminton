@@ -1009,7 +1009,9 @@ export default function TournamentCreate() {
                     <span
                       key={p.id}
                       onClick={() => togglePlayer(p.id)}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-all ${theme.activeBadgeBg} ${theme.activeBadgeText} hover:opacity-80`}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-all hover:opacity-80 ${
+                        p.gender === "m" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"
+                      }`}
                     >
                       {p.name}
                       <span className="text-[10px] opacity-60">✕</span>

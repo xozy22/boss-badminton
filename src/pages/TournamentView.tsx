@@ -1903,7 +1903,9 @@ export default function TournamentView() {
                 <span className={`${theme.textMuted} text-xs uppercase tracking-wide`}>{t.management_participants.replace("{count}", String(players.length))}</span>
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {players.map(p => (
-                    <span key={p.id} className={`text-xs px-2 py-0.5 rounded-full ${theme.activeBadgeBg} ${theme.activeBadgeText}`}>
+                    <span key={p.id} className={`text-xs px-2 py-0.5 rounded-full ${
+                      p.gender === "m" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"
+                    }`}>
                       {p.name}
                     </span>
                   ))}
