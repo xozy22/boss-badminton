@@ -7,6 +7,50 @@ import ExcelImport from "../components/players/ExcelImport";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
 
+function ClubInput({ value, onChange, onKeyDown, className, placeholder, clubs }: {
+  value: string;
+  onChange: (v: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+  className: string;
+  placeholder: string;
+  clubs: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const filtered = value.trim()
+    ? clubs.filter(c => c.toLowerCase().includes(value.toLowerCase()) && c.toLowerCase() !== value.toLowerCase())
+    : clubs;
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={onKeyDown}
+        className={className}
+        placeholder={placeholder}
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-40 overflow-y-auto">
+          {filtered.slice(0, 8).map(c => (
+            <button
+              key={c}
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); onChange(c); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 type GenderFilter = "all" | "m" | "f";
 
 export default function Players() {
@@ -35,6 +79,15 @@ export default function Players() {
   const load = () => getPlayers().then((p) => { setPlayers(p); setSelectedIds(new Set()); });
 
   useEffect(() => { load(); }, []);
+
+  // Unique clubs from existing players
+  const existingClubs = useMemo(() => {
+    const clubs = new Set<string>();
+    for (const p of players) {
+      if (p.club) clubs.add(p.club);
+    }
+    return Array.from(clubs).sort();
+  }, [players]);
 
   const filteredPlayers = useMemo(() => {
     return players.filter((p) => {
@@ -253,13 +306,13 @@ export default function Players() {
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
               {t.common_club}
             </label>
-            <input
-              type="text"
+            <ClubInput
               value={club}
-              onChange={(e) => setClub(e.target.value)}
+              onChange={setClub}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
               placeholder={t.players_club_placeholder}
+              clubs={existingClubs}
             />
           </div>
           <button
@@ -453,12 +506,12 @@ export default function Players() {
                   </td>
                   <td className={`px-3 py-3 ${theme.textSecondary}`}>
                     {editingId === p.id ? (
-                      <input
-                        type="text"
+                      <ClubInput
                         value={editClub}
-                        onChange={(e) => setEditClub(e.target.value)}
+                        onChange={setEditClub}
                         className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm w-full`}
                         placeholder={t.players_club_placeholder}
+                        clubs={existingClubs}
                       />
                     ) : (
                       <span className="text-sm">{p.club ?? "-"}</span>
