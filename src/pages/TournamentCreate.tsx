@@ -184,7 +184,9 @@ export default function TournamentCreate() {
       const td = await getTournament(Number(editId));
       const tp = await getTournamentPlayers(Number(editId));
       setName(td.name);
-      setNameManuallyEdited(true);
+      // Check if name was auto-generated (matches pattern "DD.MM.YYYY - Mode - Format")
+      const autoName = generateName(td.mode, td.format);
+      setNameManuallyEdited(td.name !== autoName);
       setMode(td.mode);
       setFormat(td.format);
       setSetsToWin(td.sets_to_win);
