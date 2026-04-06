@@ -60,9 +60,12 @@
   - "Auto-assign remaining" for quick fill
   - Teams are persisted and restored when editing
   - Tournament creation blocked until all teams are formed
-- **Entry Fee Management**: Configurable per tournament (Singles/Doubles amount)
+- **Entry Fee Management**: Smart per-person or per-team billing
+  - Fixed teams (KO, Group+KO, Double Elimination): One payment per team, partner auto-marked as paid
+  - Non-fixed teams + Singles: Individual payment per player
   - Payment status per player (Cash, Transfer, PayPal)
   - Payment date (editable)
+  - Paid (green) and open (red) amounts visible in header
   - Overview with total sum, grouped by club
 - **Edit Tournament**: Draft tournaments fully editable (all wizard tabs)
 - **Delete Tournament**: Draft tournaments deletable with confirmation dialog
@@ -83,8 +86,8 @@
 - **Excel Import** with column mapping (First Name, Last Name, Gender, Date of Birth/Age, Club) and fuzzy duplicate detection
 - **Fuzzy Duplicate Detection**: Levenshtein-based similarity check catches near-matches (e.g. "Schmidt" vs "Schmitt")
 - **Excel Import in Tournament Wizard**: Import players directly during tournament creation, all auto-selected
-- **Excel Export** with native save dialog (incl. Date of Birth, Age + Club)
-- **Entry Fee Tracking**: Paid amount (green) and open amount (red) visible in tournament management
+- **Excel Export** with native save dialog (incl. First Name, Last Name, Date of Birth, Age + Club)
+- **Sortable Columns**: Click column headers to sort by first name or last name (ascending/descending)
 - Gender filter and search function for player selection
 - **Injury/Retirement**: Mark player as injured - excluded from remaining tournament
   - Styled modal dialog (no browser popup) with warning for team impact

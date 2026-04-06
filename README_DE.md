@@ -60,10 +60,12 @@
   - "Restliche automatisch zuordnen" fuer schnelles Auffuellen
   - Teams werden persistiert und beim Bearbeiten wiederhergestellt
   - Turniererstellung blockiert bis alle Teams gebildet sind
-- **Startgeld-Verwaltung**: Pro Turnier konfigurierbar (Einzel-/Doppel-Betrag)
+- **Startgeld-Verwaltung**: Intelligente Abrechnung pro Person oder pro Team
+  - Feste Teams (KO, Gruppen+KO, Doppel-KO): Eine Zahlung pro Team, Partner automatisch als bezahlt markiert
+  - Nicht-feste Teams + Einzel: Individuelle Zahlung pro Spieler
   - Zahlungsstatus pro Spieler (Bar, Ueberweisung, PayPal)
   - Datum der Zahlung (editierbar)
-  - Uebersicht mit Gesamtsumme, nach Verein gruppiert
+  - Bezahlter (gruen) und offener (rot) Betrag im Header sichtbar
 - **Turnier bearbeiten**: Draft-Turniere komplett bearbeitbar (alle Wizard-Tabs)
 - **Turnier loeschen**: Draft-Turniere loeschbar mit Bestaetigungsdialog
 - **Vorlagen-System**: Turniere als JSON-Datei exportieren/importieren
@@ -83,8 +85,8 @@
 - **Excel-Import** mit Spaltenmapping (Vorname, Nachname, Geschlecht, Geburtsdatum/Alter, Verein) und Fuzzy-Duplikaterkennung
 - **Fuzzy-Duplikaterkennung**: Levenshtein-basierte Aehnlichkeitspruefung erkennt Tippfehler (z.B. "Schmidt" vs "Schmitt")
 - **Excel-Import im Turnier-Wizard**: Spieler direkt bei Turniererstellung importieren, alle automatisch ausgewaehlt
-- **Excel-Export** mit nativem Speichern-Dialog (inkl. Geburtsdatum + Alter + Verein)
-- **Startgeld-Tracking**: Bezahlter Betrag (gruen) und offener Betrag (rot) in Turnierverwaltung sichtbar
+- **Excel-Export** mit nativem Speichern-Dialog (inkl. Vorname, Nachname, Geburtsdatum + Alter + Verein)
+- **Sortierbare Spalten**: Klick auf Spaltenheader sortiert nach Vor- oder Nachname (auf-/absteigend)
 - Geschlechter-Filter und Suchfunktion bei der Spielerauswahl
 - **Verletzung/Aufgabe**: Spieler als verletzt markieren - scheidet fuer restliches Turnier aus
   - Gestylter Modal-Dialog (kein Browser-Popup) mit Warnung bei Team-Auswirkungen
