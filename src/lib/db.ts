@@ -87,16 +87,26 @@ function nextId(store: LocalStore, table: string): number {
 export async function getPlayers(): Promise<Player[]> {
   if (isTauri()) {
     const d = await getTauriDb();
-    const rows: any[] = await d.select("SELECT * FROM players ORDER BY first_name, last_name");
-    return rows.map((r) => ({
-      id: r.id,
-      first_name: r.first_name ?? r.name ?? "",
-      last_name: r.last_name ?? "",
-      gender: r.gender,
-      birth_date: r.birth_date,
-      club: r.club,
-      created_at: r.created_at,
-    }));
+    const rows: any[] = await d.select("SELECT * FROM players ORDER BY name");
+    return rows.map((r) => {
+      // Derive first_name/last_name from name if columns don't exist
+      let firstName = r.first_name ?? "";
+      let lastName = r.last_name ?? "";
+      if (!firstName && r.name) {
+        const parts = r.name.trim().split(" ");
+        firstName = parts[0] || "";
+        lastName = parts.slice(1).join(" ");
+      }
+      return {
+        id: r.id,
+        first_name: firstName,
+        last_name: lastName,
+        gender: r.gender,
+        birth_date: r.birth_date ?? r.age ? null : null,
+        club: r.club,
+        created_at: r.created_at,
+      };
+    });
   }
   const store = loadStore();
   return [...store.players].map((p) => ({
@@ -112,7 +122,18 @@ export async function createPlayer(firstName: string, lastName: string, gender: 
   const fullName = ln ? `${fn} ${ln}` : fn;
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute("INSERT INTO players (name, first_name, last_name, gender, birth_date, club) VALUES ($1, $2, $3, $4, $5, $6)", [fullName, fn, ln, gender, birthDate || null, club || null]);
+    // Try with first_name/last_name columns first, fall back to name-only if columns don't exist
+    try {
+      await d.execute("INSERT INTO players (name, first_name, last_name, gender, birth_date, club) VALUES ($1, $2, $3, $4, $5, $6)", [fullName, fn, ln, gender, birthDate || null, club || null]);
+    } catch {
+      // Fallback: columns may not exist yet if migration failed
+      try {
+        await d.execute("INSERT INTO players (name, gender, birth_date, club) VALUES ($1, $2, $3, $4)", [fullName, gender, birthDate || null, club || null]);
+      } catch {
+        // Final fallback: without birth_date column
+        await d.execute("INSERT INTO players (name, gender, club) VALUES ($1, $2, $3)", [fullName, gender, club || null]);
+      }
+    }
     return;
   }
   const store = loadStore();
@@ -129,10 +150,20 @@ export async function createPlayer(firstName: string, lastName: string, gender: 
 }
 
 export async function updatePlayer(id: number, firstName: string, lastName: string, gender: Gender, birthDate?: string | null, club?: string | null): Promise<void> {
-  const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+  const fn = (firstName || "").trim();
+  const ln = (lastName || "").trim();
+  const fullName = ln ? `${fn} ${ln}` : fn;
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute("UPDATE players SET name = $1, first_name = $2, last_name = $3, gender = $4, birth_date = $5, club = $6 WHERE id = $7", [fullName, firstName, lastName, gender, birthDate ?? null, club ?? null, id]);
+    try {
+      await d.execute("UPDATE players SET name = $1, first_name = $2, last_name = $3, gender = $4, birth_date = $5, club = $6 WHERE id = $7", [fullName, fn, ln, gender, birthDate ?? null, club ?? null, id]);
+    } catch {
+      try {
+        await d.execute("UPDATE players SET name = $1, gender = $2, birth_date = $3, club = $4 WHERE id = $5", [fullName, gender, birthDate ?? null, club ?? null, id]);
+      } catch {
+        await d.execute("UPDATE players SET name = $1, gender = $2, club = $3 WHERE id = $4", [fullName, gender, club ?? null, id]);
+      }
+    }
     return;
   }
   const store = loadStore();
@@ -422,18 +453,27 @@ export async function getTournamentPlayers(tournamentId: number): Promise<Player
   if (isTauri()) {
     const d = await getTauriDb();
     const rows: any[] = await d.select(
-      "SELECT p.* FROM players p JOIN tournament_players tp ON p.id = tp.player_id WHERE tp.tournament_id = $1 ORDER BY p.first_name, p.last_name",
+      "SELECT p.* FROM players p JOIN tournament_players tp ON p.id = tp.player_id WHERE tp.tournament_id = $1 ORDER BY p.name",
       [tournamentId]
     );
-    return rows.map((r) => ({
-      id: r.id,
-      first_name: r.first_name ?? r.name ?? "",
-      last_name: r.last_name ?? "",
-      gender: r.gender,
-      birth_date: r.birth_date,
-      club: r.club,
-      created_at: r.created_at,
-    }));
+    return rows.map((r) => {
+      let firstName = r.first_name ?? "";
+      let lastName = r.last_name ?? "";
+      if (!firstName && r.name) {
+        const parts = r.name.trim().split(" ");
+        firstName = parts[0] || "";
+        lastName = parts.slice(1).join(" ");
+      }
+      return {
+        id: r.id,
+        first_name: firstName,
+        last_name: lastName,
+        gender: r.gender,
+        birth_date: r.birth_date ?? null,
+        club: r.club,
+        created_at: r.created_at,
+      };
+    });
   }
   const store = loadStore();
   const playerIds = store.tournamentPlayers
@@ -552,16 +592,24 @@ export async function getTournamentPlayersDetailed(tournamentId: number): Promis
        FROM tournament_players tp
        JOIN players p ON p.id = tp.player_id
        WHERE tp.tournament_id = $1
-       ORDER BY p.first_name, p.last_name`,
+       ORDER BY p.name`,
       [tournamentId]
     );
-    return rows.map((r) => ({
-      player: { id: r.id, first_name: r.first_name ?? r.name ?? "", last_name: r.last_name ?? "", gender: r.gender, birth_date: r.birth_date, club: r.club, created_at: r.created_at },
+    return rows.map((r) => {
+      let firstName = r.first_name ?? "";
+      let lastName = r.last_name ?? "";
+      if (!firstName && r.name) {
+        const parts = r.name.trim().split(" ");
+        firstName = parts[0] || "";
+        lastName = parts.slice(1).join(" ");
+      }
+      return {
+      player: { id: r.id, first_name: firstName, last_name: lastName, gender: r.gender, birth_date: r.birth_date ?? null, club: r.club, created_at: r.created_at },
       payment_status: r.payment_status ?? "unpaid",
       payment_method: r.payment_method ?? null,
       paid_date: r.paid_date ?? null,
       retired: r.retired === 1,
-    }));
+    };});
   }
   const store = loadStore();
   const tps = store.tournamentPlayers.filter((tp) => tp.tournament_id === tournamentId);
