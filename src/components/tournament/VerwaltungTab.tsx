@@ -55,6 +55,9 @@ export default function VerwaltungTab({
   const [verwaltungSearch, setVerwaltungSearch] = useState("");
   const [verwaltungFilter, setVerwaltungFilter] = useState<"all" | "paid" | "unpaid">("all");
 
+  const formatsWithFixedTeamsTop: string[] = ["elimination", "group_ko", "double_elimination"];
+  const isFixedTeamModeTop = tournament.mode !== "singles" && formatsWithFixedTeamsTop.includes(tournament.format);
+
   return (
     <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} overflow-hidden`}>
       <div className={`px-5 py-3 border-b ${theme.cardBorder} ${theme.headerGradient} flex justify-between items-center`}>
@@ -62,13 +65,33 @@ export default function VerwaltungTab({
           {"\u{1F465}"} {t.management_participants.replace("{count}", String(players.length))}
           {(tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0) && (() => {
             const fee = tournament.mode === "singles" ? tournament.entry_fee_single : tournament.entry_fee_double;
-            const paidCount = paymentData.filter((p) => p.payment_status === "paid").length;
-            const openCount = paymentData.length - paidCount;
+            let paidCount: number, totalCount: number;
+            if (!isFixedTeamModeTop) {
+              // Singles or non-fixed team formats: everyone pays individually
+              paidCount = paymentData.filter((p) => p.payment_status === "paid").length;
+              totalCount = paymentData.length;
+            } else {
+              // Fixed team doubles/mixed: count teams (one payment per team)
+              totalCount = Math.ceil(paymentData.length / 2);
+              // A team is paid if at least one partner paid
+              const paidIds = new Set(paymentData.filter(p => p.payment_status === "paid").map(p => p.player.id));
+              const teamsPaid = new Set<string>();
+              for (const m of allMatches) {
+                if (m.team1_p1 && m.team1_p2 && (paidIds.has(m.team1_p1) || paidIds.has(m.team1_p2))) {
+                  teamsPaid.add(`${Math.min(m.team1_p1, m.team1_p2)}-${Math.max(m.team1_p1, m.team1_p2)}`);
+                }
+                if (m.team2_p1 && m.team2_p2 && (paidIds.has(m.team2_p1) || paidIds.has(m.team2_p2))) {
+                  teamsPaid.add(`${Math.min(m.team2_p1, m.team2_p2)}-${Math.max(m.team2_p1, m.team2_p2)}`);
+                }
+              }
+              paidCount = teamsPaid.size || paymentData.filter(p => p.payment_status === "paid").length;
+            }
+            const openCount = totalCount - paidCount;
             const paidAmount = paidCount * fee;
             const openAmount = openCount * fee;
             return (
               <span className={`ml-2 font-normal text-xs ${theme.textSecondary}`}>
-                {"\u{1F4B0}"} {t.management_paid_count.replace("{paid}", String(paidCount)).replace("{total}", String(paymentData.length))}
+                {"\u{1F4B0}"} {t.management_paid_count.replace("{paid}", String(paidCount)).replace("{total}", String(totalCount))}
                 &nbsp;&middot;&nbsp;
                 <span className="text-emerald-500">{t.management_paid_amount.replace("{amount}", String(paidAmount))}</span>
                 {openAmount > 0 && (
@@ -157,6 +180,35 @@ export default function VerwaltungTab({
 
       {(() => {
         const hasPayment = tournament.entry_fee_single > 0 || tournament.entry_fee_double > 0;
+        const formatsWithFixedTeams: string[] = ["elimination", "group_ko", "double_elimination"];
+        const isFixedTeamMode = tournament.mode !== "singles" && formatsWithFixedTeams.includes(tournament.format);
+
+        // Build partner map for fixed team modes (who is paired with whom)
+        const partnerMap = new Map<number, number>();
+        if (isFixedTeamMode) {
+          for (const m of allMatches) {
+            if (m.team1_p1 && m.team1_p2) {
+              partnerMap.set(m.team1_p1, m.team1_p2);
+              partnerMap.set(m.team1_p2, m.team1_p1);
+            }
+            if (m.team2_p1 && m.team2_p2) {
+              partnerMap.set(m.team2_p1, m.team2_p2);
+              partnerMap.set(m.team2_p2, m.team2_p1);
+            }
+          }
+        }
+
+        // Check if partner has paid (for team modes)
+        const getPartnerPaidInfo = (playerId: number): string | null => {
+          if (!isFixedTeamMode || !hasPayment) return null;
+          const partnerId = partnerMap.get(playerId);
+          if (!partnerId) return null;
+          const partnerData = paymentData.find(pd => pd.player.id === partnerId);
+          if (partnerData && partnerData.payment_status === "paid") {
+            return playerDisplayName(partnerData.player);
+          }
+          return null;
+        };
         const fee = tournament.mode === "singles" ? tournament.entry_fee_single : tournament.entry_fee_double;
         const searchLower = verwaltungSearch.toLowerCase().trim();
         const filtered = paymentData.filter((pd) => {
@@ -239,13 +291,22 @@ export default function VerwaltungTab({
                           {hasPayment && (
                             <>
                               <td className="px-2 py-2 text-center">
-                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                                  pd.payment_status === "paid"
-                                    ? "bg-green-500/10 text-green-600"
-                                    : "bg-orange-500/10 text-orange-600"
-                                }`}>
-                                  {pd.payment_status === "paid" ? `${fee} EUR` : t.management_open}
-                                </span>
+                                {(() => {
+                                  const partnerPaidBy = pd.payment_status !== "paid" ? getPartnerPaidInfo(pd.player.id) : null;
+                                  return partnerPaidBy ? (
+                                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600" title={partnerPaidBy}>
+                                      ✓ {partnerPaidBy}
+                                    </span>
+                                  ) : (
+                                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                                      pd.payment_status === "paid"
+                                        ? "bg-green-500/10 text-green-600"
+                                        : "bg-orange-500/10 text-orange-600"
+                                    }`}>
+                                      {pd.payment_status === "paid" ? `${fee} EUR` : t.management_open}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td className={`px-2 py-2 text-center text-xs ${theme.textSecondary}`}>
                                 {pd.payment_method ? (pd.payment_method === "bar" ? t.payment_cash : pd.payment_method === "ueberweisung" ? t.payment_transfer : t.payment_paypal) : "-"}
