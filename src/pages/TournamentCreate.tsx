@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   getPlayers,
@@ -103,6 +103,7 @@ export default function TournamentCreate() {
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
   const [clubFilter, setClubFilter] = useState<string>("all");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-save tournament settings when they change (debounced)
   useEffect(() => {
@@ -379,6 +380,8 @@ export default function TournamentCreate() {
       }
       return next;
     });
+    // Re-focus search field so user can continue searching immediately
+    setTimeout(() => searchInputRef.current?.focus(), 0);
   };
 
   const minPlayers = mode === "singles" ? 2 : 4;
@@ -939,6 +942,7 @@ export default function TournamentCreate() {
               <div className="flex gap-2 mb-3">
                 <div className="flex-1 relative">
                   <input
+                    ref={searchInputRef}
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
