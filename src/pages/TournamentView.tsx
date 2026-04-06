@@ -1855,13 +1855,61 @@ export default function TournamentView() {
 
       {/* Round Tabs - above everything */}
       {rounds.length === 0 && tournament.status === "draft" && (
-        <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-12 text-center mb-6`}>
-          <div className="text-4xl mb-3">🏸</div>
-          <div className="text-gray-400">
-            {t.tournament_view_not_started}
+        <div className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} p-8 mb-6`}>
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-3">🏸</div>
+            <div className={`text-lg font-semibold ${theme.textPrimary}`}>
+              {t.tournament_view_not_started}
+            </div>
+            <div className={`text-sm ${theme.textMuted} mt-1`}>
+              {t.tournament_view_not_started_hint}
+            </div>
           </div>
-          <div className="text-gray-400 text-sm">
-            {t.tournament_view_not_started_hint}
+
+          {/* Tournament Summary */}
+          <div className={`${theme.inputBg} rounded-xl p-5 border ${theme.inputBorder}`}>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className={`${theme.textMuted} text-xs uppercase tracking-wide`}>{t.tournament_mode}</span>
+                <div className={`font-medium ${theme.textPrimary} mt-0.5`}>
+                  {{ singles: t.mode_singles, doubles: t.mode_doubles, mixed: t.mode_mixed }[tournament.mode]}
+                </div>
+              </div>
+              <div>
+                <span className={`${theme.textMuted} text-xs uppercase tracking-wide`}>{t.tournament_format}</span>
+                <div className={`font-medium ${theme.textPrimary} mt-0.5`}>
+                  {{ round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko, swiss: t.format_swiss, double_elimination: t.format_double_elimination, monrad: t.format_monrad, king_of_court: t.format_king_of_court, waterfall: t.format_waterfall }[tournament.format]}
+                </div>
+              </div>
+              <div>
+                <span className={`${theme.textMuted} text-xs uppercase tracking-wide`}>{t.tournament_sets_to_win}</span>
+                <div className={`font-medium ${theme.textPrimary} mt-0.5`}>Best of {tournament.sets_to_win * 2 - 1}</div>
+              </div>
+              <div>
+                <span className={`${theme.textMuted} text-xs uppercase tracking-wide`}>{t.tournament_points_per_set}</span>
+                <div className={`font-medium ${theme.textPrimary} mt-0.5`}>{tournament.points_per_set}</div>
+              </div>
+              <div>
+                <span className={`${theme.textMuted} text-xs uppercase tracking-wide`}>{t.common_courts}</span>
+                <div className={`font-medium ${theme.textPrimary} mt-0.5`}>{tournament.courts}</div>
+              </div>
+              <div>
+                <span className={`${theme.textMuted} text-xs uppercase tracking-wide`}>{t.stats_player}</span>
+                <div className={`font-medium ${theme.textPrimary} mt-0.5`}>{players.length}</div>
+              </div>
+            </div>
+            {players.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <span className={`${theme.textMuted} text-xs uppercase tracking-wide`}>{t.management_participants.replace("{count}", String(players.length))}</span>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {players.map(p => (
+                    <span key={p.id} className={`text-xs px-2 py-0.5 rounded-full ${theme.activeBadgeBg} ${theme.activeBadgeText}`}>
+                      {p.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
