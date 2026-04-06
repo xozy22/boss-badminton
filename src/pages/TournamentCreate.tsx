@@ -865,24 +865,15 @@ export default function TournamentCreate() {
                 <span className={`text-sm font-medium ${theme.textPrimary}`}>💰 {t.tournament_entry_fee_enable}</span>
                 <p className={`text-xs ${theme.textMuted}`}>{t.tournament_entry_fee_hint}</p>
                 {useEntryFee && (
-                  <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div className="mt-3">
                     <div>
-                      <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>{t.tournament_entry_fee_single}</label>
+                      <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>
+                        {mode === "singles" ? t.tournament_entry_fee_single : t.tournament_entry_fee_double} (EUR)
+                      </label>
                       <input
                         type="number"
-                        value={entryFeeSingle}
-                        onChange={(e) => setEntryFeeSingle(e.target.value)}
-                        className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-2 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-                        min={0}
-                        step="0.5"
-                      />
-                    </div>
-                    <div>
-                      <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>{t.tournament_entry_fee_double}</label>
-                      <input
-                        type="number"
-                        value={entryFeeDouble}
-                        onChange={(e) => setEntryFeeDouble(e.target.value)}
+                        value={mode === "singles" ? entryFeeSingle : entryFeeDouble}
+                        onChange={(e) => mode === "singles" ? setEntryFeeSingle(e.target.value) : setEntryFeeDouble(e.target.value)}
                         className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-2 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                         min={0}
                         step="0.5"
@@ -1163,7 +1154,7 @@ export default function TournamentCreate() {
                   <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_teams}</span> {manualTeams.length} {poolPlayers.length > 1 && <span className="text-orange-500">{t.tournament_teams_open.replace("{count}", String(poolPlayers.length))}</span>}</div>
                 )}
                 {useEntryFee && (Number(entryFeeSingle) > 0 || Number(entryFeeDouble) > 0) && (
-                  <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_entry_fee}</span> {t.tournament_entry_fee_single} {entryFeeSingle} EUR · {t.tournament_entry_fee_double} {entryFeeDouble} EUR</div>
+                  <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_entry_fee}</span> {mode === "singles" ? entryFeeSingle : entryFeeDouble} EUR</div>
                 )}
               </div>
             </div>
