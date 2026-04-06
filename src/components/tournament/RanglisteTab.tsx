@@ -4,6 +4,7 @@ import type {
   Player,
   StandingEntry,
 } from "../../lib/types";
+import { playerDisplayName } from "../../lib/types";
 import { useT } from "../../lib/I18nContext";
 
 interface RanglisteTabProps {
@@ -59,7 +60,7 @@ export default function RanglisteTab({
                   {rankMedal(i)}
                 </td>
                 <td className={`px-3 py-2.5 font-medium ${theme.textPrimary}`}>
-                  {s.player.name}
+                  {playerDisplayName(s.player)}
                 </td>
                 <td className={`px-3 py-2.5 text-center font-bold ${theme.activeBadgeText}`}>
                   {s.wins}

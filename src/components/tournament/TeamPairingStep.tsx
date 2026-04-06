@@ -1,5 +1,6 @@
 import type { ThemeColors } from "../../lib/theme";
 import type { Player, TournamentMode } from "../../lib/types";
+import { playerDisplayName } from "../../lib/types";
 import { useT } from "../../lib/I18nContext";
 
 interface TeamPairingStepProps {
@@ -30,9 +31,9 @@ export default function TeamPairingStep({
   const { t } = useT();
   const firstPickGender = firstPick !== null ? players.find((pl) => pl.id === firstPick)?.gender : null;
   const isMixed = mode === "mixed";
-  const poolMale = poolPlayers.filter((p) => p.gender === "m").sort((a, b) => a.name.localeCompare(b.name));
-  const poolFemale = poolPlayers.filter((p) => p.gender === "f").sort((a, b) => a.name.localeCompare(b.name));
-  const poolSorted = isMixed ? [...poolFemale, ...poolMale] : [...poolPlayers].sort((a, b) => a.name.localeCompare(b.name));
+  const poolMale = poolPlayers.filter((p) => p.gender === "m").sort((a, b) => playerDisplayName(a).localeCompare(playerDisplayName(b)));
+  const poolFemale = poolPlayers.filter((p) => p.gender === "f").sort((a, b) => playerDisplayName(a).localeCompare(playerDisplayName(b)));
+  const poolSorted = isMixed ? [...poolFemale, ...poolMale] : [...poolPlayers].sort((a, b) => playerDisplayName(a).localeCompare(playerDisplayName(b)));
 
   const renderPlayer = (p: Player) => {
     const isFirst = firstPick === p.id;
@@ -50,7 +51,7 @@ export default function TeamPairingStep({
             : `${theme.cardBg} ${theme.textPrimary} ${theme.cardBorder} ${theme.cardHoverBorder} hover:shadow-sm cursor-pointer`
         }`}
       >
-        {p.name}
+        {playerDisplayName(p)}
         {!isMixed && (
           <span className={`ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full ${
             p.gender === "m" ? "bg-blue-500/10 text-blue-500" : "bg-pink-500/10 text-pink-500"
@@ -142,9 +143,9 @@ export default function TeamPairingStep({
                   className={`${theme.selectedBg} border ${theme.cardBorder} rounded-xl px-3 py-2 flex items-center justify-between group`}
                 >
                   <div className="text-sm">
-                    <span className={`font-medium ${theme.textPrimary}`}>{p1?.name ?? "?"}</span>
+                    <span className={`font-medium ${theme.textPrimary}`}>{p1 ? playerDisplayName(p1) : "?"}</span>
                     <span className={`${theme.textMuted} mx-1.5`}>/</span>
-                    <span className={`font-medium ${theme.textPrimary}`}>{p2?.name ?? "?"}</span>
+                    <span className={`font-medium ${theme.textPrimary}`}>{p2 ? playerDisplayName(p2) : "?"}</span>
                   </div>
                   <button
                     onClick={() => onRemoveTeam(idx)}

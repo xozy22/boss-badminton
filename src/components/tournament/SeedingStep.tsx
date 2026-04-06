@@ -1,5 +1,6 @@
 import type { ThemeColors } from "../../lib/theme";
 import type { Player } from "../../lib/types";
+import { playerDisplayName } from "../../lib/types";
 import { useT } from "../../lib/I18nContext";
 
 interface SeedingStepProps {
@@ -76,7 +77,7 @@ export default function SeedingStep({
                 {idx + 1}
               </span>
               <span className={`font-medium ${theme.textPrimary} flex-1`}>
-                {p.name}
+                {playerDisplayName(p)}
               </span>
               <span
                 className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${

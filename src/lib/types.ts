@@ -6,11 +6,16 @@ export type MatchStatus = "pending" | "active" | "completed";
 
 export interface Player {
   id: number;
-  name: string;
+  first_name: string;
+  last_name: string;
   gender: Gender;
   birth_date: string | null;
   club: string | null;
   created_at: string;
+}
+
+export function playerDisplayName(p: { first_name: string; last_name: string }): string {
+  return p.last_name ? `${p.first_name} ${p.last_name}` : p.first_name;
 }
 
 export function calculateAge(birthDate: string | null): number | null {

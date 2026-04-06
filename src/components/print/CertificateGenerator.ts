@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { Tournament, StandingEntry } from "../../lib/types";
+import { playerDisplayName } from "../../lib/types";
 import type { Translations } from "../../lib/i18n/types";
 
 const GOLD = "#C8A96E";
@@ -200,7 +201,7 @@ export async function generateCertificates(
   for (let i = 0; i < top3.length; i++) {
     if (i > 0) doc.addPage();
     const entry = top3[i];
-    const playerName = entry.player.name;
+    const playerName = playerDisplayName(entry.player);
     drawCertificatePage(doc, i + 1, playerName, tournament, t, modeLabel, formatLabel);
   }
 

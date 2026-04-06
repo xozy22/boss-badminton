@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { createPlayer, getPlayers } from "../../lib/db";
 import type { Gender, Player } from "../../lib/types";
+import { playerDisplayName } from "../../lib/types";
 import { useTheme } from "../../lib/ThemeContext";
 import { useT } from "../../lib/I18nContext";
 
@@ -98,6 +99,8 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
   // Mapping
   const [nameCol, setNameCol] = useState("");
+  const [firstNameCol, setFirstNameCol] = useState("");
+  const [lastNameCol, setLastNameCol] = useState("");
   const [genderCol, setGenderCol] = useState("");
   const [birthDateCol, setBirthDateCol] = useState("");
   const [clubCol, setClubCol] = useState("");
@@ -108,7 +111,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
   // Preview
   const [previewRows, setPreviewRows] = useState<
-    { name: string; gender: Gender; birthDate: string | null; club: string | null; valid: boolean; duplicate: boolean; fuzzyMatch: string | null; skipFuzzy: boolean }[]
+    { firstName: string; lastName: string; gender: Gender; birthDate: string | null; club: string | null; valid: boolean; duplicate: boolean; fuzzyMatch: string | null; skipFuzzy: boolean }[]
   >([]);
   const [importCount, setImportCount] = useState(0);
   const [importing, setImporting] = useState(false);
@@ -149,10 +152,14 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
       setColumns(cols);
 
       // Auto-detect columns
-      const nameLower = cols.find((c) =>
-        ["name", "spieler", "spielername", "vorname", "nachname", "teilnehmer"].includes(
-          c.toLowerCase()
-        )
+      const firstNameDetect = cols.find((c) =>
+        ["vorname", "first name", "first_name", "given name", "firstname"].includes(c.toLowerCase())
+      );
+      const lastNameDetect = cols.find((c) =>
+        ["nachname", "last name", "last_name", "family name", "familyname", "surname", "lastname"].includes(c.toLowerCase())
+      );
+      const combinedNameDetect = cols.find((c) =>
+        ["name", "spieler", "spielername", "teilnehmer"].includes(c.toLowerCase())
       );
       const genderLower = cols.find((c) =>
         ["geschlecht", "gender", "sex", "m/w", "m/f"].includes(c.toLowerCase())
@@ -165,7 +172,15 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
         ["verein", "club", "team", "mannschaft"].includes(c.toLowerCase())
       );
 
-      setNameCol(nameLower ?? cols[0] ?? "");
+      if (firstNameDetect) {
+        setFirstNameCol(firstNameDetect);
+        setLastNameCol(lastNameDetect ?? "");
+        setNameCol("");
+      } else {
+        setNameCol(combinedNameDetect ?? cols[0] ?? "");
+        setFirstNameCol("");
+        setLastNameCol("");
+      }
       setGenderCol(genderLower ?? "");
       setBirthDateCol(ageLower ?? "");
       setClubCol(clubLower ?? "");
@@ -182,18 +197,39 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
   const handlePreview = () => {
     const existingNames = new Set(
-      existingPlayers.map((p) => p.name.toLowerCase().trim())
+      existingPlayers.map((p) => playerDisplayName(p).toLowerCase().trim())
     );
     const existingNameList = existingPlayers.map((p) => ({
-      lower: p.name.toLowerCase().trim(),
-      original: p.name,
+      lower: playerDisplayName(p).toLowerCase().trim(),
+      original: playerDisplayName(p),
     }));
     const seenInImport = new Set<string>();
 
     const rows = rawData.map((row) => {
-      const rawName = row[nameCol];
-      const name = rawName != null ? String(rawName).trim() : "";
-      const nameLower = name.toLowerCase();
+      let firstName = "";
+      let lastName = "";
+      if (firstNameCol) {
+        const rawFirst = row[firstNameCol];
+        firstName = rawFirst != null ? String(rawFirst).trim() : "";
+        if (lastNameCol) {
+          const rawLast = row[lastNameCol];
+          lastName = rawLast != null ? String(rawLast).trim() : "";
+        }
+      } else {
+        const rawName = row[nameCol];
+        const fullName = rawName != null ? String(rawName).trim() : "";
+        const spaceIdx = fullName.indexOf(" ");
+        if (spaceIdx > 0) {
+          firstName = fullName.substring(0, spaceIdx);
+          lastName = fullName.substring(spaceIdx + 1);
+        } else {
+          firstName = fullName;
+          lastName = "";
+        }
+      }
+
+      const displayName = lastName ? `${firstName} ${lastName}` : firstName;
+      const nameLower = displayName.toLowerCase();
 
       let gender: Gender;
       if (genderCol && row[genderCol] != null) {
@@ -203,15 +239,15 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
       }
 
       const duplicate =
-        name.length > 0 &&
+        firstName.length > 0 &&
         (existingNames.has(nameLower) || seenInImport.has(nameLower));
 
       // Fuzzy match only if not an exact duplicate
-      const fuzzyMatch = !duplicate && name.length > 0
-        ? findFuzzyMatch(name, existingNameList)
+      const fuzzyMatch = !duplicate && firstName.length > 0
+        ? findFuzzyMatch(displayName, existingNameList)
         : null;
 
-      if (name.length > 0) seenInImport.add(nameLower);
+      if (firstName.length > 0) seenInImport.add(nameLower);
 
       const rawBirthDate = birthDateCol ? row[birthDateCol] : null;
       let birthDate: string | null = null;
@@ -256,7 +292,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
       const rawClub = clubCol ? row[clubCol] : null;
       const club = rawClub != null ? String(rawClub).trim() || null : null;
 
-      return { name, gender, birthDate, club, valid: name.length > 0, duplicate, fuzzyMatch, skipFuzzy: false };
+      return { firstName, lastName, gender, birthDate, club, valid: firstName.length > 0, duplicate, fuzzyMatch, skipFuzzy: false };
     });
 
     setPreviewRows(rows);
@@ -270,7 +306,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
     for (const row of previewRows) {
       if (!row.valid || row.duplicate || (row.fuzzyMatch && row.skipFuzzy)) continue;
       try {
-        await createPlayer(row.name, row.gender, row.birthDate, row.club);
+        await createPlayer(row.firstName, row.lastName, row.gender, row.birthDate, row.club);
         count++;
       } catch (err) {
         console.error("Import error:", err);
@@ -384,6 +420,39 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
               <div>
                 <label className={`block text-sm ${theme.textSecondary} mb-1`}>
+                  {t.import_column_first_name}
+                </label>
+                <select
+                  value={firstNameCol}
+                  onChange={(e) => { setFirstNameCol(e.target.value); if (e.target.value) setNameCol(""); }}
+                  className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
+                >
+                  <option value="">{t.import_not_available}</option>
+                  {columns.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={`block text-sm ${theme.textSecondary} mb-1`}>
+                  {t.import_column_last_name}
+                </label>
+                <select
+                  value={lastNameCol}
+                  onChange={(e) => setLastNameCol(e.target.value)}
+                  className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
+                >
+                  <option value="">{t.import_not_available}</option>
+                  {columns.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              {!firstNameCol && (
+              <div>
+                <label className={`block text-sm ${theme.textSecondary} mb-1`}>
                   {t.import_column_name}
                 </label>
                 <select
@@ -399,6 +468,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                   ))}
                 </select>
               </div>
+              )}
 
               <div>
                 <label className={`block text-sm ${theme.textSecondary} mb-1`}>
@@ -467,7 +537,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
               )}
 
               {/* Live preview of first rows */}
-              {nameCol && rawData.length > 0 && (
+              {(firstNameCol || nameCol) && rawData.length > 0 && (
                 <div>
                   <div className={`text-sm ${theme.textSecondary} mb-2`}>
                     {t.import_preview_first_rows}
@@ -475,24 +545,35 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                   <table className={`w-full text-xs border ${theme.cardBorder} ${theme.inputText}`}>
                     <thead>
                       <tr className={theme.headerGradient}>
-                        <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_name}</th>
+                        <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_first_name}</th>
+                        <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_last_name}</th>
                         <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_gender}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rawData.slice(0, 5).map((row, i) => {
-                        const name = row[nameCol]
-                          ? String(row[nameCol]).trim()
-                          : "";
+                        let fn = "", ln = "";
+                        if (firstNameCol) {
+                          fn = row[firstNameCol] ? String(row[firstNameCol]).trim() : "";
+                          ln = lastNameCol && row[lastNameCol] ? String(row[lastNameCol]).trim() : "";
+                        } else {
+                          const full = row[nameCol] ? String(row[nameCol]).trim() : "";
+                          const idx = full.indexOf(" ");
+                          fn = idx > 0 ? full.substring(0, idx) : full;
+                          ln = idx > 0 ? full.substring(idx + 1) : "";
+                        }
                         const gender = genderCol
                           ? parseGender(row[genderCol]) ?? defaultGender
                           : defaultGender;
                         return (
                           <tr key={i} className={`border-t ${theme.cardBorder}`}>
                             <td className={`px-2 py-1 border ${theme.cardBorder}`}>
-                              {name || (
+                              {fn || (
                                 <span className={theme.textMuted}>{t.import_empty}</span>
                               )}
+                            </td>
+                            <td className={`px-2 py-1 border ${theme.cardBorder}`}>
+                              {ln || <span className={theme.textMuted}>-</span>}
                             </td>
                             <td className={`px-2 py-1 border ${theme.cardBorder}`}>
                               {gender === "m" ? t.common_gender_male : t.common_gender_female}
@@ -558,7 +639,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                       >
                         <td className={`px-3 py-1.5 ${theme.textMuted}`}>{i + 1}</td>
                         <td className="px-3 py-1.5">
-                          <div>{row.name || <em>{t.import_empty}</em>}</div>
+                          <div>{(row.lastName ? `${row.firstName} ${row.lastName}` : row.firstName) || <em>{t.import_empty}</em>}</div>
                           {row.fuzzyMatch && (
                             <div className="text-[10px] text-amber-500 mt-0.5">
                               {t.import_fuzzy_match.replace("{name}", row.fuzzyMatch)}
@@ -639,7 +720,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
           {step === "mapping" && (
             <button
               onClick={handlePreview}
-              disabled={!nameCol}
+              disabled={!nameCol && !firstNameCol}
               className={`${theme.primaryBg} text-white px-4 py-2 rounded text-sm ${theme.primaryHoverBg} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {t.import_continue_preview}

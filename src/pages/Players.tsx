@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { getPlayers, createPlayer, updatePlayer, deletePlayer } from "../lib/db";
 import * as XLSX from "xlsx";
 import type { Player, Gender } from "../lib/types";
-import { calculateAge } from "../lib/types";
+import { calculateAge, playerDisplayName } from "../lib/types";
 import ExcelImport from "../components/players/ExcelImport";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
@@ -57,12 +57,14 @@ export default function Players() {
   const { theme } = useTheme();
   const { t } = useT();
   const [players, setPlayers] = useState<Player[]>([]);
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [gender, setGender] = useState<Gender>("m");
   const [birthDate, setBirthDate] = useState<string>("");
   const [club, setClub] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editName, setEditName] = useState("");
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
   const [editGender, setEditGender] = useState<Gender>("m");
   const [editBirthDate, setEditBirthDate] = useState<string>("");
   const [editClub, setEditClub] = useState("");
@@ -74,7 +76,7 @@ export default function Players() {
 
   // Multi-select
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [deleteTarget, setDeleteTarget] = useState<{ ids: number[]; names: string[] } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ ids: number[]; displayNames: string[] } | null>(null);
 
   const load = () => getPlayers().then((p) => { setPlayers(p); setSelectedIds(new Set()); });
 
@@ -92,15 +94,16 @@ export default function Players() {
   const filteredPlayers = useMemo(() => {
     return players.filter((p) => {
       if (genderFilter !== "all" && p.gender !== genderFilter) return false;
-      if (search.trim() && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (search.trim() && !playerDisplayName(p).toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
   }, [players, search, genderFilter]);
 
   const handleAdd = async () => {
-    if (!name.trim()) return;
-    await createPlayer(name.trim(), gender, birthDate || null, club.trim() || null);
-    setName("");
+    if (!firstName.trim()) return;
+    await createPlayer(firstName.trim(), lastName.trim(), gender, birthDate || null, club.trim() || null);
+    setFirstName("");
+    setLastName("");
     setBirthDate("");
     setClub("");
     load();
@@ -108,16 +111,17 @@ export default function Players() {
 
   const handleEdit = (p: Player) => {
     setEditingId(p.id);
-    setEditName(p.name);
+    setEditFirstName(p.first_name);
+    setEditLastName(p.last_name);
     setEditGender(p.gender);
     setEditBirthDate(p.birth_date ?? "");
     setEditClub(p.club ?? "");
   };
 
   const handleSave = async () => {
-    if (editingId === null || !editName.trim()) return;
+    if (editingId === null || !editFirstName.trim()) return;
     try {
-      await updatePlayer(editingId, editName.trim(), editGender, editBirthDate || null, editClub.trim() || null);
+      await updatePlayer(editingId, editFirstName.trim(), editLastName.trim(), editGender, editBirthDate || null, editClub.trim() || null);
       setEditingId(null);
       load();
     } catch (err) {
@@ -127,14 +131,14 @@ export default function Players() {
 
   // Single delete with confirmation
   const handleDeleteSingle = (p: Player) => {
-    setDeleteTarget({ ids: [p.id], names: [p.name] });
+    setDeleteTarget({ ids: [p.id], displayNames: [playerDisplayName(p)] });
   };
 
   // Multi delete with confirmation
   const handleDeleteSelected = () => {
     const ids = Array.from(selectedIds);
-    const names = ids.map((id) => players.find((p) => p.id === id)?.name ?? "?");
-    setDeleteTarget({ ids, names });
+    const displayNames = ids.map((id) => { const p = players.find((p) => p.id === id); return p ? playerDisplayName(p) : "?"; });
+    setDeleteTarget({ ids, displayNames });
   };
 
   const handleDeleteConfirm = async () => {
@@ -185,14 +189,15 @@ export default function Players() {
 
   const handleExport = async () => {
     const data = players.map((p) => ({
-      Name: p.name,
-      Geschlecht: p.gender === "m" ? t.common_gender_male : t.common_gender_female,
+      [t.common_first_name]: p.first_name,
+      [t.common_last_name]: p.last_name,
+      [t.common_gender]: p.gender === "m" ? t.common_gender_male : t.common_gender_female,
       [t.common_birth_date]: p.birth_date ?? "",
       [t.common_age]: calculateAge(p.birth_date) ?? "",
-      Verein: p.club ?? "",
+      [t.common_club]: p.club ?? "",
     }));
     const ws = XLSX.utils.json_to_sheet(data);
-    ws["!cols"] = [{ wch: 30 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 25 }];
+    ws["!cols"] = [{ wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 25 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Spieler");
     const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
@@ -265,15 +270,28 @@ export default function Players() {
         <div className="flex gap-3 items-end">
           <div className="flex-1">
             <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-              {t.common_name}
+              {t.common_first_name}
             </label>
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-              placeholder={t.players_name_placeholder}
+              placeholder={t.players_first_name_placeholder}
+            />
+          </div>
+          <div className="flex-1">
+            <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
+              {t.common_last_name}
+            </label>
+            <input
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+              placeholder={t.players_last_name_placeholder}
             />
           </div>
           <div>
@@ -412,7 +430,10 @@ export default function Players() {
                 #
               </th>
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                {t.common_name}
+                {t.common_first_name}
+              </th>
+              <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
+                {t.common_last_name}
               </th>
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
                 {t.common_gender}
@@ -453,14 +474,27 @@ export default function Players() {
                     {editingId === p.id ? (
                       <input
                         type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
+                        value={editFirstName}
+                        onChange={(e) => setEditFirstName(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSave()}
                         className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm w-full focus:ring-2 ${theme.focusRing} outline-none`}
                         autoFocus
                       />
                     ) : (
-                      p.name
+                      p.first_name
+                    )}
+                  </td>
+                  <td className={`px-3 py-3 ${theme.textPrimary}`}>
+                    {editingId === p.id ? (
+                      <input
+                        type="text"
+                        value={editLastName}
+                        onChange={(e) => setEditLastName(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleSave()}
+                        className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-1.5 text-sm w-full focus:ring-2 ${theme.focusRing} outline-none`}
+                      />
+                    ) : (
+                      p.last_name
                     )}
                   </td>
                   <td className="px-3 py-3">
@@ -555,7 +589,7 @@ export default function Players() {
             })}
             {filteredPlayers.length === 0 && (
               <tr>
-                <td colSpan={7} className={`px-5 py-12 text-center ${theme.textMuted}`}>
+                <td colSpan={8} className={`px-5 py-12 text-center ${theme.textMuted}`}>
                   {players.length === 0
                     ? t.players_none_yet
                     : t.players_no_filter_results}
@@ -580,7 +614,7 @@ export default function Players() {
               <div className={`text-sm ${theme.textSecondary} mt-3`}>
                 {deleteTarget.ids.length <= 5 ? (
                   <div className="space-y-1">
-                    {deleteTarget.names.map((n, i) => (
+                    {deleteTarget.displayNames.map((n, i) => (
                       <div key={i} className={`font-medium ${theme.textPrimary}`}>
                         {n}
                       </div>
@@ -589,7 +623,7 @@ export default function Players() {
                 ) : (
                   <div>
                     <div className="space-y-1 mb-2">
-                      {deleteTarget.names.slice(0, 3).map((n, i) => (
+                      {deleteTarget.displayNames.slice(0, 3).map((n, i) => (
                         <div key={i} className={`font-medium ${theme.textPrimary}`}>{n}</div>
                       ))}
                     </div>

@@ -83,7 +83,7 @@ import type {
   TournamentFormat,
   TournamentPlayerInfo,
 } from "../lib/types";
-import { parseHallConfig } from "../lib/types";
+import { parseHallConfig, playerDisplayName } from "../lib/types";
 import { useT } from "../lib/I18nContext";
 
 const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
@@ -370,7 +370,8 @@ export default function TournamentView() {
 
   const playerName = (playerId: number | null): string => {
     if (playerId === null || playerId === undefined) return "-";
-    return players.find((p) => p.id === playerId)?.name ?? "?";
+    const p = players.find((p) => p.id === playerId);
+    return p ? playerDisplayName(p) : "?";
   };
 
   const handleStartTournament = async () => {
@@ -1906,7 +1907,7 @@ export default function TournamentView() {
                     <span key={p.id} className={`text-xs px-2 py-0.5 rounded-full ${
                       p.gender === "m" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"
                     }`}>
-                      {p.name}
+                      {playerDisplayName(p)}
                     </span>
                   ))}
                 </div>

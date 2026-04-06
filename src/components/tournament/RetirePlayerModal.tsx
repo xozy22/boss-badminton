@@ -1,5 +1,6 @@
 import type { ThemeColors } from "../../lib/theme";
 import type { Player } from "../../lib/types";
+import { playerDisplayName } from "../../lib/types";
 import { useT } from "../../lib/I18nContext";
 
 interface RetirePlayerModalProps {
@@ -27,7 +28,7 @@ export default function RetirePlayerModal({
             {t.retire_title}
           </h3>
           <p className={`text-sm ${theme.textSecondary} mt-2`}>
-            <span className={`font-semibold ${theme.textPrimary}`}>{retireTarget.player.name}</span>{" "}
+            <span className={`font-semibold ${theme.textPrimary}`}>{playerDisplayName(retireTarget.player)}</span>{" "}
             {t.retire_message.replace("{name}", "").trim()}
           </p>
           <p className={`text-xs ${theme.textMuted} mt-2`}>

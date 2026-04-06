@@ -11,6 +11,7 @@ import {
   getTournamentPlayersDetailed,
   updatePlayerPayment,
 } from "../../lib/db";
+import { playerDisplayName } from "../../lib/types";
 import { useT } from "../../lib/I18nContext";
 
 interface VerwaltungTabProps {
@@ -103,7 +104,7 @@ export default function VerwaltungTab({
                   onClick={() => handleAddPlayer(ap.id)}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm hover:bg-gray-100 transition-colors text-left"
                 >
-                  <span className={theme.textPrimary}>{ap.name}</span>
+                  <span className={theme.textPrimary}>{playerDisplayName(ap)}</span>
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${ap.gender === "m" ? "bg-blue-50 text-blue-500" : "bg-pink-50 text-pink-500"}`}>
                     {ap.gender === "m" ? t.common_gender_male_short : t.common_gender_female_short}
                   </span>
@@ -159,12 +160,12 @@ export default function VerwaltungTab({
         const fee = tournament.mode === "singles" ? tournament.entry_fee_single : tournament.entry_fee_double;
         const searchLower = verwaltungSearch.toLowerCase().trim();
         const filtered = paymentData.filter((pd) => {
-          if (searchLower && !pd.player.name.toLowerCase().includes(searchLower) && !(pd.player.club ?? "").toLowerCase().includes(searchLower)) return false;
+          if (searchLower && !playerDisplayName(pd.player).toLowerCase().includes(searchLower) && !(pd.player.club ?? "").toLowerCase().includes(searchLower)) return false;
           if (verwaltungFilter === "paid" && pd.payment_status !== "paid") return false;
           if (verwaltungFilter === "unpaid" && pd.payment_status !== "unpaid") return false;
           return true;
         });
-        const sorted = [...filtered].sort((a, b) => (a.player.club ?? "").localeCompare(b.player.club ?? "") || a.player.name.localeCompare(b.player.name));
+        const sorted = [...filtered].sort((a, b) => (a.player.club ?? "").localeCompare(b.player.club ?? "") || playerDisplayName(a.player).localeCompare(playerDisplayName(b.player)));
         const groups = new Map<string, TournamentPlayerInfo[]>();
         for (const pd of sorted) {
           const club = pd.player.club || t.management_no_club;
@@ -226,7 +227,7 @@ export default function VerwaltungTab({
                       return (
                         <tr key={pd.player.id} className={`border-b ${theme.cardBorder} last:border-0 group`}>
                           <td className={`px-3 py-2 pl-6 font-medium ${isRetired ? `${theme.textMuted} line-through` : theme.textPrimary}`}>
-                            {pd.player.name}
+                            {playerDisplayName(pd.player)}
                             {isRetired && <span className="ml-1.5 text-[10px] text-rose-400 no-underline inline-block">{"\u{1F3E5}"}</span>}
                           </td>
                           <td className="px-2 py-2 text-center">

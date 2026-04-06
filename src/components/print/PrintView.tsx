@@ -8,7 +8,7 @@ import type {
   GameSet,
   StandingEntry,
 } from "../../lib/types";
-import { MODE_LABELS, FORMAT_LABELS } from "../../lib/types";
+import { MODE_LABELS, FORMAT_LABELS, playerDisplayName } from "../../lib/types";
 import { isSetComplete, getScoringDescription, calculateStandings, calculateTeamStandings } from "../../lib/scoring";
 import { calculateHighlights } from "../../lib/highlights";
 import type { PrintColors } from "../../lib/theme";
@@ -49,7 +49,8 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
 
     const playerName = (id: number | null): string => {
       if (!id) return "-";
-      return players.find((p) => p.id === id)?.name ?? "?";
+      const p = players.find((p) => p.id === id);
+      return p ? playerDisplayName(p) : "?";
     };
 
     const teamLabel = (m: Match, team: 1 | 2): string => {
@@ -258,7 +259,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
                   }}
                 >
                   <td style={{ padding: "6px 8px", textAlign: "center", fontSize: 13 }}>{medal}</td>
-                  <td style={{ padding: "6px 8px", fontWeight: 600 }}>{s.player.name}</td>
+                  <td style={{ padding: "6px 8px", fontWeight: 600 }}>{playerDisplayName(s.player)}</td>
                   <td style={{ padding: "6px 8px", textAlign: "center", color: c.winColor, fontWeight: 700 }}>
                     {s.wins}
                   </td>
@@ -332,7 +333,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
                         <tr key={ts.teamKey} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: i < qualifyCount ? "#f0fdf4" : "transparent" }}>
                           <td style={{ padding: "4px 8px", color: "#999" }}>{i + 1}</td>
                           <td style={{ padding: "4px 8px", fontWeight: 600 }}>
-                            {ts.player1.name} / {ts.player2.name}
+                            {playerDisplayName(ts.player1)} / {playerDisplayName(ts.player2)}
                             {i < qualifyCount && <span style={{ marginLeft: 4, fontSize: 9, color: c.winColor, fontWeight: 700 }}>Q</span>}
                           </td>
                           <td style={{ padding: "4px 8px", textAlign: "center", fontWeight: 700, color: c.winColor }}>{ts.wins}</td>
@@ -367,7 +368,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
                       <tr key={s.player.id} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: i < qualifyCount ? "#f0fdf4" : "transparent" }}>
                         <td style={{ padding: "4px 8px", color: "#999" }}>{i + 1}</td>
                         <td style={{ padding: "4px 8px", fontWeight: 600 }}>
-                          {s.player.name}
+                          {playerDisplayName(s.player)}
                           {i < qualifyCount && <span style={{ marginLeft: 4, fontSize: 9, color: c.winColor, fontWeight: 700 }}>Q</span>}
                         </td>
                         <td style={{ padding: "4px 8px", textAlign: "center", fontWeight: 700, color: c.winColor }}>{s.wins}</td>
@@ -405,14 +406,14 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
         highlightItems.push({
           icon: "🏆",
           label: t.print_most_wins,
-          value: `${highlights.mostWins.player.name} (${highlights.mostWins.wins} ${t.standings_wins})`,
+          value: `${playerDisplayName(highlights.mostWins.player)} (${highlights.mostWins.wins} ${t.standings_wins})`,
         });
       }
       if (highlights.topScorer) {
         highlightItems.push({
           icon: "🎯",
           label: t.print_most_points,
-          value: `${highlights.topScorer.player.name} (${highlights.topScorer.totalPoints} ${t.common_points})`,
+          value: `${playerDisplayName(highlights.topScorer.player)} (${highlights.topScorer.totalPoints} ${t.common_points})`,
         });
       }
       if (highlights.closestMatch) {
@@ -505,7 +506,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
         }}>
           {players.map((p) => (
             <div key={p.id} style={{ padding: "3px 8px", display: "flex", justifyContent: "space-between" }}>
-              <span>{p.name}</span>
+              <span>{playerDisplayName(p)}</span>
               <span style={{ color: "#999", fontSize: 10 }}>
                 {p.gender === "m" ? "H" : "D"}
               </span>

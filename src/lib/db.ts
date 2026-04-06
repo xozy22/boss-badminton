@@ -12,6 +12,7 @@ import type {
   Match,
   GameSet,
 } from "./types";
+import { playerDisplayName } from "./types";
 
 // ---- Detect if running inside Tauri ----
 function isTauri(): boolean {
@@ -86,40 +87,57 @@ function nextId(store: LocalStore, table: string): number {
 export async function getPlayers(): Promise<Player[]> {
   if (isTauri()) {
     const d = await getTauriDb();
-    return d.select("SELECT * FROM players ORDER BY name");
+    const rows: any[] = await d.select("SELECT * FROM players ORDER BY first_name, last_name");
+    return rows.map((r) => ({
+      id: r.id,
+      first_name: r.first_name ?? r.name ?? "",
+      last_name: r.last_name ?? "",
+      gender: r.gender,
+      birth_date: r.birth_date,
+      club: r.club,
+      created_at: r.created_at,
+    }));
   }
   const store = loadStore();
-  return [...store.players].sort((a, b) => a.name.localeCompare(b.name));
+  return [...store.players].map((p) => ({
+    ...p,
+    first_name: p.first_name ?? (p as any).name ?? "",
+    last_name: p.last_name ?? "",
+  })).sort((a, b) => playerDisplayName(a).localeCompare(playerDisplayName(b)));
 }
 
-export async function createPlayer(name: string, gender: Gender, birthDate?: string | null, club?: string | null): Promise<void> {
+export async function createPlayer(firstName: string, lastName: string, gender: Gender, birthDate?: string | null, club?: string | null): Promise<void> {
+  const fullName = lastName ? `${firstName} ${lastName}` : firstName;
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute("INSERT INTO players (name, gender, birth_date, club) VALUES ($1, $2, $3, $4)", [name, gender, birthDate ?? null, club ?? null]);
+    await d.execute("INSERT INTO players (name, first_name, last_name, gender, birth_date, club) VALUES ($1, $2, $3, $4, $5, $6)", [fullName, firstName, lastName, gender, birthDate ?? null, club ?? null]);
     return;
   }
   const store = loadStore();
   store.players.push({
     id: nextId(store, "players"),
-    name,
+    first_name: firstName,
+    last_name: lastName,
     gender,
     birth_date: birthDate ?? null,
     club: club ?? null,
     created_at: new Date().toISOString(),
-  });
+  } as any);
   saveStore(store);
 }
 
-export async function updatePlayer(id: number, name: string, gender: Gender, birthDate?: string | null, club?: string | null): Promise<void> {
+export async function updatePlayer(id: number, firstName: string, lastName: string, gender: Gender, birthDate?: string | null, club?: string | null): Promise<void> {
+  const fullName = lastName ? `${firstName} ${lastName}` : firstName;
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute("UPDATE players SET name = $1, gender = $2, birth_date = $3, club = $4 WHERE id = $5", [name, gender, birthDate ?? null, club ?? null, id]);
+    await d.execute("UPDATE players SET name = $1, first_name = $2, last_name = $3, gender = $4, birth_date = $5, club = $6 WHERE id = $7", [fullName, firstName, lastName, gender, birthDate ?? null, club ?? null, id]);
     return;
   }
   const store = loadStore();
   const p = store.players.find((p) => p.id === id);
   if (p) {
-    p.name = name;
+    (p as any).first_name = firstName;
+    (p as any).last_name = lastName;
     p.gender = gender;
     p.birth_date = birthDate ?? null;
     p.club = club ?? null;
@@ -401,10 +419,19 @@ export async function deleteTournament(id: number): Promise<void> {
 export async function getTournamentPlayers(tournamentId: number): Promise<Player[]> {
   if (isTauri()) {
     const d = await getTauriDb();
-    return d.select(
-      "SELECT p.* FROM players p JOIN tournament_players tp ON p.id = tp.player_id WHERE tp.tournament_id = $1 ORDER BY p.name",
+    const rows: any[] = await d.select(
+      "SELECT p.* FROM players p JOIN tournament_players tp ON p.id = tp.player_id WHERE tp.tournament_id = $1 ORDER BY p.first_name, p.last_name",
       [tournamentId]
     );
+    return rows.map((r) => ({
+      id: r.id,
+      first_name: r.first_name ?? r.name ?? "",
+      last_name: r.last_name ?? "",
+      gender: r.gender,
+      birth_date: r.birth_date,
+      club: r.club,
+      created_at: r.created_at,
+    }));
   }
   const store = loadStore();
   const playerIds = store.tournamentPlayers
@@ -412,7 +439,12 @@ export async function getTournamentPlayers(tournamentId: number): Promise<Player
     .map((tp) => tp.player_id);
   return store.players
     .filter((p) => playerIds.includes(p.id))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .map((p) => ({
+      ...p,
+      first_name: p.first_name ?? (p as any).name ?? "",
+      last_name: p.last_name ?? "",
+    }))
+    .sort((a, b) => playerDisplayName(a).localeCompare(playerDisplayName(b)));
 }
 
 export async function addPlayerToTournament(tournamentId: number, playerId: number): Promise<void> {
@@ -518,11 +550,11 @@ export async function getTournamentPlayersDetailed(tournamentId: number): Promis
        FROM tournament_players tp
        JOIN players p ON p.id = tp.player_id
        WHERE tp.tournament_id = $1
-       ORDER BY p.name`,
+       ORDER BY p.first_name, p.last_name`,
       [tournamentId]
     );
     return rows.map((r) => ({
-      player: { id: r.id, name: r.name, gender: r.gender, birth_date: r.birth_date, club: r.club, created_at: r.created_at },
+      player: { id: r.id, first_name: r.first_name ?? r.name ?? "", last_name: r.last_name ?? "", gender: r.gender, birth_date: r.birth_date, club: r.club, created_at: r.created_at },
       payment_status: r.payment_status ?? "unpaid",
       payment_method: r.payment_method ?? null,
       paid_date: r.paid_date ?? null,
@@ -533,14 +565,19 @@ export async function getTournamentPlayersDetailed(tournamentId: number): Promis
   const tps = store.tournamentPlayers.filter((tp) => tp.tournament_id === tournamentId);
   return tps.map((tp) => {
     const player = store.players.find((p) => p.id === tp.player_id)!;
+    const mapped = player ? {
+      ...player,
+      first_name: player.first_name ?? (player as any).name ?? "",
+      last_name: player.last_name ?? "",
+    } : player;
     return {
-      player,
+      player: mapped,
       payment_status: (tp as any).payment_status ?? "unpaid",
       payment_method: (tp as any).payment_method ?? null,
       paid_date: (tp as any).paid_date ?? null,
       retired: (tp as any).retired === 1,
     };
-  }).filter((x) => x.player).sort((a, b) => a.player.name.localeCompare(b.player.name));
+  }).filter((x) => x.player).sort((a, b) => playerDisplayName(a.player).localeCompare(playerDisplayName(b.player)));
 }
 
 export async function updatePlayerPayment(

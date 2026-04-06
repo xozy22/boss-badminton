@@ -10,6 +10,7 @@ import {
   calculateStandings,
   calculateTeamStandings,
 } from "../../lib/scoring";
+import { playerDisplayName } from "../../lib/types";
 import { useT } from "../../lib/I18nContext";
 
 interface GruppenTabProps {
@@ -81,7 +82,7 @@ export default function GruppenTab({
                 >
                   <td className={`px-3 py-2 ${theme.textMuted} font-mono`}>{i + 1}</td>
                   <td className={`px-3 py-2 font-medium ${theme.textPrimary} truncate`}>
-                    {ts.player1.name} / {ts.player2.name}
+                    {playerDisplayName(ts.player1)} / {playerDisplayName(ts.player2)}
                     {i < qualifyCount && (
                       <span className="ml-1 text-[9px] text-emerald-500 font-bold">Q</span>
                     )}
@@ -137,7 +138,7 @@ export default function GruppenTab({
               >
                 <td className={`px-3 py-2 ${theme.textMuted} font-mono`}>{i + 1}</td>
                 <td className={`px-3 py-2 font-medium ${theme.textPrimary} truncate`}>
-                  {s.player.name}
+                  {playerDisplayName(s.player)}
                   {i < qualifyCount && (
                     <span className="ml-1 text-[9px] text-emerald-500 font-bold">Q</span>
                   )}

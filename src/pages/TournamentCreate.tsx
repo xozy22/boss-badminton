@@ -14,7 +14,7 @@ import {
   updateTournamentPhase,
 } from "../lib/db";
 import type { Player, TournamentMode, TournamentFormat, Sportstaette, HallConfig } from "../lib/types";
-import { parseHallConfig, hallConfigTotalCourts } from "../lib/types";
+import { parseHallConfig, hallConfigTotalCourts, playerDisplayName } from "../lib/types";
 import { formFixedDoubleTeams, formFixedMixedTeams, recommendedSwissRounds } from "../lib/draw";
 import { loadSettings } from "./Settings";
 import { useTheme } from "../lib/ThemeContext";
@@ -243,7 +243,7 @@ export default function TournamentCreate() {
         if (clubFilter === "__none__") { if (p.club) return false; }
         else { if (p.club !== clubFilter) return false; }
       }
-      if (search.trim() && !p.name.toLowerCase().includes(search.toLowerCase()))
+      if (search.trim() && !playerDisplayName(p).toLowerCase().includes(search.toLowerCase()))
         return false;
       return true;
     });
@@ -492,7 +492,7 @@ export default function TournamentCreate() {
                       // Match by name since IDs may differ
                       const ids = new Set<number>();
                       for (const tp of tpl.players) {
-                        const match = players.find((p) => p.name.toLowerCase() === tp.name?.toLowerCase());
+                        const match = players.find((p) => playerDisplayName(p).toLowerCase() === tp.name?.toLowerCase());
                         if (match) ids.add(match.id);
                       }
                       if (ids.size > 0) setSelectedPlayerIds(ids);
@@ -503,8 +503,8 @@ export default function TournamentCreate() {
                       for (const [id1, id2] of tpl.team_config) {
                         const p1Name = tpl.players?.find((p: any) => p.id === id1)?.name;
                         const p2Name = tpl.players?.find((p: any) => p.id === id2)?.name;
-                        const newP1 = players.find((p) => p.name.toLowerCase() === p1Name?.toLowerCase());
-                        const newP2 = players.find((p) => p.name.toLowerCase() === p2Name?.toLowerCase());
+                        const newP1 = players.find((p) => playerDisplayName(p).toLowerCase() === p1Name?.toLowerCase());
+                        const newP2 = players.find((p) => playerDisplayName(p).toLowerCase() === p2Name?.toLowerCase());
                         if (newP1 && newP2) remapped.push([newP1.id, newP2.id]);
                       }
                       if (remapped.length > 0) setManualTeams(remapped);
@@ -1014,7 +1014,7 @@ export default function TournamentCreate() {
                         p.gender === "m" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"
                       }`}
                     >
-                      {p.name}
+                      {playerDisplayName(p)}
                       <span className="text-[10px] opacity-60">✕</span>
                     </span>
                   ))}
@@ -1051,7 +1051,7 @@ export default function TournamentCreate() {
                         tabIndex={-1}
                         className="rounded accent-emerald-600 shrink-0 pointer-events-none"
                       />
-                      <span className={`font-medium ${theme.textPrimary} flex-1`}>{p.name}</span>
+                      <span className={`font-medium ${theme.textPrimary} flex-1`}>{playerDisplayName(p)}</span>
                       {p.club && (
                         <span className={`text-[10px] ${theme.textMuted} truncate max-w-[120px]`}>{p.club}</span>
                       )}

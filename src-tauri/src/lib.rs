@@ -288,6 +288,19 @@ pub fn run() {
             ",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "split player name into first_name and last_name",
+            sql: "
+                ALTER TABLE players ADD COLUMN first_name TEXT;
+                ALTER TABLE players ADD COLUMN last_name TEXT;
+                UPDATE players SET
+                  first_name = CASE WHEN INSTR(name, ' ') > 0 THEN SUBSTR(name, 1, INSTR(name, ' ') - 1) ELSE name END,
+                  last_name = CASE WHEN INSTR(name, ' ') > 0 THEN SUBSTR(name, INSTR(name, ' ') + 1) ELSE '' END
+                WHERE name IS NOT NULL;
+            ",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

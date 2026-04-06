@@ -15,7 +15,7 @@ import type {
   Match,
   GameSet,
 } from "../lib/types";
-import { MODE_LABELS, FORMAT_LABELS } from "../lib/types";
+import { MODE_LABELS, FORMAT_LABELS, playerDisplayName } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
 import { getCustomLogo } from "./Settings";
@@ -143,7 +143,8 @@ export default function TvMode() {
 
   const playerName = (playerId: number | null): string => {
     if (playerId === null || playerId === undefined) return "-";
-    return players.find((p) => p.id === playerId)?.name ?? "?";
+    const p = players.find((p) => p.id === playerId);
+    return p ? playerDisplayName(p) : "?";
   };
 
   const matchLabel = (m: Match): { team1: string; team2: string } => {

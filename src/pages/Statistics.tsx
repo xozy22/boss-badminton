@@ -3,6 +3,7 @@ import { getTournaments, getPlayers, getAllMatchesWithTournament, getAllSetsFlat
 import { calculateTournamentStats, calculateMatchStats, calculateCourtStats, calculatePlayerDemographics, calculatePlayerRankings } from "../lib/stats";
 import type { TournamentStats, MatchStats, CourtStats, DemoStats, PlayerRankingEntry } from "../lib/stats";
 import type { Tournament, Player, Match, GameSet } from "../lib/types";
+import { playerDisplayName } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
 import { PRINT_COLORS, loadThemeId } from "../lib/theme";
@@ -397,7 +398,7 @@ export default function Statistics() {
                       <td className={`px-4 py-2.5 font-bold ${theme.textSecondary}`}>
                         {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : idx + 1}
                       </td>
-                      <td className={`px-4 py-2.5 font-medium ${theme.textPrimary}`}>{entry.player.name}</td>
+                      <td className={`px-4 py-2.5 font-medium ${theme.textPrimary}`}>{playerDisplayName(entry.player)}</td>
                       <td className={`px-4 py-2.5 text-center ${theme.textSecondary}`}>{entry.totalMatches}</td>
                       <td className="px-4 py-2.5 text-center font-semibold text-emerald-500">{entry.wins}</td>
                       <td className="px-4 py-2.5 text-center font-semibold text-rose-500">{entry.losses}</td>

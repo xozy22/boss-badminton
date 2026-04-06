@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ThemeColors } from "../../lib/theme";
 import type { Tournament, Player } from "../../lib/types";
+import { playerDisplayName } from "../../lib/types";
 import { useT } from "../../lib/I18nContext";
 
 interface TemplateExportModalProps {
@@ -72,7 +73,7 @@ export default function TemplateExportModal({
                 template.entry_fee_double = tournament.entry_fee_double;
               }
               if (templateInclude.players) {
-                template.players = players.map((p) => ({ id: p.id, name: p.name, gender: p.gender }));
+                template.players = players.map((p) => ({ id: p.id, name: playerDisplayName(p), gender: p.gender }));
               }
               if (templateInclude.teams && tournament.team_config) {
                 try { template.team_config = JSON.parse(tournament.team_config); } catch {}

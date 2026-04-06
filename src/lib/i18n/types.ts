@@ -23,6 +23,8 @@ export interface Translations {
   common_search: string;
   common_all: string;
   common_name: string;
+  common_first_name: string;
+  common_last_name: string;
   common_actions: string;
   common_loading: string;
   common_done: string;
@@ -74,7 +76,8 @@ export interface Translations {
   players_title: string;
   players_count: string;
   players_new_player: string;
-  players_name_placeholder: string;
+  players_first_name_placeholder: string;
+  players_last_name_placeholder: string;
   players_club_placeholder: string;
   players_search_placeholder: string;
   players_filter_all: string;
@@ -438,6 +441,8 @@ export interface Translations {
   import_sheet: string;
   import_rows_found: string;
   import_column_name: string;
+  import_column_first_name: string;
+  import_column_last_name: string;
   import_column_gender: string;
   import_column_age: string;
   import_column_club: string;
