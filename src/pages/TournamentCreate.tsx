@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   getPlayers,
@@ -103,25 +103,44 @@ export default function TournamentCreate() {
   const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
   const [clubFilter, setClubFilter] = useState<string>("all");
 
-  // Track if user has made changes (dirty state)
-  const submittedRef = useRef(false);
-  const hasChanges = selectedPlayerIds.size > 0 || nameManuallyEdited || manualTeams.length > 0;
-
-  // Block browser/window close + back button when there are unsaved changes
+  // Auto-save tournament settings when they change (debounced)
   useEffect(() => {
-    const beforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasChanges && !submittedRef.current) {
-        e.preventDefault();
+    if (!isEditMode || !editLoaded) return;
+    const id = Number(editId);
+    const timer = setTimeout(async () => {
+      const finalName = name.trim() || generateName(mode, format);
+      const feeSingle = useEntryFee ? (Number(entryFeeSingle) || 0) : 0;
+      const feeDouble = useEntryFee ? (Number(entryFeeDouble) || 0) : 0;
+      try {
+        await updateTournament(
+          id, finalName, mode, format, setsToWin, pointsPerSet, courts,
+          (format === "group_ko" || format === "swiss" || format === "monrad" || format === "waterfall") ? numGroups : 0,
+          format === "group_ko" ? qualifyPerGroup : 0,
+          feeSingle, feeDouble
+        );
+      } catch (err) {
+        console.error("Auto-save error:", err);
       }
-    };
-    window.addEventListener("beforeunload", beforeUnload);
-    return () => window.removeEventListener("beforeunload", beforeUnload);
-  }, [hasChanges]);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [isEditMode, editLoaded, editId, name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, useEntryFee, entryFeeSingle, entryFeeDouble]);
 
   useEffect(() => {
     getPlayers().then(setPlayers);
     getSportstaetten().then(setSportstaetten);
   }, []);
+
+  // Auto-create draft tournament when navigating to /tournaments/new
+  useEffect(() => {
+    if (isEditMode) return; // Already editing
+    const autoCreate = async () => {
+      const defaultName = generateName("doubles", "random_doubles");
+      const id = await createTournament(defaultName, "doubles", "random_doubles", 2, 21, 2, 0, 0, 0, 0);
+      // Redirect to edit mode so all changes are auto-saved
+      navigate(`/tournaments/${id}/edit`, { replace: true });
+    };
+    autoCreate();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load existing tournament data in edit mode
   useEffect(() => {
@@ -281,7 +300,6 @@ export default function TournamentCreate() {
     // Persist hall config
     await updateHallConfig(id, selectedHalls.length > 0 ? selectedHalls : null);
 
-    submittedRef.current = true;
     navigate(`/tournaments/${id}`, { state: Object.keys(navState).length > 0 ? navState : undefined });
   };
 
