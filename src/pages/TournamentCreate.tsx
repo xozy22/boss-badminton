@@ -923,7 +923,7 @@ export default function TournamentCreate() {
                     onChange={(e) => setClubFilter(e.target.value)}
                     className={`${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-3 py-2 text-sm ${theme.focusBorder} outline-none`}
                   >
-                    <option value="all">{t.common_all} {t.common_club}</option>
+                    <option value="all">{t.common_all}</option>
                     {availableClubs.map(c => (
                       <option key={c} value={c}>{c}</option>
                     ))}
