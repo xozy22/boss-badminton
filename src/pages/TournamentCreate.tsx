@@ -1153,9 +1153,7 @@ export default function TournamentCreate() {
                 {needsTeamPairing && (
                   <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_teams}</span> {manualTeams.length} {poolPlayers.length > 1 && <span className="text-orange-500">{t.tournament_teams_open.replace("{count}", String(poolPlayers.length))}</span>}</div>
                 )}
-                {useEntryFee && (Number(entryFeeSingle) > 0 || Number(entryFeeDouble) > 0) && (
-                  <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_entry_fee}</span> {mode === "singles" ? entryFeeSingle : entryFeeDouble} EUR</div>
-                )}
+                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_entry_fee}</span> {useEntryFee ? `${mode === "singles" ? entryFeeSingle : entryFeeDouble} EUR` : "—"}</div>
               </div>
             </div>
 
