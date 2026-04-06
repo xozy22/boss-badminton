@@ -420,54 +420,48 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
               <div>
                 <label className={`block text-sm ${theme.textSecondary} mb-1`}>
-                  {t.import_column_first_name}
+                  {firstNameCol ? t.import_column_first_name : `${t.import_column_name} *`}
                 </label>
                 <select
-                  value={firstNameCol}
-                  onChange={(e) => { setFirstNameCol(e.target.value); if (e.target.value) setNameCol(""); }}
-                  className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
-                >
-                  <option value="">{t.import_not_available}</option>
-                  {columns.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className={`block text-sm ${theme.textSecondary} mb-1`}>
-                  {t.import_column_last_name}
-                </label>
-                <select
-                  value={lastNameCol}
-                  onChange={(e) => setLastNameCol(e.target.value)}
-                  className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
-                >
-                  <option value="">{t.import_not_available}</option>
-                  {columns.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              {!firstNameCol && (
-              <div>
-                <label className={`block text-sm ${theme.textSecondary} mb-1`}>
-                  {t.import_column_name}
-                </label>
-                <select
-                  value={nameCol}
-                  onChange={(e) => setNameCol(e.target.value)}
+                  value={firstNameCol || nameCol}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Check if this column was auto-detected as first name
+                    const isFirstName = ["vorname", "first name", "first_name", "given name", "givenname", "firstname"].includes(val.toLowerCase());
+                    if (isFirstName) {
+                      setFirstNameCol(val);
+                      setNameCol("");
+                    } else {
+                      setNameCol(val);
+                      setFirstNameCol("");
+                      setLastNameCol("");
+                    }
+                  }}
                   className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
                 >
                   <option value="">{t.import_please_select}</option>
                   {columns.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>
+
+              {firstNameCol && (
+                <div>
+                  <label className={`block text-sm ${theme.textSecondary} mb-1`}>
+                    {t.import_column_last_name}
+                  </label>
+                  <select
+                    value={lastNameCol}
+                    onChange={(e) => setLastNameCol(e.target.value)}
+                    className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
+                  >
+                    <option value="">{t.import_not_available}</option>
+                    {columns.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
               )}
 
               <div>
