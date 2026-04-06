@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { getTournaments, deleteTournament, updateTournamentStatus } from "../lib/db";
+import { Link, useNavigate } from "react-router-dom";
+import { getTournaments, deleteTournament, updateTournamentStatus, createTournament } from "../lib/db";
 import type { Tournament } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
@@ -8,8 +8,25 @@ import { useT } from "../lib/I18nContext";
 export default function Tournaments() {
   const { theme } = useTheme();
   const { t } = useT();
+  const navigate = useNavigate();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [showArchive, setShowArchive] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  const handleNewTournament = async () => {
+    if (creating) return;
+    setCreating(true);
+    try {
+      const now = new Date();
+      const d = `${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}.${now.getFullYear()}`;
+      const defaultName = `${d} - ${t.mode_doubles} - ${t.format_random_doubles}`;
+      const id = await createTournament(defaultName, "doubles", "random_doubles", 2, 21, 2, 0, 0, 0, 0);
+      navigate(`/tournaments/${id}/edit`);
+    } catch (err) {
+      console.error("Error creating tournament:", err);
+      setCreating(false);
+    }
+  };
   const [deleteTarget, setDeleteTarget] = useState<Tournament | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
@@ -133,12 +150,13 @@ export default function Tournaments() {
               📦 {t.tournaments_archive} ({archivedTournaments.length})
             </button>
           )}
-          <Link
-            to="/tournaments/new"
-            className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium`}
+          <button
+            onClick={handleNewTournament}
+            disabled={creating}
+            className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium disabled:opacity-50`}
           >
             🏆 {t.tournaments_new}
-          </Link>
+          </button>
         </div>
       </div>
 

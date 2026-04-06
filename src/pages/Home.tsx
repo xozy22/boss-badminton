@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { getTournaments, getPlayers } from "../lib/db";
+import { Link, useNavigate } from "react-router-dom";
+import { getTournaments, getPlayers, createTournament } from "../lib/db";
 import type { Tournament, Player } from "../lib/types";
 import { STATUS_LABELS, MODE_LABELS, FORMAT_LABELS } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
@@ -8,6 +8,8 @@ import { useT } from "../lib/I18nContext";
 
 export default function Home() {
   const { theme } = useTheme();
+  const navigate = useNavigate();
+  const [creating, setCreating] = useState(false);
   const { t } = useT();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -97,12 +99,22 @@ export default function Home() {
         >
           👥 {t.home_manage_players}
         </Link>
-        <Link
-          to="/tournaments/new"
-          className={`${theme.primaryBg} ${theme.primaryText} px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium`}
+        <button
+          onClick={async () => {
+            if (creating) return;
+            setCreating(true);
+            try {
+              const now = new Date();
+              const d = `${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}.${now.getFullYear()}`;
+              const id = await createTournament(`${d} - ${t.mode_doubles} - ${t.format_random_doubles}`, "doubles", "random_doubles", 2, 21, 2, 0, 0, 0, 0);
+              navigate(`/tournaments/${id}/edit`);
+            } catch (err) { console.error(err); setCreating(false); }
+          }}
+          disabled={creating}
+          className={`${theme.primaryBg} ${theme.primaryText} px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all duration-200 text-sm font-medium disabled:opacity-50`}
         >
           🏆 {t.home_new_tournament}
-        </Link>
+        </button>
       </div>
     </div>
   );
