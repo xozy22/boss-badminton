@@ -74,6 +74,21 @@ export default function Players() {
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<GenderFilter>("all");
 
+  // Sorting
+  type SortKey = "last_name" | "first_name";
+  type SortDir = "asc" | "desc";
+  const [sortKey, setSortKey] = useState<SortKey>("last_name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
   // Multi-select
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<{ ids: number[]; displayNames: string[] } | null>(null);
@@ -92,12 +107,19 @@ export default function Players() {
   }, [players]);
 
   const filteredPlayers = useMemo(() => {
-    return players.filter((p) => {
+    const filtered = players.filter((p) => {
       if (genderFilter !== "all" && p.gender !== genderFilter) return false;
       if (search.trim() && !playerDisplayName(p).toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-  }, [players, search, genderFilter]);
+    filtered.sort((a, b) => {
+      const valA = (sortKey === "last_name" ? a.last_name || a.first_name : a.first_name).toLowerCase();
+      const valB = (sortKey === "last_name" ? b.last_name || b.first_name : b.first_name).toLowerCase();
+      const cmp = valA.localeCompare(valB);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return filtered;
+  }, [players, search, genderFilter, sortKey, sortDir]);
 
   const handleAdd = async () => {
     if (!firstName.trim()) return;
@@ -429,11 +451,17 @@ export default function Players() {
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide align-middle`}>
                 #
               </th>
-              <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                {t.common_first_name}
+              <th
+                onClick={() => toggleSort("first_name")}
+                className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide cursor-pointer select-none hover:opacity-80`}
+              >
+                {t.common_first_name} {sortKey === "first_name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
               </th>
-              <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
-                {t.common_last_name}
+              <th
+                onClick={() => toggleSort("last_name")}
+                className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide cursor-pointer select-none hover:opacity-80`}
+              >
+                {t.common_last_name} {sortKey === "last_name" ? (sortDir === "asc" ? "▲" : "▼") : ""}
               </th>
               <th className={`text-left px-3 py-3 font-semibold ${theme.standingsHeaderText} text-xs uppercase tracking-wide`}>
                 {t.common_gender}
