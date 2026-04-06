@@ -132,6 +132,8 @@ export const en: Translations = {
   tournament_seeding_hint: "Seeded players meet only in later rounds",
   tournament_entry_fee_enable: "Charge entry fee",
   tournament_entry_fee_hint: "Manage payments per participant",
+  tournament_entry_fee_per_person: "Per person (EUR)",
+  tournament_entry_fee_per_team: "Per team (EUR)",
   tournament_entry_fee_single: "Singles (EUR)",
   tournament_entry_fee_double: "Doubles (EUR)",
   tournament_load_template: "Load template",

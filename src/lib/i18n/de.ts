@@ -132,6 +132,8 @@ export const de: Translations = {
   tournament_seeding_hint: "Gesetzte Spieler treffen erst in spaeteren Runden aufeinander",
   tournament_entry_fee_enable: "Startgeld erheben",
   tournament_entry_fee_hint: "Zahlungen pro Teilnehmer verwalten",
+  tournament_entry_fee_per_person: "Pro Person (EUR)",
+  tournament_entry_fee_per_team: "Pro Team (EUR)",
   tournament_entry_fee_single: "Einzel (EUR)",
   tournament_entry_fee_double: "Doppel (EUR)",
   tournament_load_template: "Vorlage laden",

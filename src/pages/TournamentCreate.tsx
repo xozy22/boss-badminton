@@ -864,11 +864,19 @@ export default function TournamentCreate() {
               <div className="flex-1">
                 <span className={`text-sm font-medium ${theme.textPrimary}`}>💰 {t.tournament_entry_fee_enable}</span>
                 <p className={`text-xs ${theme.textMuted}`}>{t.tournament_entry_fee_hint}</p>
-                {useEntryFee && (
+                {useEntryFee && (() => {
+                  const fixedTeamFormats: TournamentFormat[] = ["elimination", "group_ko", "double_elimination"];
+                  const isFixedTeam = mode !== "singles" && fixedTeamFormats.includes(format);
+                  const feeLabel = mode === "singles"
+                    ? t.tournament_entry_fee_per_person
+                    : isFixedTeam
+                    ? t.tournament_entry_fee_per_team
+                    : t.tournament_entry_fee_per_person;
+                  return (
                   <div className="mt-3">
                     <div>
                       <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>
-                        {mode === "singles" ? t.tournament_entry_fee_single : t.tournament_entry_fee_double}
+                        {feeLabel}
                       </label>
                       <input
                         type="number"
@@ -880,7 +888,8 @@ export default function TournamentCreate() {
                       />
                     </div>
                   </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
 
@@ -1153,7 +1162,13 @@ export default function TournamentCreate() {
                 {needsTeamPairing && (
                   <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_teams}</span> {manualTeams.length} {poolPlayers.length > 1 && <span className="text-orange-500">{t.tournament_teams_open.replace("{count}", String(poolPlayers.length))}</span>}</div>
                 )}
-                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_entry_fee}</span> {useEntryFee ? `${mode === "singles" ? entryFeeSingle : entryFeeDouble} EUR` : "—"}</div>
+                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_entry_fee}</span> {useEntryFee ? (() => {
+                  const fixedFmts: TournamentFormat[] = ["elimination", "group_ko", "double_elimination"];
+                  const isFixed = mode !== "singles" && fixedFmts.includes(format);
+                  const amount = mode === "singles" ? entryFeeSingle : entryFeeDouble;
+                  const label = isFixed ? t.tournament_entry_fee_per_team : t.tournament_entry_fee_per_person;
+                  return `${amount} EUR (${label.replace(" (EUR)", "")})`;
+                })() : "—"}</div>
               </div>
             </div>
 
