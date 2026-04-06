@@ -53,6 +53,7 @@
   - Draft summary with all settings and participants before starting
   - Start button only enabled after wizard completion
   - Club filter + gender filter + search for player selection
+  - Auto-focus search after selection (rapid player picking)
   - Selected players shown as colored chips (blue/pink by gender)
 - **Manual Team Pairing**: Click-pairing for Doubles/Mixed - click two players to form a team
   - In Mixed mode: Women/Men in separate columns, same gender is greyed out
@@ -77,8 +78,9 @@
 - **Auto-Naming**: Tournament name automatically generated (Date - Mode - Format), editable
 
 ### Player Management
-- Create, edit, delete players with **Date of Birth** (age calculated automatically, precise to the day) and **Club affiliation**
-- **Excel Import** with column mapping (Name, Gender, Date of Birth/Age, Club) and fuzzy duplicate detection
+- Create, edit, delete players with **First Name**, **Last Name**, **Date of Birth** (age auto-calculated), and **Club**
+- **Club Autocomplete**: Existing clubs suggested as dropdown, free text for new clubs
+- **Excel Import** with column mapping (First Name, Last Name, Gender, Date of Birth/Age, Club) and fuzzy duplicate detection
 - **Fuzzy Duplicate Detection**: Levenshtein-based similarity check catches near-matches (e.g. "Schmidt" vs "Schmitt")
 - **Excel Import in Tournament Wizard**: Import players directly during tournament creation, all auto-selected
 - **Excel Export** with native save dialog (incl. Date of Birth, Age + Club)

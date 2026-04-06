@@ -53,6 +53,7 @@
   - Draft-Zusammenfassung mit allen Einstellungen und Teilnehmern vor dem Start
   - Start-Button erst nach Wizard-Abschluss aktiviert
   - Vereinsfilter + Geschlechterfilter + Suche bei Spielerauswahl
+  - Auto-Fokus Suchfeld nach Auswahl (schnelles Hinzufuegen)
   - Ausgewaehlte Spieler als farbige Chips (blau/pink nach Geschlecht)
 - **Manuelle Team-Zuordnung**: Klick-Pairing fuer Doppel/Mixed - zwei Spieler nacheinander anklicken bildet ein Team
   - Im Mixed-Modus: Damen/Herren in getrennten Spalten, gleiches Geschlecht wird ausgegraut
@@ -77,8 +78,9 @@
 - **Auto-Benennung**: Turniername wird automatisch generiert (Datum - Modus - Format), editierbar
 
 ### Spielerverwaltung
-- Spieler anlegen, bearbeiten, loeschen mit **Geburtsdatum** (Alter wird automatisch tagesgenau berechnet) und **Vereinszugehoerigkeit**
-- **Excel-Import** mit Spaltenmapping (Name, Geschlecht, Geburtsdatum/Alter, Verein) und Fuzzy-Duplikaterkennung
+- Spieler anlegen, bearbeiten, loeschen mit **Vorname**, **Nachname**, **Geburtsdatum** (Alter automatisch berechnet) und **Verein**
+- **Verein-Autocomplete**: Vorhandene Vereine als Dropdown, Freitext fuer neue Vereine
+- **Excel-Import** mit Spaltenmapping (Vorname, Nachname, Geschlecht, Geburtsdatum/Alter, Verein) und Fuzzy-Duplikaterkennung
 - **Fuzzy-Duplikaterkennung**: Levenshtein-basierte Aehnlichkeitspruefung erkennt Tippfehler (z.B. "Schmidt" vs "Schmitt")
 - **Excel-Import im Turnier-Wizard**: Spieler direkt bei Turniererstellung importieren, alle automatisch ausgewaehlt
 - **Excel-Export** mit nativem Speichern-Dialog (inkl. Geburtsdatum + Alter + Verein)
