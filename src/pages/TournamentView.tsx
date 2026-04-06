@@ -1599,7 +1599,9 @@ export default function TournamentView() {
               </button>
               <button
                 onClick={handleStartTournament}
-                className={`${theme.primaryBg} ${theme.primaryText} px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium`}
+                disabled={players.length < (tournament.mode === "singles" ? 2 : 4)}
+                title={players.length < (tournament.mode === "singles" ? 2 : 4) ? t.tournament_min_players.replace("{count}", String(tournament.mode === "singles" ? 2 : 4)) : t.tournament_view_start}
+                className={`${theme.primaryBg} ${theme.primaryText} px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none`}
               >
                 🚀 {t.tournament_view_start}
               </button>
