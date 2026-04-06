@@ -62,7 +62,7 @@ export interface Sportstaette {
   created_at: string;
 }
 
-export type TournamentPhase = "group" | "ko" | "swiss" | "winners" | "losers" | null;
+export type TournamentPhase = "group" | "ko" | "swiss" | "winners" | "losers" | "ready" | null;
 
 export interface Tournament {
   id: number;

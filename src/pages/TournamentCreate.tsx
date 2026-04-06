@@ -11,6 +11,7 @@ import {
   getTournament,
   getTournamentPlayers,
   getSportstaetten,
+  updateTournamentPhase,
 } from "../lib/db";
 import type { Player, TournamentMode, TournamentFormat, Sportstaette, HallConfig } from "../lib/types";
 import { parseHallConfig, hallConfigTotalCourts } from "../lib/types";
@@ -336,6 +337,9 @@ export default function TournamentCreate() {
 
     // Persist hall config
     await updateHallConfig(id, selectedHalls.length > 0 ? selectedHalls : null);
+
+    // Mark wizard as completed
+    await updateTournamentPhase(id, "ready");
 
     navigate(`/tournaments/${id}`, { state: Object.keys(navState).length > 0 ? navState : undefined });
   };
