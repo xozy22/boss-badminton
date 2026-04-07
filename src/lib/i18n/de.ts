@@ -525,6 +525,7 @@ export const de: Translations = {
   settings_logo_crop_hint: "Ziehe den Ausschnitt an die gewuenschte Stelle. Ecke unten rechts zum Skalieren.",
   settings_logo_crop_save: "Zuschneiden & Speichern",
   settings_logo_too_large: "Bild ist zu gross (max. 10 MB)",
+  settings_logo_cropped_too_large: "Zugeschnittenes Logo ist zu gross (max. ~500 KB). Bitte ein kleineres Bild verwenden.",
   settings_default_halls: "Standard-Hallen",
   settings_add_hall: "+ Halle hinzufuegen",
   settings_hall_name_placeholder: "Hallenname...",

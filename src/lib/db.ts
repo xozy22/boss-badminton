@@ -14,8 +14,18 @@ import type {
 } from "./types";
 import { playerDisplayName } from "./types";
 
+// DB row type for type safety
+interface PlayerRow {
+  id: number; name: string; gender: string; age: number | null; club: string | null;
+  birth_year: number | null; birth_date: string | null; first_name: string | null; last_name: string | null;
+  created_at: string;
+}
+interface TournamentPlayerRow extends PlayerRow {
+  retired: number; payment_status: string; payment_method: string | null; paid_date: string | null;
+}
+
 // ---- Detect if running inside Tauri ----
-function isTauri(): boolean {
+export function isTauri(): boolean {
   return !!(window as any).__TAURI_INTERNALS__;
 }
 
@@ -31,6 +41,8 @@ async function getTauriDb() {
     // DB-Pfad vom Rust-Backend holen (beruecksichtigt custom Speicherort)
     const dbPath = await invoke<string>("get_db_path");
     tauriDb = await Database.load(`sqlite:${dbPath}`);
+    // Enable foreign key enforcement (per-connection setting in SQLite)
+    await tauriDb.execute("PRAGMA foreign_keys = ON");
   }
   return tauriDb;
 }
@@ -87,7 +99,7 @@ function nextId(store: LocalStore, table: string): number {
 export async function getPlayers(): Promise<Player[]> {
   if (isTauri()) {
     const d = await getTauriDb();
-    const rows: any[] = await d.select("SELECT * FROM players ORDER BY name");
+    const rows: PlayerRow[] = await d.select("SELECT * FROM players ORDER BY name");
     return rows.map((r) => {
       // Derive first_name/last_name from name if columns don't exist
       let firstName = r.first_name ?? "";
@@ -101,7 +113,7 @@ export async function getPlayers(): Promise<Player[]> {
         id: r.id,
         first_name: firstName,
         last_name: lastName,
-        gender: r.gender,
+        gender: r.gender as Gender,
         birth_date: r.birth_date ?? null,
         club: r.club,
         created_at: r.created_at,
@@ -453,7 +465,7 @@ export async function deleteTournament(id: number): Promise<void> {
 export async function getTournamentPlayers(tournamentId: number): Promise<Player[]> {
   if (isTauri()) {
     const d = await getTauriDb();
-    const rows: any[] = await d.select(
+    const rows: PlayerRow[] = await d.select(
       "SELECT p.* FROM players p JOIN tournament_players tp ON p.id = tp.player_id WHERE tp.tournament_id = $1 ORDER BY p.name",
       [tournamentId]
     );
@@ -469,7 +481,7 @@ export async function getTournamentPlayers(tournamentId: number): Promise<Player
         id: r.id,
         first_name: firstName,
         last_name: lastName,
-        gender: r.gender,
+        gender: r.gender as Gender,
         birth_date: r.birth_date ?? null,
         club: r.club,
         created_at: r.created_at,
@@ -588,7 +600,7 @@ export async function getRetiredPlayerIds(tournamentId: number): Promise<number[
 export async function getTournamentPlayersDetailed(tournamentId: number): Promise<TournamentPlayerInfo[]> {
   if (isTauri()) {
     const d = await getTauriDb();
-    const rows: any[] = await d.select(
+    const rows: TournamentPlayerRow[] = await d.select(
       `SELECT p.*, tp.retired, tp.payment_status, tp.payment_method, tp.paid_date
        FROM tournament_players tp
        JOIN players p ON p.id = tp.player_id
@@ -605,9 +617,9 @@ export async function getTournamentPlayersDetailed(tournamentId: number): Promis
         lastName = parts.slice(1).join(" ");
       }
       return {
-      player: { id: r.id, first_name: firstName, last_name: lastName, gender: r.gender, birth_date: r.birth_date ?? null, club: r.club, created_at: r.created_at },
-      payment_status: r.payment_status ?? "unpaid",
-      payment_method: r.payment_method ?? null,
+      player: { id: r.id, first_name: firstName, last_name: lastName, gender: r.gender as Gender, birth_date: r.birth_date ?? null, club: r.club, created_at: r.created_at },
+      payment_status: (r.payment_status ?? "unpaid") as PaymentStatus,
+      payment_method: (r.payment_method ?? null) as PaymentMethod | null,
       paid_date: r.paid_date ?? null,
       retired: r.retired === 1,
     };});

@@ -526,6 +526,7 @@ export interface Translations {
   settings_logo_crop_hint: string;
   settings_logo_crop_save: string;
   settings_logo_too_large: string;
+  settings_logo_cropped_too_large: string;
   settings_default_halls: string;
   settings_add_hall: string;
   settings_hall_name_placeholder: string;

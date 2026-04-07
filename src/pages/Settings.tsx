@@ -1,14 +1,10 @@
 import { useEffect, useState, useRef } from "react";
-import { wipeAllPlayers, wipeAllTournaments, wipeEntireDatabase, getAppSetting, setAppSetting, deleteAppSetting } from "../lib/db";
+import { wipeAllPlayers, wipeAllTournaments, wipeEntireDatabase, getAppSetting, setAppSetting, deleteAppSetting, isTauri } from "../lib/db";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
 import type { Lang } from "../lib/I18nContext";
 import { THEMES, type ThemeId, FONT_SIZES, type FontSizeId, FONT_FAMILIES, type FontFamilyId } from "../lib/theme";
 import type { HallConfig } from "../lib/types";
-
-function isTauri(): boolean {
-  return !!(window as any).__TAURI_INTERNALS__;
-}
 
 type ConfirmTarget = "players" | "tournaments" | "wipe" | null;
 
@@ -860,6 +856,11 @@ function LogoUploader() {
   };
 
   const handleCropSave = async (croppedDataUrl: string) => {
+    // Limit cropped data URI to 500KB to prevent localStorage quota issues
+    if (croppedDataUrl.length > 500_000) {
+      alert(t.settings_logo_cropped_too_large);
+      return;
+    }
     await saveLogoToDb(croppedDataUrl);
     setLogo(croppedDataUrl);
     setCropSrc(null);

@@ -525,6 +525,7 @@ export const en: Translations = {
   settings_logo_crop_hint: "Drag the selection to the desired position. Bottom-right corner to scale.",
   settings_logo_crop_save: "Crop & Save",
   settings_logo_too_large: "Image is too large (max. 10 MB)",
+  settings_logo_cropped_too_large: "Cropped logo is too large (max ~500 KB). Please use a smaller image.",
   settings_default_halls: "Default Halls",
   settings_add_hall: "+ Add hall",
   settings_hall_name_placeholder: "Hall name...",

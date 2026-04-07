@@ -6,6 +6,7 @@ import {
   getRounds,
   getAllMatchesByTournament,
   getAllSetsByTournament,
+  isTauri,
 } from "../lib/db";
 import { isSetComplete } from "../lib/scoring";
 import type {
@@ -62,7 +63,7 @@ export default function TvMode() {
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if ((window as any).__TAURI_INTERNALS__) {
+        if (isTauri()) {
           const { getCurrentWindow } = await import("@tauri-apps/api/window");
           getCurrentWindow().close();
         } else {
@@ -70,7 +71,7 @@ export default function TvMode() {
         }
       } else if (e.key === "F11") {
         e.preventDefault();
-        if ((window as any).__TAURI_INTERNALS__) {
+        if (isTauri()) {
           const { getCurrentWindow } = await import("@tauri-apps/api/window");
           const win = getCurrentWindow();
           const isFs = await win.isFullscreen();
@@ -124,10 +125,10 @@ export default function TvMode() {
     }
   }, [tournamentId]);
 
-  // Poll data every 3 seconds
+  // Poll data every 5 seconds
   useEffect(() => {
     loadAll();
-    const interval = setInterval(loadAll, 3000);
+    const interval = setInterval(loadAll, 5000);
     return () => clearInterval(interval);
   }, [loadAll]);
 

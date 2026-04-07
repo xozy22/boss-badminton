@@ -37,6 +37,7 @@ import {
   deleteRound,
   getRetiredPlayerIds,
   getTournamentPlayersDetailed,
+  isTauri,
 } from "../lib/db";
 import {
   generateRoundRobinSingles,
@@ -1729,7 +1730,7 @@ export default function TournamentView() {
           {tournament.status === "active" && (
             <button
               onClick={async () => {
-                if ((window as any).__TAURI_INTERNALS__) {
+                if (isTauri()) {
                   try {
                     const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
                     const tvWin = new WebviewWindow(`tv-${tournamentId}`, {

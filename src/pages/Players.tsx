@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { getPlayers, createPlayer, updatePlayer, deletePlayer } from "../lib/db";
+import { getPlayers, createPlayer, updatePlayer, deletePlayer, isTauri } from "../lib/db";
 import ExcelJS from "exceljs";
 import type { Player, Gender } from "../lib/types";
 import { calculateAge, playerDisplayName } from "../lib/types";
@@ -232,7 +232,7 @@ export default function Players() {
     }
     const buf = await wb.xlsx.writeBuffer();
 
-    if ((window as any).__TAURI_INTERNALS__) {
+    if (isTauri()) {
       try {
         const { save } = await import("@tauri-apps/plugin-dialog");
         const { writeFile } = await import("@tauri-apps/plugin-fs");
