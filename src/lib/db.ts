@@ -1000,13 +1000,63 @@ export async function wipeAllTournaments(): Promise<void> {
 export async function wipeEntireDatabase(): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();
-    await d.execute("DELETE FROM sets");
-    await d.execute("DELETE FROM matches");
-    await d.execute("DELETE FROM rounds");
-    await d.execute("DELETE FROM tournament_players");
-    await d.execute("DELETE FROM tournaments");
-    await d.execute("DELETE FROM players");
-    await d.execute("DELETE FROM sportstaetten");
+    // Drop all tables and recreate with current schema
+    await d.execute("DROP TABLE IF EXISTS sets");
+    await d.execute("DROP TABLE IF EXISTS matches");
+    await d.execute("DROP TABLE IF EXISTS rounds");
+    await d.execute("DROP TABLE IF EXISTS tournament_players");
+    await d.execute("DROP TABLE IF EXISTS tournaments");
+    await d.execute("DROP TABLE IF EXISTS players");
+    await d.execute("DROP TABLE IF EXISTS sportstaetten");
+    await d.execute("DROP TABLE IF EXISTS app_settings");
+    // Recreate tables with full schema (matching migration v1)
+    await d.execute(`CREATE TABLE IF NOT EXISTS players (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+      gender TEXT NOT NULL CHECK(gender IN ('m', 'f')), age INTEGER, club TEXT,
+      birth_year INTEGER, birth_date TEXT, first_name TEXT, last_name TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`);
+    await d.execute(`CREATE TABLE IF NOT EXISTS sportstaetten (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+      address TEXT, zip TEXT, city TEXT, courts INTEGER NOT NULL DEFAULT 1,
+      halls TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`);
+    await d.execute(`CREATE TABLE IF NOT EXISTS tournaments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+      mode TEXT NOT NULL CHECK(mode IN ('singles','doubles','mixed')),
+      format TEXT NOT NULL, sets_to_win INTEGER NOT NULL DEFAULT 2,
+      points_per_set INTEGER NOT NULL DEFAULT 21, courts INTEGER NOT NULL DEFAULT 1,
+      num_groups INTEGER NOT NULL DEFAULT 0, qualify_per_group INTEGER NOT NULL DEFAULT 0,
+      current_phase TEXT, entry_fee_single REAL NOT NULL DEFAULT 0,
+      entry_fee_double REAL NOT NULL DEFAULT 0, team_config TEXT, hall_config TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','active','completed','archived'))
+    )`);
+    await d.execute(`CREATE TABLE IF NOT EXISTS tournament_players (
+      tournament_id INTEGER NOT NULL, player_id INTEGER NOT NULL,
+      retired INTEGER NOT NULL DEFAULT 0, payment_status TEXT NOT NULL DEFAULT 'unpaid',
+      payment_method TEXT, paid_date TEXT,
+      PRIMARY KEY (tournament_id, player_id)
+    )`);
+    await d.execute(`CREATE TABLE IF NOT EXISTS rounds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, tournament_id INTEGER NOT NULL,
+      round_number INTEGER NOT NULL, phase TEXT, group_number INTEGER
+    )`);
+    await d.execute(`CREATE TABLE IF NOT EXISTS matches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, round_id INTEGER NOT NULL,
+      team1_p1 INTEGER NOT NULL, team1_p2 INTEGER, team2_p1 INTEGER NOT NULL, team2_p2 INTEGER,
+      winner_team INTEGER CHECK(winner_team IN (1, 2)),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','active','completed')),
+      court INTEGER, court_assigned_at TEXT, started_at TEXT, completed_at TEXT
+    )`);
+    await d.execute(`CREATE TABLE IF NOT EXISTS sets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, match_id INTEGER NOT NULL,
+      set_number INTEGER NOT NULL, team1_score INTEGER NOT NULL DEFAULT 0,
+      team2_score INTEGER NOT NULL DEFAULT 0
+    )`);
+    await d.execute(`CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY, value TEXT NOT NULL
+    )`);
     return;
   }
   const store = loadStore();
