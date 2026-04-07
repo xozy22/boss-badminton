@@ -298,7 +298,9 @@ export function loadFontSize(): FontSizeId {
   try {
     const stored = localStorage.getItem(FONTSIZE_KEY);
     if (stored && stored in FONT_SIZES) return stored as FontSizeId;
-  } catch {}
+  } catch (err) {
+    console.error("loadFontSize: failed to read font size from localStorage:", err);
+  }
   return "m";
 }
 
@@ -323,7 +325,9 @@ export function loadFontFamily(): FontFamilyId {
   try {
     const stored = localStorage.getItem(FONTFAMILY_KEY);
     if (stored && stored in FONT_FAMILIES) return stored as FontFamilyId;
-  } catch {}
+  } catch (err) {
+    console.error("loadFontFamily: failed to read font family from localStorage:", err);
+  }
   return "inter";
 }
 
@@ -337,7 +341,9 @@ export function loadThemeId(): ThemeId {
   try {
     const stored = localStorage.getItem(THEME_KEY);
     if (stored && stored in THEMES) return stored as ThemeId;
-  } catch {}
+  } catch (err) {
+    console.error("loadThemeId: failed to read theme from localStorage:", err);
+  }
   return "green";
 }
 

@@ -17,8 +17,8 @@ import {
   getTournamentPlayers,
   getPlayers,
   getRounds,
-  getMatchesByRound,
-  getSetsByMatch,
+  getAllMatchesByTournament,
+  getAllSetsByTournament,
   createRound,
   createMatch,
   upsertSet,
@@ -279,7 +279,7 @@ export default function TournamentView() {
   const navTeams = useMemo(() => {
     if (navTeamsFromState && navTeamsFromState.length > 0) return navTeamsFromState;
     if (tournament?.team_config) {
-      try { return JSON.parse(tournament.team_config) as [number, number][]; } catch {}
+      try { return JSON.parse(tournament.team_config) as [number, number][]; } catch (err) { console.error("TournamentView: failed to parse team_config JSON:", err); }
     }
     return undefined;
   }, [navTeamsFromState, tournament?.team_config]);
@@ -326,18 +326,24 @@ export default function TournamentView() {
     const r = await getRounds(tournamentId);
     setRounds(r);
 
-    const mbr = new Map<number, Match[]>();
-    const sbm = new Map<number, GameSet[]>();
-    const allMatches: Match[] = [];
+    // Bulk-load all matches and sets in 2 queries instead of N+1
+    const allMatches = await getAllMatchesByTournament(tournamentId);
+    const allSets = await getAllSetsByTournament(tournamentId);
 
-    for (const round of r) {
-      const matches = await getMatchesByRound(round.id);
-      mbr.set(round.id, matches);
-      allMatches.push(...matches);
-      for (const match of matches) {
-        const sets = await getSetsByMatch(match.id);
-        sbm.set(match.id, sets);
-      }
+    // Group matches by round
+    const mbr = new Map<number, Match[]>();
+    for (const match of allMatches) {
+      const arr = mbr.get(match.round_id);
+      if (arr) arr.push(match);
+      else mbr.set(match.round_id, [match]);
+    }
+
+    // Group sets by match
+    const sbm = new Map<number, GameSet[]>();
+    for (const set of allSets) {
+      const arr = sbm.get(set.match_id);
+      if (arr) arr.push(set);
+      else sbm.set(set.match_id, [set]);
     }
 
     setMatchesByRound(mbr);
@@ -1197,7 +1203,9 @@ export default function TournamentView() {
       const bc = new BroadcastChannel(`tournament-${tournamentId}`);
       bc.postMessage({ type: "announce", court, team1, team2 });
       bc.close();
-    } catch {}
+    } catch (err) {
+      console.error("TournamentView: failed to send announcement via BroadcastChannel:", err);
+    }
   };
 
   const handleReopenMatch = async (matchId: number) => {

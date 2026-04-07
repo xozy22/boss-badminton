@@ -37,7 +37,7 @@ export interface HallConfig {
 
 export function parseHallConfig(json: string | null): HallConfig[] {
   if (!json) return [];
-  try { return JSON.parse(json) as HallConfig[]; } catch { return []; }
+  try { return JSON.parse(json) as HallConfig[]; } catch (err) { console.error("parseHallConfig: failed to parse hall config JSON:", err); return []; }
 }
 
 export function hallConfigTotalCourts(config: HallConfig[]): number {

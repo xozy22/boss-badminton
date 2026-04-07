@@ -217,7 +217,9 @@ export default function TournamentCreate() {
         try {
           const teams = JSON.parse(td.team_config) as [number, number][];
           setManualTeams(teams);
-        } catch {}
+        } catch (err) {
+          console.error("TournamentCreate: failed to parse team_config JSON:", err);
+        }
       }
       setEditLoaded(true);
     };

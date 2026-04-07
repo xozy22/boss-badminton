@@ -14,7 +14,9 @@ function getThresholds(): { warningMin: number; dangerMin: number } {
         dangerMin: s.timerDangerMin ?? 30,
       };
     }
-  } catch {}
+  } catch (err) {
+    console.error("getThresholds: failed to load timer settings from localStorage:", err);
+  }
   return { warningMin: 20, dangerMin: 30 };
 }
 

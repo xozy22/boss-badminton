@@ -5,13 +5,22 @@ export function shufflePlayers<T>(arr: T[]): T[] {
   return shuffle(arr);
 }
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+function shuffle<T>(array: T[]): T[] {
+  const arr = [...array];
+  const randomValues = new Uint32Array(arr.length);
+  crypto.getRandomValues(randomValues);
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = randomValues[i] % (i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  return a;
+  return arr;
+}
+
+/** Crypto-secure random number in [0, 1) — replacement for Math.random() */
+function cryptoRandom(): number {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0] / (0xFFFFFFFF + 1);
 }
 
 // --- Round Robin (Singles) ---
@@ -106,7 +115,7 @@ export function generateRandomDoublesRound(
         const ca = matchCounts.get(a) ?? 0;
         const cb = matchCounts.get(b) ?? 0;
         if (cb !== ca) return cb - ca;
-        return Math.random() - 0.5;
+        return cryptoRandom() - 0.5;
       });
       for (let i = 0; i < byeCount; i++) {
         const pid = sorted[i];

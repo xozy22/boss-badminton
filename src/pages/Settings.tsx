@@ -38,7 +38,9 @@ export function loadSettings(): AppSettings {
       }
       return { ...DEFAULT_SETTINGS, ...parsed };
     }
-  } catch {}
+  } catch (err) {
+    console.error("loadSettings: failed to parse settings from localStorage:", err);
+  }
   return { ...DEFAULT_SETTINGS };
 }
 
@@ -120,6 +122,7 @@ export default function Settings() {
       const path = await invoke<string>("get_db_path");
       setDbPath(path);
     } catch (err) {
+      console.error("Settings: failed to load DB path:", err);
       setDbPath(t.settings_db_path_error);
     }
     setLoading(false);
@@ -589,7 +592,7 @@ const LOGO_CACHE_KEY = "turnierplaner_logo_cache"; // localStorage cache for syn
 
 // Sync getter (uses localStorage cache, populated from DB on load)
 export function getCustomLogo(): string | null {
-  try { return localStorage.getItem(LOGO_CACHE_KEY); } catch { return null; }
+  try { return localStorage.getItem(LOGO_CACHE_KEY); } catch (err) { console.error("getCustomLogo: failed to read logo from localStorage:", err); return null; }
 }
 
 // Async: load from DB and update cache

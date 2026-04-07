@@ -76,7 +76,7 @@ export default function TemplateExportModal({
                 template.players = players.map((p) => ({ id: p.id, name: playerDisplayName(p), gender: p.gender }));
               }
               if (templateInclude.teams && tournament.team_config) {
-                try { template.team_config = JSON.parse(tournament.team_config); } catch {}
+                try { template.team_config = JSON.parse(tournament.team_config); } catch (err) { console.error("TemplateExport: failed to parse team_config JSON:", err); }
               }
               const json = JSON.stringify(template, null, 2);
               const blob = new Blob([json], { type: "application/json" });

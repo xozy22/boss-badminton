@@ -124,7 +124,8 @@ export default function PrintDialog({
         if (path) {
           await writeFile(path, new Uint8Array(pdf.output("arraybuffer")));
         }
-      } catch {
+      } catch (err) {
+        console.error("PrintDialog: Tauri file save failed, falling back to browser download:", err);
         // Fallback: browser download if not in Tauri
         pdf.save(`${tournament.name.replace(/[^a-zA-Z0-9-_ ]/g, "")}_report.pdf`);
       }
@@ -173,7 +174,8 @@ export default function PrintDialog({
         if (path) {
           await writeFile(path, pdfBytes);
         }
-      } catch {
+      } catch (err) {
+        console.error("PrintDialog: Tauri certificate save failed, falling back to browser download:", err);
         // Fallback: browser download if not in Tauri
         const blob = new Blob([new Uint8Array(pdfBytes) as BlobPart], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
@@ -206,8 +208,9 @@ export default function PrintDialog({
             collectedStyles += rule.cssText + "\n";
           }
         }
-      } catch {
+      } catch (err) {
         // Cross-origin stylesheets can't be read — skip
+        console.error("PrintDialog: failed to read cross-origin stylesheet:", err);
       }
     }
 

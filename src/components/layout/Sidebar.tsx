@@ -11,7 +11,7 @@ export default function Sidebar() {
   const { theme } = useTheme();
   const { t } = useT();
   const [collapsed, setCollapsed] = useState(() => {
-    try { return localStorage.getItem(COLLAPSED_KEY) === "true"; } catch { return false; }
+    try { return localStorage.getItem(COLLAPSED_KEY) === "true"; } catch (err) { console.error("Sidebar: failed to read collapsed state from localStorage:", err); return false; }
   });
   const [customLogo, setCustomLogo] = useState<string | null>(() => getCustomLogo());
 

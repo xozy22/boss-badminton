@@ -125,11 +125,13 @@ export async function createPlayer(firstName: string, lastName: string, gender: 
     // Try with first_name/last_name columns first, fall back to name-only if columns don't exist
     try {
       await d.execute("INSERT INTO players (name, first_name, last_name, gender, birth_date, club) VALUES ($1, $2, $3, $4, $5, $6)", [fullName, fn, ln, gender, birthDate || null, club || null]);
-    } catch {
+    } catch (err) {
+      console.error("createPlayer: first_name/last_name columns not available, falling back:", err);
       // Fallback: columns may not exist yet if migration failed
       try {
         await d.execute("INSERT INTO players (name, gender, birth_date, club) VALUES ($1, $2, $3, $4)", [fullName, gender, birthDate || null, club || null]);
-      } catch {
+      } catch (err2) {
+        console.error("createPlayer: birth_date column not available, falling back:", err2);
         // Final fallback: without birth_date column
         await d.execute("INSERT INTO players (name, gender, club) VALUES ($1, $2, $3)", [fullName, gender, club || null]);
       }
@@ -157,10 +159,12 @@ export async function updatePlayer(id: number, firstName: string, lastName: stri
     const d = await getTauriDb();
     try {
       await d.execute("UPDATE players SET name = $1, first_name = $2, last_name = $3, gender = $4, birth_date = $5, club = $6 WHERE id = $7", [fullName, fn, ln, gender, birthDate ?? null, club ?? null, id]);
-    } catch {
+    } catch (err) {
+      console.error("updatePlayer: first_name/last_name columns not available, falling back:", err);
       try {
         await d.execute("UPDATE players SET name = $1, gender = $2, birth_date = $3, club = $4 WHERE id = $5", [fullName, gender, birthDate ?? null, club ?? null, id]);
-      } catch {
+      } catch (err2) {
+        console.error("updatePlayer: birth_date column not available, falling back:", err2);
         await d.execute("UPDATE players SET name = $1, gender = $2, club = $3 WHERE id = $4", [fullName, gender, club ?? null, id]);
       }
     }
@@ -866,6 +870,43 @@ export async function getSetsByMatch(matchId: number): Promise<GameSet[]> {
   return store.sets
     .filter((s) => s.match_id === matchId)
     .sort((a, b) => a.set_number - b.set_number);
+}
+
+// --- Bulk queries (avoid N+1 per-round/per-match fetching) ---
+
+export async function getAllMatchesByTournament(tournamentId: number): Promise<Match[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    return d.select(
+      "SELECT m.* FROM matches m JOIN rounds r ON m.round_id = r.id WHERE r.tournament_id = $1 ORDER BY r.round_number, m.id",
+      [tournamentId]
+    );
+  }
+  const store = loadStore();
+  const roundIds = new Set(
+    store.rounds.filter((r) => r.tournament_id === tournamentId).map((r) => r.id)
+  );
+  return store.matches
+    .filter((m) => roundIds.has(m.round_id))
+    .sort((a, b) => a.id - b.id);
+}
+
+export async function getAllSetsByTournament(tournamentId: number): Promise<GameSet[]> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    return d.select(
+      "SELECT s.* FROM sets s JOIN matches m ON s.match_id = m.id JOIN rounds r ON m.round_id = r.id WHERE r.tournament_id = $1",
+      [tournamentId]
+    );
+  }
+  const store = loadStore();
+  const roundIds = new Set(
+    store.rounds.filter((r) => r.tournament_id === tournamentId).map((r) => r.id)
+  );
+  const matchIds = new Set(
+    store.matches.filter((m) => roundIds.has(m.round_id)).map((m) => m.id)
+  );
+  return store.sets.filter((s) => matchIds.has(s.match_id));
 }
 
 export async function upsertSet(

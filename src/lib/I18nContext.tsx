@@ -13,14 +13,18 @@ export function loadLang(): Lang {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === "en" || stored === "de") return stored;
-  } catch {}
+  } catch (err) {
+    console.error("loadLang: failed to read language from localStorage:", err);
+  }
   return "en";
 }
 
 export function saveLang(lang: Lang): void {
   try {
     localStorage.setItem(STORAGE_KEY, lang);
-  } catch {}
+  } catch (err) {
+    console.error("saveLang: failed to save language to localStorage:", err);
+  }
 }
 
 interface I18nContextValue {
