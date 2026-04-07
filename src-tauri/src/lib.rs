@@ -186,6 +186,10 @@ pub fn run() {
                     gender TEXT NOT NULL CHECK(gender IN ('m', 'f')),
                     age INTEGER,
                     club TEXT,
+                    birth_year INTEGER,
+                    birth_date TEXT,
+                    first_name TEXT,
+                    last_name TEXT,
                     created_at TEXT NOT NULL DEFAULT (datetime('now'))
                 );
 
@@ -251,6 +255,8 @@ pub fn run() {
                     status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'active', 'completed')),
                     court INTEGER,
                     court_assigned_at TEXT,
+                    started_at TEXT,
+                    completed_at TEXT,
                     FOREIGN KEY (round_id) REFERENCES rounds(id) ON DELETE CASCADE,
                     FOREIGN KEY (team1_p1) REFERENCES players(id),
                     FOREIGN KEY (team1_p2) REFERENCES players(id),
@@ -276,41 +282,36 @@ pub fn run() {
         },
         Migration {
             version: 2,
-            description: "add match duration tracking columns",
+            description: "migrate data - duration tracking (columns now in v1)",
             sql: "
-                ALTER TABLE matches ADD COLUMN started_at TEXT;
-                ALTER TABLE matches ADD COLUMN completed_at TEXT;
+                UPDATE matches SET started_at = NULL WHERE started_at IS NULL;
             ",
             kind: MigrationKind::Up,
         },
         Migration {
             version: 3,
-            description: "add birth_year column and migrate age data",
+            description: "migrate data - birth_year from age",
             sql: "
-                ALTER TABLE players ADD COLUMN birth_year INTEGER;
-                UPDATE players SET birth_year = (CAST(strftime('%Y', 'now') AS INTEGER) - age) WHERE age IS NOT NULL AND age > 0 AND age < 200;
+                UPDATE players SET birth_year = (CAST(strftime('%Y', 'now') AS INTEGER) - age) WHERE age IS NOT NULL AND age > 0 AND age < 200 AND birth_year IS NULL;
             ",
             kind: MigrationKind::Up,
         },
         Migration {
             version: 4,
-            description: "rename birth_year to birth_date",
+            description: "migrate data - birth_date from birth_year",
             sql: "
-                ALTER TABLE players ADD COLUMN birth_date TEXT;
-                UPDATE players SET birth_date = (birth_year || '-01-01') WHERE birth_year IS NOT NULL;
+                UPDATE players SET birth_date = (birth_year || '-01-01') WHERE birth_year IS NOT NULL AND birth_date IS NULL;
             ",
             kind: MigrationKind::Up,
         },
         Migration {
             version: 5,
-            description: "split player name into first_name and last_name",
+            description: "migrate data - split name into first/last",
             sql: "
-                ALTER TABLE players ADD COLUMN first_name TEXT;
-                ALTER TABLE players ADD COLUMN last_name TEXT;
                 UPDATE players SET
                   first_name = CASE WHEN INSTR(name, ' ') > 0 THEN SUBSTR(name, 1, INSTR(name, ' ') - 1) ELSE name END,
                   last_name = CASE WHEN INSTR(name, ' ') > 0 THEN SUBSTR(name, INSTR(name, ' ') + 1) ELSE '' END
-                WHERE name IS NOT NULL;
+                WHERE first_name IS NULL AND name IS NOT NULL;
             ",
             kind: MigrationKind::Up,
         },
