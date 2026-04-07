@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { createPlayer, getPlayers } from "../../lib/db";
 import type { Gender, Player } from "../../lib/types";
 import { playerDisplayName } from "../../lib/types";
@@ -117,7 +117,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
   const [importing, setImporting] = useState(false);
 
   // Workbook ref for sheet switching
-  const workbookRef = useRef<XLSX.WorkBook | null>(null);
+  const workbookRef = useRef<ExcelJS.Workbook | null>(null);
 
   useEffect(() => {
     getPlayers().then(setExistingPlayers);
@@ -128,23 +128,50 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
-      const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: "array", cellDates: true });
+    reader.onload = async (evt) => {
+      const arrayBuffer = evt.target?.result as ArrayBuffer;
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(arrayBuffer);
       workbookRef.current = wb;
 
-      setSheets(wb.SheetNames);
-      if (wb.SheetNames.length > 0) {
-        loadSheet(wb, wb.SheetNames[0]);
+      const sheetNames = wb.worksheets.map((ws) => ws.name);
+      setSheets(sheetNames);
+      if (sheetNames.length > 0) {
+        loadSheet(wb, sheetNames[0]);
       }
     };
     reader.readAsArrayBuffer(file);
   };
 
-  const loadSheet = (wb: XLSX.WorkBook, sheetName: string) => {
+  function worksheetToJson(ws: ExcelJS.Worksheet): Record<string, unknown>[] {
+    const rows: Record<string, unknown>[] = [];
+    const headers: string[] = [];
+    ws.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) {
+        // Header row
+        row.eachCell((cell, colNumber) => {
+          headers[colNumber] = cell.value != null ? String(cell.value) : `Column${colNumber}`;
+        });
+        return;
+      }
+      const obj: Record<string, unknown> = {};
+      row.eachCell((cell, colNumber) => {
+        const key = headers[colNumber] ?? `Column${colNumber}`;
+        obj[key] = cell.value instanceof Date ? cell.value : cell.value;
+      });
+      // Only add row if it has at least one non-empty value
+      if (Object.keys(obj).length > 0) {
+        rows.push(obj);
+      }
+    });
+    return rows;
+  }
+
+  const loadSheet = (wb: ExcelJS.Workbook, sheetName: string) => {
     setSelectedSheet(sheetName);
-    const ws = wb.Sheets[sheetName];
-    const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+    const ws = wb.getWorksheet(sheetName);
+    if (!ws) return;
+    const json = worksheetToJson(ws);
     setRawData(json);
 
     if (json.length > 0) {

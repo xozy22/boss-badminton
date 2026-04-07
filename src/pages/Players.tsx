@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { getPlayers, createPlayer, updatePlayer, deletePlayer } from "../lib/db";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import type { Player, Gender } from "../lib/types";
 import { calculateAge, playerDisplayName } from "../lib/types";
 import ExcelImport from "../components/players/ExcelImport";
@@ -210,19 +210,27 @@ export default function Players() {
   const someSelected = selectedIds.size > 0;
 
   const handleExport = async () => {
-    const data = players.map((p) => ({
-      [t.common_first_name]: p.first_name,
-      [t.common_last_name]: p.last_name,
-      [t.common_gender]: p.gender === "m" ? t.common_gender_male : t.common_gender_female,
-      [t.common_birth_date]: p.birth_date ?? "",
-      [t.common_age]: calculateAge(p.birth_date) ?? "",
-      [t.common_club]: p.club ?? "",
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    ws["!cols"] = [{ wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 25 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Spieler");
-    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Spieler");
+    ws.columns = [
+      { header: t.common_first_name, key: "first_name", width: 20 },
+      { header: t.common_last_name, key: "last_name", width: 20 },
+      { header: t.common_gender, key: "gender", width: 12 },
+      { header: t.common_birth_date, key: "birth_date", width: 12 },
+      { header: t.common_age, key: "age", width: 8 },
+      { header: t.common_club, key: "club", width: 25 },
+    ];
+    for (const p of players) {
+      ws.addRow({
+        first_name: p.first_name,
+        last_name: p.last_name,
+        gender: p.gender === "m" ? t.common_gender_male : t.common_gender_female,
+        birth_date: p.birth_date ?? "",
+        age: calculateAge(p.birth_date) ?? "",
+        club: p.club ?? "",
+      });
+    }
+    const buf = await wb.xlsx.writeBuffer();
 
     if ((window as any).__TAURI_INTERNALS__) {
       try {

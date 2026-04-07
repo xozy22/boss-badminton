@@ -102,7 +102,7 @@ export async function getPlayers(): Promise<Player[]> {
         first_name: firstName,
         last_name: lastName,
         gender: r.gender,
-        birth_date: r.birth_date ?? r.age ? null : null,
+        birth_date: r.birth_date ?? null,
         club: r.club,
         created_at: r.created_at,
       };
@@ -181,11 +181,8 @@ export async function updatePlayer(id: number, firstName: string, lastName: stri
 export async function deletePlayer(id: number): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();
-    // Remove player references from matches (set to NULL) to avoid FK issues
-    await d.execute("UPDATE matches SET team1_p1 = NULL WHERE team1_p1 = $1", [id]);
-    await d.execute("UPDATE matches SET team1_p2 = NULL WHERE team1_p2 = $1", [id]);
-    await d.execute("UPDATE matches SET team2_p1 = NULL WHERE team2_p1 = $1", [id]);
-    await d.execute("UPDATE matches SET team2_p2 = NULL WHERE team2_p2 = $1", [id]);
+    // Keep matches as historical records (player name remains in the players table row is gone,
+    // but matches keep the old player IDs which is fine since FK has no ON DELETE CASCADE for matches).
     await d.execute("DELETE FROM tournament_players WHERE player_id = $1", [id]);
     await d.execute("DELETE FROM players WHERE id = $1", [id]);
     return;
@@ -920,13 +917,23 @@ export async function upsertSet(
 export async function wipeAllPlayers(): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();
+    // Delete in correct order to respect FK constraints:
+    // sets -> matches -> rounds -> tournament_players -> tournaments -> players
+    await d.execute("DELETE FROM sets");
+    await d.execute("DELETE FROM matches");
+    await d.execute("DELETE FROM rounds");
     await d.execute("DELETE FROM tournament_players");
+    await d.execute("DELETE FROM tournaments");
     await d.execute("DELETE FROM players");
     return;
   }
   const store = loadStore();
   store.players = [];
   store.tournamentPlayers = [];
+  store.sets = [];
+  store.matches = [];
+  store.rounds = [];
+  store.tournaments = [];
   saveStore(store);
 }
 

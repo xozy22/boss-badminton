@@ -145,11 +145,24 @@ fn restore_db(app_handle: tauri::AppHandle, source_path: String) -> Result<(), S
 }
 
 #[tauri::command]
-fn open_folder(path: String) -> Result<(), String> {
+fn open_folder(app_handle: tauri::AppHandle, path: String) -> Result<(), String> {
     let p = PathBuf::from(&path);
     if !p.exists() || !p.is_dir() {
         return Err(format!("Pfad existiert nicht oder ist kein Verzeichnis: {}", path));
     }
+
+    // Validate that the path is within the app data directory
+    let app_data_dir = app_handle.path().app_data_dir()
+        .map_err(|e| format!("Kann App-Datenverzeichnis nicht ermitteln: {}", e))?;
+    let canonical_path = p.canonicalize()
+        .map_err(|e| format!("Pfad konnte nicht aufgeloest werden: {}", e))?;
+    let canonical_app_dir = app_data_dir.canonicalize()
+        .map_err(|e| format!("App-Datenverzeichnis konnte nicht aufgeloest werden: {}", e))?;
+
+    if !canonical_path.starts_with(&canonical_app_dir) {
+        return Err("Zugriff verweigert: Pfad liegt ausserhalb des App-Datenverzeichnisses".to_string());
+    }
+
     #[cfg(target_os = "windows")]
     {
         std::process::Command::new("explorer")
