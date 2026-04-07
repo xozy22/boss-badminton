@@ -5,11 +5,12 @@
 <h1 align="center">BOSS - Badminton Operating &amp; Scheduling System</h1>
 
 <p align="center">
-  Eine Desktop-App zur Planung und Durchfuehrung vereinsinterner Badminton-Turniere.<br/>
-  Gebaut mit <a href="https://tauri.app/">Tauri</a>, React und SQLite. Verfuegbar auf Englisch und Deutsch.
+  Eine plattformuebergreifende Desktop-Anwendung zur Planung und Durchfuehrung von Badminton-Turnieren.<br/>
+  Gebaut mit <a href="https://tauri.app/">Tauri 2</a>, React, TypeScript und SQLite. Verfuegbar auf Englisch und Deutsch.
 </p>
 
 <p align="center">
+  <a href="https://github.com/xozy22/boss-badminton">GitHub Repository</a> &middot;
   <a href="README.md">🇬🇧 English Version</a>
 </p>
 
@@ -30,75 +31,56 @@
 ## Features
 
 ### Turnierverwaltung
-- **3 Modi**: Einzel, Doppel, Mixed
 - **9 Formate**: Jeder gegen Jeden, KO-System, Wechselnde Partner, Gruppenphase + KO, Schweizer System, Doppel-KO, Monrad, King of the Court, Waterfall
-- **Format-Info-Modal**: Ausfuehrliche Beschreibung, ASCII-Diagramm, Vor-/Nachteile fuer jedes Format
-- **Gruppenphase + KO**: Konfigurierbare Gruppenanzahl (2-8), Qualifikanten pro Gruppe (Top 1-4), dann KO-Runde
-  - Einzel: Individuelle Spieler qualifizieren sich
-  - Doppel/Mixed: Feste Teams bleiben durch Gruppenphase und KO bestehen
-  - **Dynamische Tabs**: Gruppentabellen, KO-Bracket, Rangliste als separate Tabs
-  - **Intelligente Warteschlange**: "Alle Gruppen"-Modus zeigt Spiele aus allen Gruppen gleichzeitig - kein unnoetiges Warten
-  - **Gruppen-Buttons**: Pro Gruppe navigierbar, Zeilenumbruch zwischen Gruppen
-  - **Druckansicht**: Gruppentabellen mit Q-Badge, separate Gruppen-/KO-Ueberschriften
-- **Schweizer System**: Paarungen nach aktuellem Tabellenstand, kein Ausscheiden, konfigurierbare Rundenanzahl
-- **Doppel-KO**: Gewinner- + Verlierer-Klammer, erst nach zwei Niederlagen ausgeschieden, Grosses Finale
-- **Monrad-System**: Strikte Paarung nach Platzierung (#1 vs #2), beliebt in Skandinavien
-- **King of the Court**: Gewinner bleibt auf dem Feld, Verlierer in die Warteschlange, Dauerspiel
-- **Waterfall**: Spieler rotieren durch nummerierte Felder, Gewinner steigt auf, Verlierer ab
-- **KO-Bracket-Ansicht**: Visueller Turnierbaum als eigener Tab, moegliche Teilnehmer in Grau, bestaetigte Gewinner sofort sichtbar
-- **Konfigurierbar**: Saetze (Best of 1/3/5), Punkte pro Satz, Spielfelder (1-8)
-- **Setzliste/Seeding**: Optionales Seeding fuer KO-Turniere per Drag & Drop oder Pfeiltasten
+- **Format-Info-Modal**: Ausfuehrliche Beschreibung mit ASCII-Diagramm und Vor-/Nachteile fuer jedes Format
+- **3 Modi**: Einzel, Doppel, Mixed
 - **Turnier-Wizard**: Schrittweise Erstellung mit Tab-Navigation (Einstellungen -> Spieler -> Teams -> Setzliste -> Erstellen)
-  - Auto-Save: Alle Aenderungen werden automatisch gespeichert (kein Datenverlust bei Navigation)
+  - Auto-Save bei jedem Schritt - kein Datenverlust beim Wechseln zwischen Tabs
   - Draft-Zusammenfassung mit allen Einstellungen und Teilnehmern vor dem Start
-  - Start-Button erst nach Wizard-Abschluss aktiviert
+  - Start-Button erst nach Wizard-Abschluss und Team-Validierung aktiviert
   - Vereinsfilter + Geschlechterfilter + Suche bei Spielerauswahl
-  - Auto-Fokus Suchfeld nach Auswahl (schnelles Hinzufuegen)
+  - Auto-Fokus Suchfeld nach Auswahl fuer schnelles Hinzufuegen
   - Ausgewaehlte Spieler als farbige Chips (blau/pink nach Geschlecht)
-- **Manuelle Team-Zuordnung**: Klick-Pairing fuer Doppel/Mixed - zwei Spieler nacheinander anklicken bildet ein Team
-  - Im Mixed-Modus: Damen/Herren in getrennten Spalten, gleiches Geschlecht wird ausgegraut
+- **Manuelle Team-Zuordnung**: Zwei Spieler nacheinander anklicken bildet ein Team in Doppel/Mixed
+  - Mixed-Modus: Damen/Herren in getrennten Spalten, gleiches Geschlecht ausgegraut
   - "Restliche automatisch zuordnen" fuer schnelles Auffuellen
   - Teams werden persistiert und beim Bearbeiten wiederhergestellt
   - Turniererstellung blockiert bis alle Teams gebildet sind
+- **Smarte KO-Qualifikation**: KO-Bracket-Groesse waehlbar (4/8/16/32), automatisch mit besten Nachrueckern aufgefuellt
+- **Prozentuale Rangliste**: Siegquote %, Satzquote %, Punktequote %
 - **Startgeld-Verwaltung**: Intelligente Abrechnung pro Person oder pro Team
   - Feste Teams (KO, Gruppen+KO, Doppel-KO): Eine Zahlung pro Team, Partner automatisch als bezahlt markiert
   - Nicht-feste Teams + Einzel: Individuelle Zahlung pro Spieler
-  - Zahlungsstatus pro Spieler (Bar, Ueberweisung, PayPal)
-  - Datum der Zahlung (editierbar)
+  - Zahlungsstatus pro Spieler (Bar, Ueberweisung, PayPal) mit editierbarem Datum
   - Bezahlter (gruen) und offener (rot) Betrag im Header sichtbar
-- **Turnier bearbeiten**: Draft-Turniere komplett bearbeitbar (alle Wizard-Tabs)
-- **Turnier loeschen**: Draft-Turniere loeschbar mit Bestaetigungsdialog
+  - Uebersicht mit Gesamtsumme, gruppiert nach Verein
+- **Setzliste/Seeding**: Drag & Drop oder Pfeiltasten fuer KO-Turnier-Seeding
 - **Vorlagen-System**: Turniere als JSON-Datei exportieren/importieren
   - Waehlbar: Einstellungen, Spieler, Teams (einzeln oder kombiniert)
   - Spieler werden beim Import per Name gematcht (ID-unabhaengig)
   - Teams werden automatisch remapped
-- **Tab-Navigation im Turnierbetrieb**: Spiele | Rangliste | Verwaltung
 - **Archivierung**: Beendete Turniere archivieren und wiederherstellen
-- **Turnier wieder oeffnen**: Versehentlich beendet? Abgeschlossene Turniere wieder aktivieren
-- **Verletzung aufheben**: Verletzte Spieler fuer zukuenftige Runden wiederherstellen (Walkovers bleiben)
-- **Letzte Runde rueckgaengig**: Versehentlich neue Runde gestartet? Loeschen und zurueck
-- **Auto-Benennung**: Turniername wird automatisch generiert (Datum - Modus - Format), editierbar
+- **Turnier wieder oeffnen**: Versehentlich beendete Turniere reaktivieren
+- **Letzte Runde rueckgaengig**: Letzte Runde loeschen und zurueck
+- **Verletzung/Aufgabe mit Rueckgaengig**: Spieler als verletzt markieren (Walkovers fuer offene Spiele), fuer zukuenftige Runden wiederherstellen (Walkovers bleiben erhalten)
+- **Auto-Benennung**: Turniername automatisch generiert aus Datum + Modus + Format, editierbar
 
 ### Spielerverwaltung
-- Spieler anlegen, bearbeiten, loeschen mit **Vorname**, **Nachname**, **Geburtsdatum** (Alter automatisch berechnet) und **Verein**
-- **Verein-Autocomplete**: Vorhandene Vereine als Dropdown, Freitext fuer neue Vereine
-- **Excel-Import** mit Spaltenmapping (Vorname, Nachname, Geschlecht, Geburtsdatum/Alter, Verein) und Fuzzy-Duplikaterkennung
-- **Fuzzy-Duplikaterkennung**: Levenshtein-basierte Aehnlichkeitspruefung erkennt Tippfehler (z.B. "Schmidt" vs "Schmitt")
-- **Excel-Import im Turnier-Wizard**: Spieler direkt bei Turniererstellung importieren, alle automatisch ausgewaehlt
-- **Excel-Export** mit nativem Speichern-Dialog (inkl. Vorname, Nachname, Geburtsdatum + Alter + Verein)
-- **Sortierbare Spalten**: Klick auf Spaltenheader sortiert nach Vor- oder Nachname (auf-/absteigend)
-- Geschlechter-Filter und Suchfunktion bei der Spielerauswahl
-- **Verletzung/Aufgabe**: Spieler als verletzt markieren - scheidet fuer restliches Turnier aus
-  - Gestylter Modal-Dialog (kein Browser-Popup) mit Warnung bei Team-Auswirkungen
-  - Bei festen Teams: Partner scheidet automatisch mit aus
-  - Bei Wechselnden Partnern: Nur verletzter Spieler scheidet aus
-  - Alle offenen Spiele werden als Freilos fuer den Gegner gewertet
+- **Vorname + Nachname** als separate Felder
+- **Geburtsdatum** mit automatisch berechnetem Alter
+- **Verein** mit Autocomplete-Dropdown (vorhandene Vereine vorgeschlagen, Freitext fuer neue)
+- **Excel-Import** (ExcelJS) mit Spaltenmapping und Fuzzy-Duplikaterkennung (Levenshtein-basierte Aehnlichkeitspruefung erkennt Tippfehler wie "Schmidt" vs "Schmitt")
+- **Excel-Import im Turnier-Wizard**: Spieler direkt bei Erstellung importieren, alle automatisch ausgewaehlt
+- **Excel-Export** mit nativem Speichern-Dialog (Vorname, Nachname, Geburtsdatum, Alter, Verein)
+- **Sortierbare Spalten**: Klick auf Header sortiert nach Vor- oder Nachname (auf-/absteigend)
+- **Geschlechterfilter + Suche** bei der Spielerauswahl
+- **Verletzung/Aufgabe**: Gestylter Modal-Dialog mit Team-Auswirkungs-Warnung; feste Teams schliessen Partner automatisch aus, wechselnde Partner schliessen nur den verletzten Spieler aus
 
-### Sportstaetten-Verwaltung
+### Sportstaetten
 - **Hallen mit individueller Feldanzahl**: Jede Sportstaette hat mehrere Hallen, jede Halle eigene Felder
 - Inline Hallen-Editor: Name + Feldanzahl pro Halle, Hinzufuegen/Entfernen
 - **JSON Export/Import**: Sportstaetten als Datei exportieren und importieren
-- **Turnier-Integration**: Bei Turniererstellung Sportstaette waehlen -> Hallen per Checkbox auswaehlen
+- **Turnier-Integration**: Bei Turniererstellung Sportstaette waehlen, Hallen per Checkbox auswaehlen
 - **Gruppierte Court-Anzeige**: Felder im Turnier nach Halle gruppiert mit Sektions-Headern
 - **Standard-Hallen in Einstellungen**: Greifen wenn keine Sportstaette gewaehlt
 
@@ -114,86 +96,72 @@
   - "Beendet": Kompakte Einzeiler mit Satzstand + Einzelpunkten (z.B. 2:0 (21:15, 21:18)), aufklappbar
   - 3-Sekunden-Delay: Frisch beendete Spiele bleiben kurz sichtbar bevor sie nach unten rutschen
   - Bearbeitete Spiele bleiben in der Beendet-Sektion (kein Hochrutschen)
-- **Ergebniserfassung**: Satz-Ergebnisse eintragen mit Auto-Vervollstaendigung
-- **Badminton-Regelkonform**: Rallypoint-System bis 21, Verlaengerung bei 20:20, Deckelung bei 30
+- **Auto-Fill Score**: Badminton Rallypoint-System bis 21, Verlaengerung bei 20:20, Deckelung bei 30
 - **Score-Validierung**: Ungueltige Ergebnisse werden erkannt und markiert
-- **Faire Auslosung**: Bei ungerader Spielerzahl setzt der Spieler mit den meisten Spielen aus; bei Wechselnden Partnern werden bisherige Partnerschaften gewichtet vermieden
-- **Turnier kann nicht beendet werden** solange Spiele offen sind
+- **Gewinner-Auto-Reset**: Bei Ergebniskorrektur wird der Gewinner automatisch zurueckgesetzt
+- **Faire Auslosung**: Bei ungerader Spielerzahl setzt der Spieler mit den meisten Spielen aus; bei wechselnden Partnern werden bisherige Partnerschaften gewichtet vermieden
+- **Court-Timer**: Konfigurierbare Warnung (gelb) und Kritisch (rot) Schwellenwerte
 
 ### TV-/Beamer-Modus
-- **Separates Fenster** optimiert fuer Querformat und Lesbarkeit aus der Ferne
-- Oeffnet maximiert (verschiebbar auf zweiten Monitor), nicht im Vollbild
-- **F11** = Vollbild-Toggle, **Escape** = Fenster schliessen
-- Aktuelle Felderbelegung mit Live-Timer
-- Warteschlange: Naechste Spiele in der Reihenfolge
-- Letzte Ergebnisse mit Gewinner-Hervorhebung und Einzelpunkten
-- Spieleraufruf-Banner mit Animation ("Bitte zum Feld!")
+- **Separates Vollbild-Fenster** optimiert fuer Querformat und Lesbarkeit aus der Ferne
+- **Badminton Court SVG** als Hintergrundbild auf Feld-Karten
+- **Live-Timer** auf jedem Feld, Warteschlange, letzte Ergebnisse mit Gewinner-Hervorhebung
+- **Spieleraufruf-Banner** mit Animation ("Bitte zum Feld!")
+- **5-Sekunden-Polling** mit Bulk-Queries fuer Performance
 - Passt sich an das gewaehlte Farbdesign an
+- **F11** = Vollbild-Toggle, **Escape** = Fenster schliessen
+
+### Statistik-Dashboard
+- **Turnier-Uebersicht**: Turniere nach Status, Format-Verteilung, Modus-Verteilung
+- **Spiel-Statistiken**: Abgeschlossene Spiele, durchschnittliche/laengste/kuerzeste Dauer, Punkte pro Satz, knappstes Spiel
+- **Feldauslastung**: Genutzte Felder, Spiele pro Feld, durchschnittliche Zeit pro Feld
+- **Teilnehmer-Statistiken**: Geschlechterverteilung, Altersverteilung, Top-Vereine
+- **Turnier-uebergreifende Spieler-Rangliste**: Siegquote, Punkte pro Spiel, Medaillen fuer Top 3
+- **Turnier-Filter**: Statistiken fuer alle Turniere oder ein bestimmtes anzeigen
 
 ### Rangliste & Auswertung
-- **Live-Rangliste**: Sortiert nach prozentualer Siegquote, Satzquote, Punktequote
-- **Gruppen-Tabellen**: Bei Gruppenphase separate Tabelle pro Gruppe mit Qualifikanten-Markierung (Q)
-- **Smarte KO-Qualifikation**: KO-Bracket-Groesse waehlbar (4/8/16/32), automatisch mit besten Nachrueckern aufgefuellt
-- **Team-Standings**: Bei Doppel-Gruppenphase werden Teams (nicht Einzelspieler) gewertet
+- **Prozentuale Rangliste**: Siegquote %, Satzquote %, Punktequote %
+- **Gruppen-Tabellen**: Separate Tabelle pro Gruppe mit Qualifikanten-Markierung (Q)
+- **Smarte KO-Qualifikation**: Bracket-Groesse waehlbar (4/8/16/32), automatisch mit besten Nachrueckern aufgefuellt
 - **Medaillen**: Gold/Silber/Bronze fuer die Top 3
 - **Turnierbericht**: Druckbarer Bericht mit Highlights (knappstes Spiel, hoechster Sieg, meiste Punkte)
 - **Druckansicht**: Spielplan, aktuelle Runde, Rangliste oder kompletter Bericht
 - **PDF-Export**: Turnierbericht als PDF-Datei speichern
 - **Urkunden-Generator**: Festliche Urkunden fuer Platz 1-3 (Goldrahmen, BOSS-Branding, Unterschriftszeile)
 
-### Statistik-Dashboard
-- **Turnier-Uebersicht**: Turniere nach Status, Format-Verteilung, Modus-Verteilung
-- **Spiel-Statistiken**: Abgeschlossene Spiele, durchschnittliche/laengste/kuerzeste Spieldauer, Punkte pro Satz, knappstes Spiel
-- **Feldauslastung**: Genutzte Felder, Spiele pro Feld, durchschnittliche Zeit pro Feld
-- **Teilnehmer-Statistiken**: Geschlechterverteilung, Altersverteilung, Top-Vereine
-- **Spieler-Rangliste**: Turnier-uebergreifend mit Siegquote, Punkte pro Spiel, Medaillen fuer Top 3
-- **Spieldauer-Tracking**: Automatische Start-/Endzeitstempel fuer alle Spiele
-
 ### Sprache
-- **Englisch** (Standard) und **Deutsch** verfuegbar
-- Sprachauswahl in Einstellungen -> Sprache
+- **Englisch** (Standard) und **Deutsch**
+- Sprachauswahl in den Einstellungen
 - Sofortiger Wechsel, persistent gespeichert
 
 ### Design & Themes
 - **4 Farbdesigns**: Smaragd (Gruen), Saphir (Blau), Bernstein (Orange), Dunkel (Dark Mode)
-- Theme-Wechsel ueber Einstellungen -> Design, wird sofort angewendet
-- Vollstaendiger Dark Mode: Alle Seiten, Modals, Inputs, Tabellen, Bracket-Ansicht
-- **5 Schriftarten**: Inter, Nunito, Roboto, Poppins, Montserrat (alle lokal gebundelt)
-- **Schriftgroesse**: 7 Stufen (XXS bis XXL), persistent gespeichert
-- Theme wird persistent gespeichert
-- **Theme-konforme Druckansicht**: Druck-Report passt sich dem gewaehlten Farbschema an
-- **Standard-Logo**: BOSS Logo in Sidebar (zentriert), TV-Modus, Favicon und App-Icon
-- **Custom Vereinslogo**: Eigenes Logo hochladen mit Zuschnitt-Tool (1:1 Cropper)
-  - Wird in der Sidebar (mit Text) und im TV-Modus angezeigt
-  - Gespeichert in der SQLite-Datenbank (im Backup enthalten, wandert mit DB)
-- **Badminton-Court SVG**: Dezentes Spielfeld-Hintergrundbild auf den Feld-Karten
-
-### Sidebar
-- **Einklappbar**: Sidebar auf Icons reduzierbar fuer mehr Platz (persistent gespeichert)
-- Toggle-Button unten, Tooltip bei eingeklapptem Zustand
-- **Versionsanzeige**: Aktuelle App-Version unten in der Sidebar
+- **5 Schriftarten**: Inter, Nunito, Roboto, Poppins, Montserrat (alle lokal gebundelt fuer Offline-Nutzung)
+- **7 Schriftgroessen**: XXS, XS, S, M, L, XL, XXL - persistent gespeichert
+- Vollstaendiger **Dark Mode**: Alle Seiten, Modals, Inputs, Tabellen, Bracket-Ansicht
+- **Custom Vereinslogo**: Upload mit Zuschnitt-Tool (1:1 Cropper, 500KB Limit), gespeichert in SQLite (im Backup enthalten)
+- **Badminton Court SVG**: Dezentes Spielfeld-Hintergrundbild auf Feld-Karten
+- Theme-konforme Druckansicht passt sich dem gewaehlten Farbschema an
 
 ### Einstellungen
-- **Updates**: Manueller Update-Check ueber GitHub Releases mit Fortschrittsanzeige und Auto-Restart
+- **Auto-Update**: Automatische Pruefung beim App-Start (Banner-Benachrichtigung), manueller Check in Einstellungen
 - **Sprache**: Englisch / Deutsch Auswahl
-- **Design**: 4 Farbschemas (aufklappbar), Custom Vereinslogo mit Cropper
+- **Design**: 4 Farbdesigns, 5 Schriftarten, 7 Schriftgroessen, Custom Vereinslogo mit Cropper
 - **Voreinstellungen**: Standard-Spielfelder, Timer-Schwellenwerte (Warnung gelb, Kritisch rot)
 - **Datenbank**: Speicherort anzeigen/aendern, Backup & Wiederherstellung
-- **Gefahrenzone**: Spieler, Turniere oder komplette Datenbank loeschen (mit Sicherheitsabfrage)
-
-### Tastatur-Navigation
-- **Enter/Tab**: Springt zum naechsten Score-Feld (Team1 -> Team2 -> naechster Satz -> naechstes Match)
-- **Auto-Select**: Bei Fokus wird der Feldinhalt markiert (sofort ueberschreibbar)
-- Komplette Ergebniseingabe ohne Maus moeglich
+- **Gefahrenzone**: Alle Spieler loeschen, alle Turniere loeschen oder kompletter Datenbank-Reset (DROP + CREATE mit Sicherheitsabfrage)
 
 ### Technisch
-- **Installer**: Wahl zwischen Installation fuer alle Benutzer (Programme) oder nur aktuellen Benutzer
-- **Auto-Update**: Automatische Update-Pruefung beim Start (Banner-Benachrichtigung), manueller Check ueber Einstellungen, signierte Updates von GitHub Releases
-- **Offline-faehig**: Laeuft komplett lokal, kein Internet noetig (Font lokal gebundelt)
-- **Cross-Platform**: Windows + macOS Intel + macOS Apple Silicon (native Builds via GitHub Actions CI/CD)
-- **SQLite-Datenbank**: Robuste, persistente Datenspeicherung
-- **Backup & Restore**: Datenbank sichern und wiederherstellen mit nativem Dialog
-- **Konfigurierbarer Speicherort**: Datenbank an beliebigem Ort (z.B. USB-Stick)
+- **Cross-Platform**: Windows + macOS (Intel + Apple Silicon) ueber native Builds
+- **Auto-Update**: Signierte Releases von GitHub, automatische Pruefung beim Start, manueller Check in Einstellungen
+- **Offline-faehig**: Laeuft komplett lokal, kein Internet noetig (Schriftarten gebundelt)
+- **SQLite** mit Foreign-Key-Enforcement (PRAGMA)
+- **Bulk-Queries** fuer TV-Modus und performance-kritische Pfade
+- **Kryptografische Zufallszahlen**: `crypto.getRandomValues` fuer faire Auslosungen
+- **pnpm** Paketmanager
+- **GitHub Actions CI/CD** fuer plattformuebergreifende Builds
+- **ExcelJS** fuer Excel-Import/Export (ersetzt verwundbares xlsx/SheetJS)
+- **Eingeschraenkter Dateisystem-Zugriff**: Nur $APPDATA, $DOWNLOAD, $DESKTOP, $DOCUMENT zugaenglich
 
 ## Tech Stack
 
@@ -202,42 +170,44 @@
 | Desktop-Framework | [Tauri 2](https://tauri.app/) (Rust) |
 | Frontend | React 18 + TypeScript |
 | Styling | Tailwind CSS 4 |
-| Datenbank | SQLite (via tauri-plugin-sql) |
+| Datenbank | SQLite (tauri-plugin-sql) |
 | Build-Tool | Vite |
-| Excel | SheetJS (xlsx) |
-| Font | Inter (lokal gebundelt) |
+| Excel | ExcelJS |
+| Schriftarten | Inter, Nunito, Roboto, Poppins, Montserrat (gebundelt) |
+| Paketmanager | pnpm |
 
 ## Voraussetzungen
 
 Fuer die Entwicklung:
 
 - [Node.js](https://nodejs.org/) (v18+)
+- [pnpm](https://pnpm.io/)
 - [Rust](https://rustup.rs/) (stable)
 - [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/) mit C++ Workload (Windows)
 
 Fuer die Nutzung der fertigen App:
 
-- Windows 10/11 (x64) oder macOS
+- Windows 10/11 (x64) oder macOS (Intel / Apple Silicon)
 - WebView2 Runtime (auf Windows 10/11 vorinstalliert)
 
 ## Entwicklung
 
 ```bash
 # Abhaengigkeiten installieren
-npm install
+pnpm install
 
 # Entwicklungsserver starten (oeffnet Desktop-Fenster)
-npx tauri dev
+pnpm tauri dev
 
 # Release-Build erstellen
-npx tauri build
+pnpm tauri build
 ```
 
 Der erste Build dauert einige Minuten, da Rust alle Dependencies kompilieren muss. Nachfolgende Builds sind deutlich schneller.
 
 ## Build-Ausgabe
 
-Nach `npx tauri build` befinden sich die Installer unter:
+Nach `pnpm tauri build` befinden sich die Installer unter:
 
 ```
 src-tauri/target/release/bundle/
@@ -250,37 +220,49 @@ src-tauri/target/release/bundle/
 ```
 src/
 ├── components/
-│   ├── layout/        # Sidebar, Layout
 │   ├── bracket/       # KO-Bracket-Visualisierung
-│   ├── courts/        # Felduebersicht, Timer
+│   ├── courts/        # Felduebersicht, Court-Timer
+│   ├── layout/        # Sidebar, Layout
+│   ├── match/         # Match-Komponenten
 │   ├── players/       # Excel-Import
-│   ├── print/         # Druckansicht, Turnierbericht
-│   └── tournament/    # Extrahierte Turnier-Komponenten
+│   ├── print/         # Druckansicht, Turnierbericht, Urkunden-Generator
+│   ├── standings/     # Ranglisten-Komponenten
+│   └── tournament/    # Turnier-Komponenten (Format-Info, Team-Zuordnung,
+│                      #   Setzliste, Vorlagen, Verletzung, etc.)
 ├── hooks/
 │   └── useTimer.ts    # Court-Timer Hook
 ├── lib/
-│   ├── db.ts          # SQLite-Wrapper + LocalStorage-Fallback
-│   ├── draw.ts        # Auslosungsalgorithmen (Round Robin, KO, Gruppen, Random Doubles, Mixed, Seeding)
-│   ├── scoring.ts     # Punkteberechnung, Validierung, Auto-Fill, Team-Standings
-│   ├── highlights.ts  # Turnier-Highlights (knappstes Spiel, etc.)
-│   ├── theme.ts       # Theme-Definitionen (4 Farbschemas)
-│   ├── ThemeContext.tsx # React Context fuer Theme-System
+│   ├── i18n/          # Uebersetzungsdateien
+│   │   ├── en.ts      #   Englische Uebersetzungen
+│   │   ├── de.ts      #   Deutsche Uebersetzungen
+│   │   └── types.ts   #   Uebersetzungs-Typdefinitionen
+│   ├── db.ts          # SQLite-Wrapper
+│   ├── draw.ts        # Auslosungsalgorithmen (Round Robin, KO, Gruppen, Swiss, etc.)
+│   ├── highlights.ts  # Turnier-Highlights (knappstes Spiel, hoechster Sieg)
 │   ├── I18nContext.tsx # React Context fuer Internationalisierung
-│   ├── i18n/          # Uebersetzungsdateien (en.ts, de.ts)
+│   ├── scoring.ts     # Punkteberechnung, Validierung, Auto-Fill
+│   ├── stats.ts       # Statistik-Berechnungen
+│   ├── theme.ts       # Theme-Definitionen (4 Farbschemas)
+│   ├── ThemeContext.tsx# React Context fuer Theme-System
 │   └── types.ts       # TypeScript-Interfaces
 ├── pages/
-│   ├── Home.tsx        # Dashboard
-│   ├── Players.tsx     # Spielerverwaltung
-│   ├── Sportstaetten.tsx # Sportstaetten mit Hallen
-│   ├── Tournaments.tsx # Turnierliste + Archiv
-│   ├── TournamentCreate.tsx # Turniererstellung
+│   ├── Home.tsx             # Dashboard
+│   ├── Players.tsx          # Spielerverwaltung
+│   ├── Settings.tsx         # Einstellungen (Sprache, Design, DB, Voreinstellungen)
+│   ├── Sportstaetten.tsx    # Sportstaetten mit Hallen
+│   ├── Statistics.tsx       # Statistik-Dashboard
+│   ├── TournamentCreate.tsx # Turnier-Wizard
+│   ├── Tournaments.tsx      # Turnierliste + Archiv
 │   ├── TournamentView.tsx   # Turnieransicht (Matches, Courts, Rangliste)
-│   ├── TvMode.tsx      # TV-/Beamer-Modus
-│   └── Settings.tsx    # Einstellungen (Sprache, Design, DB, Voreinstellungen)
-└── App.tsx
+│   └── TvMode.tsx           # TV-/Beamer-Modus
+├── App.tsx
+└── main.tsx
 
 src-tauri/
-├── src/lib.rs         # Rust-Backend (DB-Migrations, Backup, Speicherort)
+├── src/
+│   ├── lib.rs         # Rust-Backend (DB-Migrations, Backup, Speicherort)
+│   └── main.rs        # Einstiegspunkt
+├── capabilities/      # Tauri-Berechtigungskonfigurationen
 ├── Cargo.toml
 └── tauri.conf.json
 ```
