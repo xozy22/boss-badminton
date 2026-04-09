@@ -70,6 +70,9 @@
 - **Date of Birth** with auto-calculated age
 - **Club** with autocomplete dropdown (existing clubs suggested, free text for new)
 - **Excel Import** (ExcelJS) with column mapping and fuzzy duplicate detection (Levenshtein-based similarity catches near-matches like "Schmidt" vs "Schmitt")
+  - Supports separate First Name / Last Name columns or combined Name column
+  - Combined names are not auto-split (avoids errors with double names like "Jens Kevin" or "Schmidt Lange")
+  - DD.MM.YYYY, YYYY-MM-DD, MM/DD/YYYY date formats auto-detected
 - **Excel Import in Tournament Wizard**: Import players directly during creation, all auto-selected
 - **Excel Export** with native save dialog (First Name, Last Name, Date of Birth, Age, Club)
 - **Sortable Columns**: Click headers to sort by first name or last name (ascending/descending)

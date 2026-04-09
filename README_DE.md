@@ -70,6 +70,9 @@
 - **Geburtsdatum** mit automatisch berechnetem Alter
 - **Verein** mit Autocomplete-Dropdown (vorhandene Vereine vorgeschlagen, Freitext fuer neue)
 - **Excel-Import** (ExcelJS) mit Spaltenmapping und Fuzzy-Duplikaterkennung (Levenshtein-basierte Aehnlichkeitspruefung erkennt Tippfehler wie "Schmidt" vs "Schmitt")
+  - Unterstuetzt separate Vorname-/Nachname-Spalten oder kombinierte Name-Spalte
+  - Kombinierte Namen werden nicht automatisch gesplittet (verhindert Fehler bei Doppelnamen wie "Jens Kevin" oder "Schmidt Lange")
+  - DD.MM.YYYY, YYYY-MM-DD, MM/DD/YYYY Datumsformate automatisch erkannt
 - **Excel-Import im Turnier-Wizard**: Spieler direkt bei Erstellung importieren, alle automatisch ausgewaehlt
 - **Excel-Export** mit nativem Speichern-Dialog (Vorname, Nachname, Geburtsdatum, Alter, Verein)
 - **Sortierbare Spalten**: Klick auf Header sortiert nach Vor- oder Nachname (auf-/absteigend)
