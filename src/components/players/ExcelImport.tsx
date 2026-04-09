@@ -245,14 +245,10 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
       } else {
         const rawName = row[nameCol];
         const fullName = rawName != null ? String(rawName).trim() : "";
-        const spaceIdx = fullName.lastIndexOf(" ");
-        if (spaceIdx > 0) {
-          firstName = fullName.substring(0, spaceIdx);
-          lastName = fullName.substring(spaceIdx + 1);
-        } else {
-          firstName = fullName;
-          lastName = "";
-        }
+        // Combined name field: put everything in first_name
+        // User should use separate first/last name columns for proper splitting
+        firstName = fullName;
+        lastName = "";
       }
 
       const displayName = lastName ? `${firstName} ${lastName}` : firstName;
