@@ -124,8 +124,10 @@ export default function Sidebar() {
 
         {/* Version */}
         {!collapsed && (
-          <div className={`text-[10px] ${theme.sidebarText} text-center pt-1 opacity-50`}>
-            v{__APP_VERSION__}
+          <div className={`text-[10px] ${theme.sidebarText} text-center pt-1 opacity-50 leading-relaxed`}>
+            <div>v{__APP_VERSION__}</div>
+            <div className="mt-0.5">Idee und Umsetzung</div>
+            <div>Felix Blasshofer &amp; Dennis Kobiolka</div>
           </div>
         )}
       </div>
