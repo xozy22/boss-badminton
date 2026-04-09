@@ -177,12 +177,15 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
       const cols = Object.keys(json[0]);
       setColumns(cols);
 
-      // No auto-detect — user maps columns manually
-      setFirstNameCol("");
-      setLastNameCol("");
-      setGenderCol("");
-      setBirthDateCol("");
-      setClubCol("");
+      // Auto-detect by header name — no data manipulation, just header matching
+      const find = (keywords: string[]) =>
+        cols.find((c) => keywords.some((k) => c.trim().toLowerCase() === k)) ?? "";
+
+      setFirstNameCol(find(["vorname", "firstname", "first name", "first_name", "fname", "givenname", "given name", "given_name", "prenom", "nome"]));
+      setLastNameCol(find(["nachname", "lastname", "last name", "last_name", "lname", "surname", "familienname", "family name", "family_name", "nom"]));
+      setGenderCol(find(["geschlecht", "gender", "sex", "sexe", "genero"]));
+      setBirthDateCol(find(["geburtsdatum", "geburtstag", "birthdate", "birth date", "birth_date", "dob", "date of birth", "datum", "alter", "age", "jahrgang", "birth year", "birthyear"]));
+      setClubCol(find(["verein", "club", "team", "organisation", "organization", "mannschaft"]));
     }
 
     setStep("mapping");
