@@ -70,8 +70,9 @@
 - **First Name + Last Name** as separate fields
 - **Date of Birth** with auto-calculated age
 - **Club** with autocomplete dropdown (existing clubs suggested, free text for new)
-- **Excel Import** (ExcelJS) with manual column mapping and fuzzy duplicate detection (Levenshtein-based similarity catches near-matches like "Schmidt" vs "Schmitt")
-  - All column assignments (First Name, Last Name, Gender, Date of Birth, Club) are set manually — no auto-detection
+- **Excel Import** (ExcelJS) with column mapping and fuzzy duplicate detection (Levenshtein-based similarity catches near-matches like "Schmidt" vs "Schmitt")
+  - Column headers auto-detected by name (DE + EN keywords) and pre-mapped — fully overridable
+  - No data splitting: First Name and Last Name always stay in separate columns as imported
   - Live preview in the mapping step shows First Name and Last Name as separate columns
   - DD.MM.YYYY, YYYY-MM-DD, MM/DD/YYYY date formats auto-detected
 - **Excel Import in Tournament Wizard**: Import players directly during creation, all auto-selected
@@ -153,6 +154,7 @@
 - **Design**: 4 color themes, 5 fonts, 7 font sizes, custom club logo with cropper
 - **Defaults**: Default courts, timer thresholds (warning yellow, critical red)
 - **Database**: Show/change storage location, backup & restore
+- **Credits**: Collapsible section listing idea & development authors, extensible for future contributors
 - **Danger Zone**: Delete all players, delete all tournaments, or full database reset (DROP + CREATE with safety confirmation)
 
 ### Technical

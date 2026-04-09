@@ -70,8 +70,9 @@
 - **Vorname + Nachname** als separate Felder
 - **Geburtsdatum** mit automatisch berechnetem Alter
 - **Verein** mit Autocomplete-Dropdown (vorhandene Vereine vorgeschlagen, Freitext fuer neue)
-- **Excel-Import** (ExcelJS) mit manuellem Spaltenmapping und Fuzzy-Duplikaterkennung (Levenshtein-basierte Aehnlichkeitspruefung erkennt Tippfehler wie "Schmidt" vs "Schmitt")
-  - Alle Spaltenzuordnungen (Vorname, Nachname, Geschlecht, Geburtsdatum, Verein) werden manuell gesetzt — keine Automatik-Erkennung
+- **Excel-Import** (ExcelJS) mit Spaltenmapping und Fuzzy-Duplikaterkennung (Levenshtein-basierte Aehnlichkeitspruefung erkennt Tippfehler wie "Schmidt" vs "Schmitt")
+  - Spaltenheader werden automatisch anhand von DE-/EN-Keywords erkannt und vorbelegt — manuell ueberschreibbar
+  - Kein Aufteilen von Daten: Vorname und Nachname bleiben immer in separaten Spalten
   - Live-Vorschau im Mapping-Schritt zeigt Vorname und Nachname als separate Spalten
   - DD.MM.YYYY, YYYY-MM-DD, MM/DD/YYYY Datumsformate automatisch erkannt
 - **Excel-Import im Turnier-Wizard**: Spieler direkt bei Erstellung importieren, alle automatisch ausgewaehlt
@@ -153,6 +154,7 @@
 - **Design**: 4 Farbdesigns, 5 Schriftarten, 7 Schriftgroessen, Custom Vereinslogo mit Cropper
 - **Voreinstellungen**: Standard-Spielfelder, Timer-Schwellenwerte (Warnung gelb, Kritisch rot)
 - **Datenbank**: Speicherort anzeigen/aendern, Backup & Wiederherstellung
+- **Credits**: Aufklappbarer Abschnitt mit Idee- und Umsetzungs-Credits, erweiterbar fuer weitere Mitwirkende
 - **Gefahrenzone**: Alle Spieler loeschen, alle Turniere loeschen oder kompletter Datenbank-Reset (DROP + CREATE mit Sicherheitsabfrage)
 
 ### Technisch
