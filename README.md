@@ -63,15 +63,16 @@
 - **Reopen Tournament**: Reactivate accidentally ended tournaments
 - **Undo Last Round**: Delete the last round and go back
 - **Injury/Retirement with Undo**: Mark players as injured (walkovers for open matches), restore for future rounds (walkovers preserved)
+- **Attendance Check**: Before the draw runs, a modal lists all registered players with checkboxes (all checked by default). Uncheck absent players — they are removed from the tournament before the draw, resulting in fewer byes and a fairer bracket
 - **Auto-Naming**: Tournament name auto-generated from date + mode + format, editable
 
 ### Player Management
 - **First Name + Last Name** as separate fields
 - **Date of Birth** with auto-calculated age
 - **Club** with autocomplete dropdown (existing clubs suggested, free text for new)
-- **Excel Import** (ExcelJS) with column mapping and fuzzy duplicate detection (Levenshtein-based similarity catches near-matches like "Schmidt" vs "Schmitt")
-  - Supports separate First Name / Last Name columns or combined Name column
-  - Combined names are not auto-split (avoids errors with double names like "Jens Kevin" or "Schmidt Lange")
+- **Excel Import** (ExcelJS) with manual column mapping and fuzzy duplicate detection (Levenshtein-based similarity catches near-matches like "Schmidt" vs "Schmitt")
+  - All column assignments (First Name, Last Name, Gender, Date of Birth, Club) are set manually — no auto-detection
+  - Live preview in the mapping step shows First Name and Last Name as separate columns
   - DD.MM.YYYY, YYYY-MM-DD, MM/DD/YYYY date formats auto-detected
 - **Excel Import in Tournament Wizard**: Import players directly during creation, all auto-selected
 - **Excel Export** with native save dialog (First Name, Last Name, Date of Birth, Age, Club)

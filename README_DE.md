@@ -63,15 +63,16 @@
 - **Turnier wieder oeffnen**: Versehentlich beendete Turniere reaktivieren
 - **Letzte Runde rueckgaengig**: Letzte Runde loeschen und zurueck
 - **Verletzung/Aufgabe mit Rueckgaengig**: Spieler als verletzt markieren (Walkovers fuer offene Spiele), fuer zukuenftige Runden wiederherstellen (Walkovers bleiben erhalten)
+- **Anwesenheitscheck**: Vor der Auslosung zeigt ein Modal alle angemeldeten Spieler mit Checkboxen (alle standardmaessig aktiviert). Abwesende Spieler abwaehlen — sie werden vor der Auslosung aus dem Turnier entfernt, was weniger Freilose und eine fairere Auslosung ergibt
 - **Auto-Benennung**: Turniername automatisch generiert aus Datum + Modus + Format, editierbar
 
 ### Spielerverwaltung
 - **Vorname + Nachname** als separate Felder
 - **Geburtsdatum** mit automatisch berechnetem Alter
 - **Verein** mit Autocomplete-Dropdown (vorhandene Vereine vorgeschlagen, Freitext fuer neue)
-- **Excel-Import** (ExcelJS) mit Spaltenmapping und Fuzzy-Duplikaterkennung (Levenshtein-basierte Aehnlichkeitspruefung erkennt Tippfehler wie "Schmidt" vs "Schmitt")
-  - Unterstuetzt separate Vorname-/Nachname-Spalten oder kombinierte Name-Spalte
-  - Kombinierte Namen werden nicht automatisch gesplittet (verhindert Fehler bei Doppelnamen wie "Jens Kevin" oder "Schmidt Lange")
+- **Excel-Import** (ExcelJS) mit manuellem Spaltenmapping und Fuzzy-Duplikaterkennung (Levenshtein-basierte Aehnlichkeitspruefung erkennt Tippfehler wie "Schmidt" vs "Schmitt")
+  - Alle Spaltenzuordnungen (Vorname, Nachname, Geschlecht, Geburtsdatum, Verein) werden manuell gesetzt — keine Automatik-Erkennung
+  - Live-Vorschau im Mapping-Schritt zeigt Vorname und Nachname als separate Spalten
   - DD.MM.YYYY, YYYY-MM-DD, MM/DD/YYYY Datumsformate automatisch erkannt
 - **Excel-Import im Turnier-Wizard**: Spieler direkt bei Erstellung importieren, alle automatisch ausgewaehlt
 - **Excel-Export** mit nativem Speichern-Dialog (Vorname, Nachname, Geburtsdatum, Alter, Verein)
