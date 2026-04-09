@@ -98,7 +98,6 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
   const [rawData, setRawData] = useState<Record<string, unknown>[]>([]);
 
   // Mapping
-  const [nameCol, setNameCol] = useState("");
   const [firstNameCol, setFirstNameCol] = useState("");
   const [lastNameCol, setLastNameCol] = useState("");
   const [genderCol, setGenderCol] = useState("");
@@ -178,39 +177,12 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
       const cols = Object.keys(json[0]);
       setColumns(cols);
 
-      // Auto-detect columns
-      const firstNameDetect = cols.find((c) =>
-        ["vorname", "first name", "first_name", "given name", "firstname"].includes(c.toLowerCase())
-      );
-      const lastNameDetect = cols.find((c) =>
-        ["nachname", "last name", "last_name", "family name", "familyname", "surname", "lastname"].includes(c.toLowerCase())
-      );
-      const combinedNameDetect = cols.find((c) =>
-        ["name", "spieler", "spielername", "teilnehmer"].includes(c.toLowerCase())
-      );
-      const genderLower = cols.find((c) =>
-        ["geschlecht", "gender", "sex", "m/w", "m/f"].includes(c.toLowerCase())
-      );
-
-      const ageLower = cols.find((c) =>
-        ["alter", "age", "jahrgang", "geburtsjahr", "geburtsdatum", "geburtstag", "birthday", "date of birth", "dob", "birth_year", "birth year", "birth_date", "birth date", "born", "geb", "geb."].includes(c.toLowerCase())
-      );
-      const clubLower = cols.find((c) =>
-        ["verein", "club", "team", "mannschaft"].includes(c.toLowerCase())
-      );
-
-      if (firstNameDetect) {
-        setFirstNameCol(firstNameDetect);
-        setLastNameCol(lastNameDetect ?? "");
-        setNameCol("");
-      } else {
-        setNameCol(combinedNameDetect ?? cols[0] ?? "");
-        setFirstNameCol("");
-        setLastNameCol("");
-      }
-      setGenderCol(genderLower ?? "");
-      setBirthDateCol(ageLower ?? "");
-      setClubCol(clubLower ?? "");
+      // No auto-detect — user maps columns manually
+      setFirstNameCol("");
+      setLastNameCol("");
+      setGenderCol("");
+      setBirthDateCol("");
+      setClubCol("");
     }
 
     setStep("mapping");
@@ -238,17 +210,10 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
       if (firstNameCol) {
         const rawFirst = row[firstNameCol];
         firstName = rawFirst != null ? String(rawFirst).trim() : "";
-        if (lastNameCol) {
-          const rawLast = row[lastNameCol];
-          lastName = rawLast != null ? String(rawLast).trim() : "";
-        }
-      } else {
-        const rawName = row[nameCol];
-        const fullName = rawName != null ? String(rawName).trim() : "";
-        // Combined name field: put everything in first_name
-        // User should use separate first/last name columns for proper splitting
-        firstName = fullName;
-        lastName = "";
+      }
+      if (lastNameCol) {
+        const rawLast = row[lastNameCol];
+        lastName = rawLast != null ? String(rawLast).trim() : "";
       }
 
       const displayName = lastName ? `${firstName} ${lastName}` : firstName;
@@ -463,23 +428,11 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
 
               <div>
                 <label className={`block text-sm ${theme.textSecondary} mb-1`}>
-                  {firstNameCol ? t.import_column_first_name : t.import_column_name}
+                  {t.import_column_first_name} *
                 </label>
                 <select
-                  value={firstNameCol || nameCol}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    // Check if this column was auto-detected as first name
-                    const isFirstName = ["vorname", "first name", "first_name", "given name", "givenname", "firstname"].includes(val.toLowerCase());
-                    if (isFirstName) {
-                      setFirstNameCol(val);
-                      setNameCol("");
-                    } else {
-                      setNameCol(val);
-                      setFirstNameCol("");
-                      setLastNameCol("");
-                    }
-                  }}
+                  value={firstNameCol}
+                  onChange={(e) => setFirstNameCol(e.target.value)}
                   className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
                 >
                   <option value="">{t.import_please_select}</option>
@@ -489,23 +442,21 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                 </select>
               </div>
 
-              {firstNameCol && (
-                <div>
-                  <label className={`block text-sm ${theme.textSecondary} mb-1`}>
-                    {t.import_column_last_name}
-                  </label>
-                  <select
-                    value={lastNameCol}
-                    onChange={(e) => setLastNameCol(e.target.value)}
-                    className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
-                  >
-                    <option value="">{t.import_not_available}</option>
-                    {columns.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div>
+                <label className={`block text-sm ${theme.textSecondary} mb-1`}>
+                  {t.import_column_last_name}
+                </label>
+                <select
+                  value={lastNameCol}
+                  onChange={(e) => setLastNameCol(e.target.value)}
+                  className={`w-full border rounded px-3 py-2 text-sm ${theme.inputBg} ${theme.inputBorder} ${theme.inputText}`}
+                >
+                  <option value="">{t.import_not_available}</option>
+                  {columns.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
 
               <div>
                 <label className={`block text-sm ${theme.textSecondary} mb-1`}>
@@ -574,7 +525,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
               )}
 
               {/* Live preview of first rows */}
-              {(firstNameCol || nameCol) && rawData.length > 0 && (
+              {firstNameCol && rawData.length > 0 && (
                 <div>
                   <div className={`text-sm ${theme.textSecondary} mb-2`}>
                     {t.import_preview_first_rows}
@@ -582,7 +533,8 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                   <table className={`w-full text-xs border ${theme.cardBorder} ${theme.inputText}`}>
                     <thead>
                       <tr className={theme.headerGradient}>
-                        <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_name}</th>
+                        <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_first_name}</th>
+                        {lastNameCol && <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_last_name}</th>}
                         <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_gender}</th>
                         {birthDateCol && <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_birth_date}</th>}
                         {clubCol && <th className={`px-2 py-1 text-left border ${theme.cardBorder}`}>{t.common_club}</th>}
@@ -590,17 +542,8 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                     </thead>
                     <tbody>
                       {rawData.slice(0, 5).map((row, i) => {
-                        let fn = "", ln = "";
-                        if (firstNameCol) {
-                          fn = row[firstNameCol] ? String(row[firstNameCol]).trim() : "";
-                          ln = lastNameCol && row[lastNameCol] ? String(row[lastNameCol]).trim() : "";
-                        } else {
-                          const full = row[nameCol] ? String(row[nameCol]).trim() : "";
-                          const idx = full.indexOf(" ");
-                          fn = idx > 0 ? full.substring(0, idx) : full;
-                          ln = idx > 0 ? full.substring(idx + 1) : "";
-                        }
-                        const displayName = ln ? `${fn} ${ln}` : fn;
+                        const fn = firstNameCol && row[firstNameCol] ? String(row[firstNameCol]).trim() : "";
+                        const ln = lastNameCol && row[lastNameCol] ? String(row[lastNameCol]).trim() : "";
                         const gender = genderCol
                           ? parseGender(row[genderCol]) ?? defaultGender
                           : defaultGender;
@@ -611,10 +554,13 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                         return (
                           <tr key={i} className={`border-t ${theme.cardBorder}`}>
                             <td className={`px-2 py-1 border ${theme.cardBorder}`}>
-                              {displayName || (
-                                <span className={theme.textMuted}>{t.import_empty}</span>
-                              )}
+                              {fn || <span className={theme.textMuted}>{t.import_empty}</span>}
                             </td>
+                            {lastNameCol && (
+                              <td className={`px-2 py-1 border ${theme.cardBorder}`}>
+                                {ln || <span className={theme.textMuted}>-</span>}
+                              </td>
+                            )}
                             <td className={`px-2 py-1 border ${theme.cardBorder}`}>
                               {gender === "m" ? t.common_gender_male : t.common_gender_female}
                             </td>
@@ -768,7 +714,7 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
           {step === "mapping" && (
             <button
               onClick={handlePreview}
-              disabled={!nameCol && !firstNameCol}
+              disabled={!firstNameCol}
               className={`${theme.primaryBg} text-white px-4 py-2 rounded text-sm ${theme.primaryHoverBg} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {t.import_continue_preview}
