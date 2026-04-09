@@ -105,9 +105,10 @@ export async function getPlayers(): Promise<Player[]> {
       let firstName = r.first_name ?? "";
       let lastName = r.last_name ?? "";
       if (!firstName && r.name) {
-        const parts = r.name.trim().split(" ");
-        firstName = parts[0] || "";
-        lastName = parts.slice(1).join(" ");
+        const nameTrimmed = r.name.trim();
+        const lastSpace = nameTrimmed.lastIndexOf(" ");
+        firstName = lastSpace > 0 ? nameTrimmed.substring(0, lastSpace) : nameTrimmed;
+        lastName = lastSpace > 0 ? nameTrimmed.substring(lastSpace + 1) : "";
       }
       return {
         id: r.id,
@@ -473,9 +474,10 @@ export async function getTournamentPlayers(tournamentId: number): Promise<Player
       let firstName = r.first_name ?? "";
       let lastName = r.last_name ?? "";
       if (!firstName && r.name) {
-        const parts = r.name.trim().split(" ");
-        firstName = parts[0] || "";
-        lastName = parts.slice(1).join(" ");
+        const nameTrimmed = r.name.trim();
+        const lastSpace = nameTrimmed.lastIndexOf(" ");
+        firstName = lastSpace > 0 ? nameTrimmed.substring(0, lastSpace) : nameTrimmed;
+        lastName = lastSpace > 0 ? nameTrimmed.substring(lastSpace + 1) : "";
       }
       return {
         id: r.id,
@@ -612,9 +614,10 @@ export async function getTournamentPlayersDetailed(tournamentId: number): Promis
       let firstName = r.first_name ?? "";
       let lastName = r.last_name ?? "";
       if (!firstName && r.name) {
-        const parts = r.name.trim().split(" ");
-        firstName = parts[0] || "";
-        lastName = parts.slice(1).join(" ");
+        const nameTrimmed = r.name.trim();
+        const lastSpace = nameTrimmed.lastIndexOf(" ");
+        firstName = lastSpace > 0 ? nameTrimmed.substring(0, lastSpace) : nameTrimmed;
+        lastName = lastSpace > 0 ? nameTrimmed.substring(lastSpace + 1) : "";
       }
       return {
       player: { id: r.id, first_name: firstName, last_name: lastName, gender: r.gender as Gender, birth_date: r.birth_date ?? null, club: r.club, created_at: r.created_at },
