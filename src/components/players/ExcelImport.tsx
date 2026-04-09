@@ -604,7 +604,8 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                   <thead className={`${theme.headerGradient} sticky top-0`}>
                     <tr>
                       <th className="px-3 py-2 text-left text-xs">#</th>
-                      <th className="px-3 py-2 text-left text-xs">{t.common_name}</th>
+                      <th className="px-3 py-2 text-left text-xs">{t.common_first_name}</th>
+                      {previewRows.some(r => r.lastName) && <th className="px-3 py-2 text-left text-xs">{t.common_last_name}</th>}
                       <th className="px-3 py-2 text-left text-xs">{t.common_gender}</th>
                       {previewRows.some(r => r.birthDate) && <th className="px-3 py-2 text-left text-xs">{t.common_birth_date}</th>}
                       {previewRows.some(r => r.club) && <th className="px-3 py-2 text-left text-xs">{t.common_club}</th>}
@@ -627,13 +628,16 @@ export default function ExcelImport({ onImportDone, onClose }: ExcelImportProps)
                       >
                         <td className={`px-3 py-1.5 ${theme.textMuted}`}>{i + 1}</td>
                         <td className="px-3 py-1.5">
-                          <div>{(row.lastName ? `${row.firstName} ${row.lastName}` : row.firstName) || <em>{t.import_empty}</em>}</div>
+                          <div>{row.firstName || <em>{t.import_empty}</em>}</div>
                           {row.fuzzyMatch && (
                             <div className="text-[10px] text-amber-500 mt-0.5">
                               {t.import_fuzzy_match.replace("{name}", row.fuzzyMatch)}
                             </div>
                           )}
                         </td>
+                        {previewRows.some(r => r.lastName) && (
+                          <td className="px-3 py-1.5">{row.lastName || <span className={theme.textMuted}>-</span>}</td>
+                        )}
                         <td className="px-3 py-1.5">
                           {row.gender === "m" ? t.common_gender_male : t.common_gender_female}
                         </td>
