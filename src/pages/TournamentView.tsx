@@ -6,6 +6,7 @@ import type { ThemeColors } from "../lib/theme";
 import TemplateExportModal from "../components/tournament/TemplateExportModal";
 import DeleteTournamentModal from "../components/tournament/DeleteTournamentModal";
 import RetirePlayerModal from "../components/tournament/RetirePlayerModal";
+import AttendanceCheckModal from "../components/tournament/AttendanceCheckModal";
 import RanglisteTab from "../components/tournament/RanglisteTab";
 import GruppenTab from "../components/tournament/GruppenTab";
 import VerwaltungTab from "../components/tournament/VerwaltungTab";
@@ -305,6 +306,7 @@ export default function TournamentView() {
   const [paymentData, setPaymentData] = useState<TournamentPlayerInfo[]>([]);
   const [collapsedClubs, setCollapsedClubs] = useState<Set<string>>(new Set());
   const [showTemplateExport, setShowTemplateExport] = useState(false);
+  const [showAttendance, setShowAttendance] = useState(false);
   const [viewTab, setViewTab] = useState<"spiele" | "gruppen" | "bracket" | "rangliste" | "verwaltung">("spiele");
   const [retireTarget, setRetireTarget] = useState<{ player: Player; partnerNote: string } | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
@@ -381,8 +383,11 @@ export default function TournamentView() {
     return p ? playerDisplayName(p) : "?";
   };
 
-  const handleStartTournament = async () => {
+  const handleStartTournament = async (playersOverride?: Player[]) => {
     if (!tournament) return;
+
+    // Use override (from attendance check) or fall back to current state
+    const ep = playersOverride ?? players;
 
     await updateTournamentStatus(tournamentId, "active");
 
@@ -392,7 +397,7 @@ export default function TournamentView() {
     const autoAssign = numCourts === 1;
 
     if (tournament.format === "round_robin" && tournament.mode === "singles") {
-      const allRounds = generateRoundRobinSingles(players);
+      const allRounds = generateRoundRobinSingles(ep);
       for (let i = 0; i < allRounds.length; i++) {
         const roundId = await createRound(tournamentId, i + 1);
         for (let mi = 0; mi < allRounds[i].length; mi++) {
@@ -402,7 +407,7 @@ export default function TournamentView() {
         }
       }
     } else if (tournament.format === "elimination" && tournament.mode === "singles") {
-      const matches = generateEliminationBracket(players, navSeeds);
+      const matches = generateEliminationBracket(ep, navSeeds);
       const roundId = await createRound(tournamentId, 1);
       for (const m of matches) {
         if (m.team2_p1 !== -1) {
@@ -415,8 +420,8 @@ export default function TournamentView() {
       const teams = navTeams && navTeams.length > 0
         ? navTeams
         : tournament.mode === "mixed"
-          ? formFixedMixedTeams(players)
-          : formFixedDoubleTeams(players);
+          ? formFixedMixedTeams(ep)
+          : formFixedDoubleTeams(ep);
       const matches = generateEliminationBracketDoubles(teams);
       const roundId = await createRound(tournamentId, 1);
       for (const m of matches) {
@@ -426,7 +431,7 @@ export default function TournamentView() {
     } else if (tournament.format === "group_ko") {
       // Gruppenphase starten
       await updateTournamentPhase(tournamentId, "group");
-      const groups = splitIntoGroups(players, tournament.num_groups || 2);
+      const groups = splitIntoGroups(ep, tournament.num_groups || 2);
       let roundCounter = 1;
 
       if (tournament.mode === "singles") {
@@ -449,8 +454,8 @@ export default function TournamentView() {
         const allTeams = navTeams && navTeams.length > 0
           ? navTeams
           : tournament.mode === "mixed"
-            ? formFixedMixedTeams(players)
-            : formFixedDoubleTeams(players);
+            ? formFixedMixedTeams(ep)
+            : formFixedDoubleTeams(ep);
         const teamGroups = splitTeamsIntoGroups(allTeams, tournament.num_groups || 2);
 
         for (let g = 0; g < teamGroups.length; g++) {
@@ -471,8 +476,8 @@ export default function TournamentView() {
       const teams = navTeams && navTeams.length > 0
         ? navTeams
         : tournament.mode === "mixed"
-          ? formFixedMixedTeams(players)
-          : formFixedDoubleTeams(players);
+          ? formFixedMixedTeams(ep)
+          : formFixedDoubleTeams(ep);
       const allRounds = generateRoundRobinDoubles(teams);
       for (let i = 0; i < allRounds.length; i++) {
         const roundId = await createRound(tournamentId, i + 1);
@@ -486,7 +491,7 @@ export default function TournamentView() {
     } else if (tournament.format === "swiss") {
       await updateTournamentPhase(tournamentId, "swiss");
       if (tournament.mode === "singles") {
-        const matches = generateSwissFirstRound(players);
+        const matches = generateSwissFirstRound(ep);
         const roundId = await createRound(tournamentId, 1, "swiss");
         for (const m of matches) {
           const court = autoAssign ? 1 : null;
@@ -496,8 +501,8 @@ export default function TournamentView() {
         const teams = navTeams && navTeams.length > 0
           ? navTeams
           : tournament.mode === "mixed"
-            ? formFixedMixedTeams(players)
-            : formFixedDoubleTeams(players);
+            ? formFixedMixedTeams(ep)
+            : formFixedDoubleTeams(ep);
         const matches = generateSwissFirstRoundDoubles(teams);
         const roundId = await createRound(tournamentId, 1, "swiss");
         for (const m of matches) {
@@ -509,7 +514,7 @@ export default function TournamentView() {
       // Monrad: reuse Swiss infrastructure with random first round
       await updateTournamentPhase(tournamentId, "swiss");
       if (tournament.mode === "singles") {
-        const matches = generateSwissFirstRound(players);
+        const matches = generateSwissFirstRound(ep);
         const roundId = await createRound(tournamentId, 1, "swiss");
         for (const m of matches) {
           const court = autoAssign ? 1 : null;
@@ -519,8 +524,8 @@ export default function TournamentView() {
         const teams = navTeams && navTeams.length > 0
           ? navTeams
           : tournament.mode === "mixed"
-            ? formFixedMixedTeams(players)
-            : formFixedDoubleTeams(players);
+            ? formFixedMixedTeams(ep)
+            : formFixedDoubleTeams(ep);
         const matches = generateSwissFirstRoundDoubles(teams);
         const roundId = await createRound(tournamentId, 1, "swiss");
         for (const m of matches) {
@@ -530,7 +535,7 @@ export default function TournamentView() {
       }
     } else if (tournament.format === "king_of_court") {
       // King of the Court: shuffle players, generate first match
-      const shuffled = shufflePlayers(players.map((p) => p.id));
+      const shuffled = shufflePlayers(ep.map((p) => p.id));
       if (shuffled.length < 2) return;
       const { team1_p1, team2_p1 } = generateKingOfCourtMatch(shuffled);
       const roundId = await createRound(tournamentId, 1);
@@ -538,7 +543,7 @@ export default function TournamentView() {
       await createMatch(roundId, team1_p1, null, team2_p1, null, court);
     } else if (tournament.format === "waterfall") {
       // Waterfall: shuffle players, assign to courts, generate first round
-      const shuffled = shufflePlayers(players.map((p) => p.id));
+      const shuffled = shufflePlayers(ep.map((p) => p.id));
       const waterfallMatches = generateWaterfallRound(shuffled);
       const roundId = await createRound(tournamentId, 1);
       for (const m of waterfallMatches) {
@@ -547,7 +552,7 @@ export default function TournamentView() {
     } else if (tournament.format === "double_elimination") {
       await updateTournamentPhase(tournamentId, "winners");
       if (tournament.mode === "singles") {
-        const matches = generateEliminationBracket(players, navSeeds);
+        const matches = generateEliminationBracket(ep, navSeeds);
         const roundId = await createRound(tournamentId, 1, "winners");
         for (const m of matches) {
           if (m.team2_p1 !== -1) {
@@ -559,8 +564,8 @@ export default function TournamentView() {
         const teams = navTeams && navTeams.length > 0
           ? navTeams
           : tournament.mode === "mixed"
-            ? formFixedMixedTeams(players)
-            : formFixedDoubleTeams(players);
+            ? formFixedMixedTeams(ep)
+            : formFixedDoubleTeams(ep);
         const matches = generateEliminationBracketDoubles(teams);
         const roundId = await createRound(tournamentId, 1, "winners");
         for (const m of matches) {
@@ -571,6 +576,19 @@ export default function TournamentView() {
     }
 
     loadAll();
+  };
+
+  const handleAttendanceConfirm = async (presentIds: Set<number>) => {
+    setShowAttendance(false);
+    // Remove absent players from the tournament before starting
+    const absentIds = players.filter((p) => !presentIds.has(p.id)).map((p) => p.id);
+    for (const id of absentIds) {
+      await removePlayerFromTournament(tournamentId, id);
+    }
+    // Reload fresh player list and start with it
+    const freshPlayers = await getTournamentPlayers(tournamentId);
+    setPlayers(freshPlayers);
+    await handleStartTournament(freshPlayers);
   };
 
   const generateNextRound = async () => {
@@ -1608,7 +1626,7 @@ export default function TournamentView() {
                 🗑️ {t.tournament_view_delete}
               </button>
               <button
-                onClick={handleStartTournament}
+                onClick={() => setShowAttendance(true)}
                 disabled={tournament.current_phase !== "ready"}
                 title={tournament.current_phase !== "ready" ? t.tournament_view_not_started_hint : t.tournament_view_start}
                 className={`${theme.primaryBg} ${theme.primaryText} px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none`}
@@ -1822,6 +1840,16 @@ export default function TournamentView() {
           players={players}
           theme={theme}
           onClose={() => setShowTemplateExport(false)}
+        />
+      )}
+
+      {/* Attendance Check Modal */}
+      {showAttendance && (
+        <AttendanceCheckModal
+          players={players}
+          theme={theme}
+          onConfirm={handleAttendanceConfirm}
+          onClose={() => setShowAttendance(false)}
         />
       )}
 

@@ -714,4 +714,13 @@ export interface Translations {
   certificate_congratulations: string;
   certificate_mode: string;
   certificate_format: string;
+
+  // ===== Attendance Check Modal =====
+  attendance_title: string;
+  attendance_subtitle: string;
+  attendance_all_present: string;
+  attendance_none_present: string;
+  attendance_present_count: string;
+  attendance_start: string;
+  attendance_min_players: string;
 }

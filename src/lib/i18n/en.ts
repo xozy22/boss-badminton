@@ -713,4 +713,13 @@ export const en: Translations = {
   certificate_congratulations: "Congratulations!",
   certificate_mode: "Mode",
   certificate_format: "Format",
+
+  // ===== Attendance Check Modal =====
+  attendance_title: "Attendance Check",
+  attendance_subtitle: "Mark players who are present today",
+  attendance_all_present: "All present",
+  attendance_none_present: "None present",
+  attendance_present_count: "{count} of {total} present",
+  attendance_start: "Start tournament",
+  attendance_min_players: "At least {count} players required",
 };

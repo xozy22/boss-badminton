@@ -713,4 +713,13 @@ export const de: Translations = {
   certificate_congratulations: "Herzlichen Glueckwunsch!",
   certificate_mode: "Modus",
   certificate_format: "Format",
+
+  // ===== Attendance Check Modal =====
+  attendance_title: "Anwesenheitscheck",
+  attendance_subtitle: "Markiere Spieler, die heute anwesend sind",
+  attendance_all_present: "Alle anwesend",
+  attendance_none_present: "Alle abwesend",
+  attendance_present_count: "{count} von {total} anwesend",
+  attendance_start: "Turnier starten",
+  attendance_min_players: "Mindestens {count} Spieler erforderlich",
 };
