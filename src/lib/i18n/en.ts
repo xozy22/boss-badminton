@@ -714,6 +714,10 @@ export const en: Translations = {
   certificate_mode: "Mode",
   certificate_format: "Format",
 
+  // ===== Credits =====
+  settings_credits: "Credits",
+  settings_credits_idea_and_dev: "Idea & Development",
+
   // ===== Attendance Check Modal =====
   attendance_title: "Attendance Check",
   attendance_subtitle: "Mark players who are present today",

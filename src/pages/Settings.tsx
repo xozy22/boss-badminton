@@ -520,6 +520,19 @@ export default function Settings() {
         </div>
       </Section>
 
+      {/* Credits */}
+      <Section title={t.settings_credits} icon="🏅" defaultOpen={false}>
+        <div className="space-y-3">
+          <div className={`rounded-xl p-4 border ${theme.cardBorder} ${theme.cardBg}`}>
+            <div className={`text-xs font-semibold uppercase tracking-wide ${theme.textMuted} mb-2`}>
+              {t.settings_credits_idea_and_dev}
+            </div>
+            <div className={`text-sm font-medium ${theme.textPrimary}`}>Felix Blasshofer</div>
+            <div className={`text-sm font-medium ${theme.textPrimary}`}>Dennis Kobiolka</div>
+          </div>
+        </div>
+      </Section>
+
       {/* Status Message */}
       {message && (
         <div

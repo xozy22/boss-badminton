@@ -715,6 +715,10 @@ export interface Translations {
   certificate_mode: string;
   certificate_format: string;
 
+  // ===== Credits =====
+  settings_credits: string;
+  settings_credits_idea_and_dev: string;
+
   // ===== Attendance Check Modal =====
   attendance_title: string;
   attendance_subtitle: string;
