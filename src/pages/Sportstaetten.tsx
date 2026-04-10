@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { getSportstaetten, createSportstaette, updateSportstaette, deleteSportstaette } from "../lib/db";
+import { getSportstaetten, createSportstaette, updateSportstaette, deleteSportstaette, isTauri } from "../lib/db";
 import type { Sportstaette, HallConfig } from "../lib/types";
 import { parseHallConfig, hallConfigTotalCourts } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
@@ -176,7 +176,7 @@ export default function Sportstaetten() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => {
+            onClick={async () => {
               const data = sportstaetten.map((s) => ({
                 name: s.name,
                 address: s.address,
@@ -185,6 +185,22 @@ export default function Sportstaetten() {
                 halls: s.halls ? parseHallConfig(s.halls) : [{ name: `${t.venues_hall} 1`, courts: s.courts }],
               }));
               const json = JSON.stringify(data, null, 2);
+
+              if (isTauri()) {
+                try {
+                  const { save } = await import("@tauri-apps/plugin-dialog");
+                  const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+                  const path = await save({
+                    defaultPath: "sportstaetten.json",
+                    filters: [{ name: "JSON (*.json)", extensions: ["json"] }],
+                  });
+                  if (path) await writeTextFile(path, json);
+                  return;
+                } catch (err) {
+                  console.error("Tauri save failed, falling back to browser download", err);
+                }
+              }
+
               const blob = new Blob([json], { type: "application/json" });
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");

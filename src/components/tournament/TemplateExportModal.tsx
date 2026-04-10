@@ -3,6 +3,7 @@ import type { ThemeColors } from "../../lib/theme";
 import type { Tournament, Player } from "../../lib/types";
 import { playerDisplayName } from "../../lib/types";
 import { useT } from "../../lib/I18nContext";
+import { isTauri } from "../../lib/db";
 
 interface TemplateExportModalProps {
   tournament: Tournament;
@@ -58,7 +59,7 @@ export default function TemplateExportModal({
             {t.common_cancel}
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
               const template: Record<string, unknown> = { version: 1 };
               if (templateInclude.settings) {
                 template.name = tournament.name;
@@ -79,11 +80,32 @@ export default function TemplateExportModal({
                 try { template.team_config = JSON.parse(tournament.team_config); } catch (err) { console.error("TemplateExport: failed to parse team_config JSON:", err); }
               }
               const json = JSON.stringify(template, null, 2);
+              const fileName = `${(tournament.name || "vorlage").replace(/[^a-zA-Z0-9äöüÄÖÜß\-_ .]/g, "")}.json`;
+
+              if (isTauri()) {
+                try {
+                  const { save } = await import("@tauri-apps/plugin-dialog");
+                  const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+                  const path = await save({
+                    defaultPath: fileName,
+                    filters: [{ name: "JSON-Vorlage (*.json)", extensions: ["json"] }],
+                  });
+                  if (path) {
+                    await writeTextFile(path, json);
+                  }
+                  onClose();
+                  return;
+                } catch (err) {
+                  console.error("Tauri save failed, falling back to browser download", err);
+                }
+              }
+
+              // Browser fallback
               const blob = new Blob([json], { type: "application/json" });
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
-              a.download = `${(tournament.name || "vorlage").replace(/[^a-zA-Z0-9äöüÄÖÜß\-_ .]/g, "")}.json`;
+              a.download = fileName;
               document.body.appendChild(a);
               a.click();
               document.body.removeChild(a);
