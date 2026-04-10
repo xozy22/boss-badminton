@@ -59,6 +59,7 @@
   - Selectable: Settings, Players, Teams (individually or combined)
   - Players matched by name on import (ID-independent)
   - Teams automatically remapped
+  - Export uses native save dialog in the packaged app (EXE/DMG)
 - **Archiving**: Archive and restore completed tournaments
 - **Reopen Tournament**: Reactivate accidentally ended tournaments
 - **Undo Last Round**: Delete the last round and go back
@@ -84,7 +85,7 @@
 ### Venues
 - **Halls with individual court counts**: Each venue has multiple halls, each hall its own courts
 - Inline hall editor: name + court count per hall, add/remove
-- **JSON Export/Import**: Export and import venues as files
+- **JSON Export/Import**: Export and import venues as files (native save dialog in packaged app)
 - **Tournament Integration**: Select venue during creation, choose halls via checkbox
 - **Grouped Court Display**: Courts in tournament grouped by hall with section headers
 - **Default Halls in Settings**: Applied when no venue is selected

@@ -59,6 +59,7 @@
   - Waehlbar: Einstellungen, Spieler, Teams (einzeln oder kombiniert)
   - Spieler werden beim Import per Name gematcht (ID-unabhaengig)
   - Teams werden automatisch remapped
+  - Export nutzt nativen Speichern-Dialog in der gepackten App (EXE/DMG)
 - **Archivierung**: Beendete Turniere archivieren und wiederherstellen
 - **Turnier wieder oeffnen**: Versehentlich beendete Turniere reaktivieren
 - **Letzte Runde rueckgaengig**: Letzte Runde loeschen und zurueck
@@ -84,7 +85,7 @@
 ### Sportstaetten
 - **Hallen mit individueller Feldanzahl**: Jede Sportstaette hat mehrere Hallen, jede Halle eigene Felder
 - Inline Hallen-Editor: Name + Feldanzahl pro Halle, Hinzufuegen/Entfernen
-- **JSON Export/Import**: Sportstaetten als Datei exportieren und importieren
+- **JSON Export/Import**: Sportstaetten als Datei exportieren und importieren (nativer Speichern-Dialog in der gepackten App)
 - **Turnier-Integration**: Bei Turniererstellung Sportstaette waehlen, Hallen per Checkbox auswaehlen
 - **Gruppierte Court-Anzeige**: Felder im Turnier nach Halle gruppiert mit Sektions-Headern
 - **Standard-Hallen in Einstellungen**: Greifen wenn keine Sportstaette gewaehlt
