@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getTournaments, deleteTournament, updateTournamentStatus, createTournament } from "../lib/db";
+import { getTournaments, deleteTournament, updateTournamentStatus, createTournament, getPlayers, addPlayerToTournament, updateTeamConfig, updateHallConfig, isTauri } from "../lib/db";
 import type { Tournament } from "../lib/types";
+import { playerDisplayName } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
 
@@ -28,6 +29,89 @@ export default function Tournaments() {
     }
   };
   const [deleteTarget, setDeleteTarget] = useState<Tournament | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  const applyTemplate = async (tpl: Record<string, unknown>) => {
+    const mode = (tpl.mode as string) || "doubles";
+    const format = (tpl.format as string) || "random_doubles";
+    const name = (tpl.name as string) || "";
+    const setsToWin = (tpl.sets_to_win as number) || 2;
+    const pointsPerSet = (tpl.points_per_set as number) || 21;
+    const courts = (tpl.courts as number) || 2;
+    const numGroups = (tpl.num_groups as number) || 0;
+    const qualifyPerGroup = (tpl.qualify_per_group as number) || 0;
+    const entryFeeSingle = (tpl.entry_fee_single as number) || 0;
+    const entryFeeDouble = (tpl.entry_fee_double as number) || 0;
+
+    const id = await createTournament(name, mode as any, format as any, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, entryFeeSingle, entryFeeDouble);
+
+    if (tpl.players && Array.isArray(tpl.players)) {
+      const allPlayers = await getPlayers();
+      const matched: number[] = [];
+      for (const tp of tpl.players as { id: number; name: string; gender: string }[]) {
+        const match = allPlayers.find((p) => playerDisplayName(p).toLowerCase() === tp.name?.toLowerCase());
+        if (match) {
+          await addPlayerToTournament(id, match.id);
+          matched.push(match.id);
+        }
+      }
+      if (tpl.team_config && Array.isArray(tpl.team_config)) {
+        const remapped: [number, number][] = [];
+        for (const [id1, id2] of tpl.team_config as [number, number][]) {
+          const p1Name = (tpl.players as any[]).find((p) => p.id === id1)?.name;
+          const p2Name = (tpl.players as any[]).find((p) => p.id === id2)?.name;
+          const allPlayers2 = await getPlayers();
+          const newP1 = allPlayers2.find((p) => playerDisplayName(p).toLowerCase() === p1Name?.toLowerCase());
+          const newP2 = allPlayers2.find((p) => playerDisplayName(p).toLowerCase() === p2Name?.toLowerCase());
+          if (newP1 && newP2) remapped.push([newP1.id, newP2.id]);
+        }
+        if (remapped.length > 0) await updateTeamConfig(id, remapped);
+      }
+    }
+
+    if (tpl.hall_config) {
+      await updateHallConfig(id, tpl.hall_config as any);
+    }
+
+    navigate(`/tournaments/${id}/edit`);
+  };
+
+  const handleImportTemplate = async () => {
+    if (isTauri()) {
+      try {
+        const { open } = await import("@tauri-apps/plugin-dialog");
+        const { readTextFile } = await import("@tauri-apps/plugin-fs");
+        const path = await open({
+          filters: [{ name: "JSON-Vorlage (*.json)", extensions: ["json"] }],
+          multiple: false,
+        });
+        if (!path) return;
+        const text = await readTextFile(path as string);
+        const tpl = JSON.parse(text);
+        await applyTemplate(tpl);
+        return;
+      } catch (err) {
+        console.error("Tauri import failed:", err);
+        alert(t.tournaments_import_error);
+        return;
+      }
+    }
+    importFileRef.current?.click();
+  };
+
+  const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    try {
+      const text = await file.text();
+      const tpl = JSON.parse(text);
+      await applyTemplate(tpl);
+    } catch (err) {
+      console.error("Import failed:", err);
+      alert(t.tournaments_import_error);
+    }
+  };
 
   const load = () => getTournaments().then(setTournaments);
 
@@ -148,6 +232,19 @@ export default function Tournaments() {
               📦 {t.tournaments_archive} ({archivedTournaments.length})
             </button>
           )}
+          <input
+            ref={importFileRef}
+            type="file"
+            accept=".json"
+            className="hidden"
+            onChange={handleImportFileChange}
+          />
+          <button
+            onClick={handleImportTemplate}
+            className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl ${theme.cardHoverBorder} hover:shadow-sm transition-all text-sm font-medium`}
+          >
+            📋 {t.tournaments_import}
+          </button>
           <button
             onClick={handleNewTournament}
             disabled={creating}

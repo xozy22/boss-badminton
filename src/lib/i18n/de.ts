@@ -107,6 +107,8 @@ export const de: Translations = {
   tournaments_delete_message: "\"{name}\" wird mit allen Runden, Spielen und Ergebnissen unwiderruflich geloescht.",
   tournaments_delete_confirm_label: "Tippe {word} zur Bestaetigung:",
   tournaments_delete_confirm_word: "LOESCHEN",
+  tournaments_import: "Turnier importieren",
+  tournaments_import_error: "Vorlage konnte nicht geladen werden",
   tournaments_best_of: "Best of {count}",
   tournaments_up_to: "bis {points}",
 

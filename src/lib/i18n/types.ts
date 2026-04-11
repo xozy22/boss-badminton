@@ -107,6 +107,8 @@ export interface Translations {
   tournaments_delete_confirm_word: string;
   tournaments_best_of: string;
   tournaments_up_to: string;
+  tournaments_import: string;
+  tournaments_import_error: string;
 
   // ===== Tournament Create / Edit =====
   tournament_create_title: string;

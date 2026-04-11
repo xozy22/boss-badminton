@@ -107,6 +107,8 @@ export const en: Translations = {
   tournaments_delete_message: "\"{name}\" will be permanently deleted with all rounds, matches and results.",
   tournaments_delete_confirm_label: "Type {word} to confirm:",
   tournaments_delete_confirm_word: "DELETE",
+  tournaments_import: "Import tournament",
+  tournaments_import_error: "Failed to load template",
   tournaments_best_of: "Best of {count}",
   tournaments_up_to: "up to {points}",
 
