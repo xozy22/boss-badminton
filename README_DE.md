@@ -60,6 +60,7 @@
   - Spieler werden beim Import per Name gematcht (ID-unabhaengig)
   - Teams werden automatisch remapped
   - Export nutzt nativen Speichern-Dialog in der gepackten App (EXE/DMG)
+  - **Import-Button** auf der Turnierliste — oeffnet nativen Datei-Dialog, legt Turnier mit allen Einstellungen an und fuegt passende Spieler direkt hinzu, navigiert dann in den Wizard
 - **Archivierung**: Beendete Turniere archivieren und wiederherstellen
 - **Turnier wieder oeffnen**: Versehentlich beendete Turniere reaktivieren
 - **Letzte Runde rueckgaengig**: Letzte Runde loeschen und zurueck

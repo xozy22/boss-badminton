@@ -60,6 +60,7 @@
   - Players matched by name on import (ID-independent)
   - Teams automatically remapped
   - Export uses native save dialog in the packaged app (EXE/DMG)
+  - **Import button** on the Tournaments list page — opens native file dialog, creates tournament with all settings pre-filled and matching players already added, then navigates straight to the wizard
 - **Archiving**: Archive and restore completed tournaments
 - **Reopen Tournament**: Reactivate accidentally ended tournaments
 - **Undo Last Round**: Delete the last round and go back
