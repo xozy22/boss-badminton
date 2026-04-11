@@ -34,6 +34,7 @@
 - **9 Formate**: Jeder gegen Jeden, KO-System, Wechselnde Partner, Gruppenphase + KO, Schweizer System, Doppel-KO, Monrad, King of the Court, Waterfall
 - **Format-Info-Modal**: Ausfuehrliche Beschreibung mit ASCII-Diagramm und Vor-/Nachteile fuer jedes Format
 - **3 Modi**: Einzel, Doppel, Mixed
+- **5 Spielmodi**: Festes Dropdown mit 11 Pkt · 1 Satz, 11 Pkt · 2 Sätze (Cap 20), 15 Pkt · 1 Satz, 15 Pkt · 2 Sätze (Cap 25), 21 Pkt · 2 Sätze (Cap 30 — Standard). Auto-Fill, Validierung und Gewinner-Logik passen sich automatisch an den gewaehlten Modus an
 - **Turnier-Wizard**: Schrittweise Erstellung mit Tab-Navigation (Einstellungen -> Spieler -> Teams -> Setzliste -> Erstellen)
   - Auto-Save bei jedem Schritt - kein Datenverlust beim Wechseln zwischen Tabs
   - Draft-Zusammenfassung mit allen Einstellungen und Teilnehmern vor dem Start
@@ -103,7 +104,7 @@
   - "Beendet": Kompakte Einzeiler mit Satzstand + Einzelpunkten (z.B. 2:0 (21:15, 21:18)), aufklappbar
   - 3-Sekunden-Delay: Frisch beendete Spiele bleiben kurz sichtbar bevor sie nach unten rutschen
   - Bearbeitete Spiele bleiben in der Beendet-Sektion (kein Hochrutschen)
-- **Auto-Fill Score**: Badminton Rallypoint-System bis 21, Verlaengerung bei 20:20, Deckelung bei 30
+- **Auto-Fill Score**: Badminton Rallypoint-System — berechnet Gegner-Score automatisch basierend auf dem aktiven Spielmodus
 - **Score-Validierung**: Ungueltige Ergebnisse werden erkannt und markiert
 - **Gewinner-Auto-Reset**: Bei Ergebniskorrektur wird der Gewinner automatisch zurueckgesetzt
 - **Faire Auslosung**: Bei ungerader Spielerzahl setzt der Spieler mit den meisten Spielen aus; bei wechselnden Partnern werden bisherige Partnerschaften gewichtet vermieden

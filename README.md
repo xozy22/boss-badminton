@@ -34,6 +34,7 @@
 - **9 Formats**: Round Robin, Elimination (KO), Random Doubles, Group Stage + KO, Swiss System, Double Elimination, Monrad, King of the Court, Waterfall
 - **Format Info Modal**: Detailed description with ASCII diagram and pros/cons for every format
 - **3 Modes**: Singles, Doubles, Mixed
+- **5 Scoring Modes**: Fixed dropdown with 11 Pkt · 1 Satz, 11 Pkt · 2 Sätze (Cap 20), 15 Pkt · 1 Satz, 15 Pkt · 2 Sätze (Cap 25), 21 Pkt · 2 Sätze (Cap 30 — default). All auto-fill, validation, and winner logic adapts automatically to the selected mode
 - **Tournament Wizard**: Step-by-step creation with tab navigation (Settings -> Players -> Teams -> Seeding -> Create)
   - Auto-save on every step - no data loss when navigating between tabs
   - Draft summary showing all settings and participants before starting
@@ -103,7 +104,7 @@
   - "Completed": Compact one-liners with set score + individual points (e.g. 2:0 (21:15, 21:18)), expandable
   - 3-second delay: freshly completed matches stay visible before sliding down
   - Edited matches stay in the completed section (no jumping up)
-- **Auto-Fill Score**: Badminton rally point system to 21, extension at 20:20, cap at 30
+- **Auto-Fill Score**: Badminton rally point system — auto-fills opponent score based on active scoring mode
 - **Score Validation**: Invalid results detected and marked
 - **Match Winner Auto-Reset**: Correcting a score automatically resets the winner
 - **Fair Draw**: With odd player count, the player with most matches sits out; with random doubles, previous partnerships weighted to avoid repetition
