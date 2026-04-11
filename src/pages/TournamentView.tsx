@@ -73,6 +73,10 @@ import {
   autoFillOpponentScore,
   getScoringDescription,
   isSetComplete,
+  SCORING_MODES,
+  getScoringModeId,
+  getScoringCap,
+  type ScoringModeId,
 } from "../lib/scoring";
 import type {
   Tournament,
@@ -120,8 +124,12 @@ function EditTournamentModal({
   const [name, setName] = useState(tournament.name);
   const [mode, setMode] = useState<TournamentMode>(tournament.mode);
   const [format, setFormat] = useState<TournamentFormat>(tournament.format);
-  const [setsToWin, setSetsToWin] = useState(tournament.sets_to_win);
-  const [pointsPerSet, setPointsPerSet] = useState(tournament.points_per_set);
+  const [scoringMode, setScoringMode] = useState<ScoringModeId>(
+    getScoringModeId(tournament.sets_to_win, tournament.points_per_set)
+  );
+  const scoringPreset = SCORING_MODES.find((m) => m.id === scoringMode)!;
+  const setsToWin = scoringPreset.sets_to_win;
+  const pointsPerSet = scoringPreset.points_per_set;
   const [courts, setCourts] = useState(tournament.courts);
   const [numGroups, setNumGroups] = useState(tournament.num_groups || 2);
   const [qualifyPerGroup, setQualifyPerGroup] = useState(tournament.qualify_per_group || 2);
@@ -183,18 +191,16 @@ function EditTournamentModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>{t.edit_tournament_win_sets}</label>
-              <select value={setsToWin} onChange={(e) => setSetsToWin(Number(e.target.value))} className={inputClass}>
-                <option value={1}>{t.best_of_1}</option>
-                <option value={2}>{t.best_of_3}</option>
-                <option value={3}>{t.best_of_5}</option>
+              <label className={labelClass}>{t.scoring_mode}</label>
+              <select value={scoringMode} onChange={(e) => setScoringMode(e.target.value as ScoringModeId)} className={inputClass}>
+                <option value="11_1">{t.scoring_mode_11_1}</option>
+                <option value="11_2">{t.scoring_mode_11_2}</option>
+                <option value="15_1">{t.scoring_mode_15_1}</option>
+                <option value="15_2">{t.scoring_mode_15_2}</option>
+                <option value="21_2">{t.scoring_mode_21_2}</option>
               </select>
-            </div>
-            <div>
-              <label className={labelClass}>{t.edit_tournament_points_set}</label>
-              <input type="number" value={pointsPerSet} onChange={(e) => setPointsPerSet(Number(e.target.value))} className={inputClass} min={1} />
             </div>
             <div>
               <label className={labelClass}>{t.edit_tournament_courts_label}</label>
@@ -1127,7 +1133,7 @@ export default function TournamentView() {
     const t1 = team === 1 ? value : existing?.team1_score ?? 0;
     const t2 = team === 2 ? value : existing?.team2_score ?? 0;
 
-    const maxScore = getMaxScore(tournament.points_per_set);
+    const maxScore = getMaxScore(tournament.points_per_set, getScoringCap(tournament.sets_to_win, tournament.points_per_set));
     const clampedT1 = Math.min(Math.max(t1, 0), maxScore);
     const clampedT2 = Math.min(Math.max(t2, 0), maxScore);
 
@@ -1158,6 +1164,7 @@ export default function TournamentView() {
       const autoScore = autoFillOpponentScore(
         enteredScore,
         tournament.points_per_set,
+        getScoringCap(tournament.sets_to_win, tournament.points_per_set),
         true
       );
       if (autoScore !== null) {
@@ -1181,7 +1188,8 @@ export default function TournamentView() {
     const winner = determineMatchWinner(
       updatedSets,
       tournament.sets_to_win,
-      tournament.points_per_set
+      tournament.points_per_set,
+      getScoringCap(tournament.sets_to_win, tournament.points_per_set)
     );
     const currentMatch = allMatches.find(m => m.id === matchId);
     if (winner) {
@@ -1558,10 +1566,7 @@ export default function TournamentView() {
               {({round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko, swiss: t.format_swiss, double_elimination: t.format_double_elimination, monrad: t.format_monrad, king_of_court: t.format_king_of_court, waterfall: t.format_waterfall} as Record<string, string>)[tournament.format]}
             </span>
             <span className={`text-xs font-medium ${theme.cardBg} ${theme.textSecondary} border ${theme.cardBorder} px-2.5 py-1 rounded-full`}>
-              Best of {tournament.sets_to_win * 2 - 1}
-            </span>
-            <span className={`text-xs font-medium ${theme.cardBg} ${theme.textSecondary} border ${theme.cardBorder} px-2.5 py-1 rounded-full`}>
-              {getScoringDescription(tournament.points_per_set)}
+              {getScoringDescription(tournament.sets_to_win, tournament.points_per_set)}
             </span>
             {tournament.courts > 1 && (
               <span className="text-xs font-medium bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full">
@@ -2193,6 +2198,7 @@ export default function TournamentView() {
                           sets={setsByMatch.get(match.id) || []}
                           setsToWin={tournament.sets_to_win}
                           pointsPerSet={tournament.points_per_set}
+                          cap={getScoringCap(tournament.sets_to_win, tournament.points_per_set)}
                           courts={tournament.courts || 1}
                           occupiedCourts={globalOccupiedCourts}
                           playerName={playerName}
@@ -2212,6 +2218,7 @@ export default function TournamentView() {
                           setsByMatch={setsByMatch}
                           setsToWin={tournament.sets_to_win}
                           pointsPerSet={tournament.points_per_set}
+                          cap={getScoringCap(tournament.sets_to_win, tournament.points_per_set)}
                           courts={tournament.courts || 1}
                           occupiedCourts={globalOccupiedCourts}
                           playerName={playerName}
@@ -2252,6 +2259,7 @@ export default function TournamentView() {
           setsByMatch={setsByMatch}
           playerName={playerName}
           pointsPerSet={tournament.points_per_set}
+          cap={getScoringCap(tournament.sets_to_win, tournament.points_per_set)}
         />
       )}
 
@@ -2267,6 +2275,7 @@ export default function TournamentView() {
                 setsByMatch={setsByMatch}
                 playerName={playerName}
                 pointsPerSet={tournament.points_per_set}
+                cap={getScoringCap(tournament.sets_to_win, tournament.points_per_set)}
               />
             </>
           )}
@@ -2279,6 +2288,7 @@ export default function TournamentView() {
                 setsByMatch={setsByMatch}
                 playerName={playerName}
                 pointsPerSet={tournament.points_per_set}
+                cap={getScoringCap(tournament.sets_to_win, tournament.points_per_set)}
               />
             </>
           )}
@@ -2325,6 +2335,7 @@ function CompletedMatchesSection({
   setsByMatch,
   setsToWin,
   pointsPerSet,
+  cap,
   courts,
   occupiedCourts,
   playerName,
@@ -2342,6 +2353,7 @@ function CompletedMatchesSection({
   setsByMatch: Map<number, GameSet[]>;
   setsToWin: number;
   pointsPerSet: number;
+  cap: number | null;
   courts: number;
   occupiedCourts: Set<number>;
   playerName: (id: number | null) => string;
@@ -2388,6 +2400,7 @@ function CompletedMatchesSection({
           sets={setsByMatch.get(match.id) || []}
           setsToWin={setsToWin}
           pointsPerSet={pointsPerSet}
+          cap={cap}
           courts={courts}
           occupiedCourts={occupiedCourts}
           playerName={playerName}
@@ -2414,7 +2427,7 @@ function CompletedMatchesSection({
               const sets = setsByMatch.get(m.id) || [];
               let s1 = 0, s2 = 0;
               for (const s of sets) {
-                if (isSetComplete(s, pointsPerSet)) {
+                if (isSetComplete(s, pointsPerSet, cap)) {
                   if (s.team1_score > s.team2_score) s1++;
                   else s2++;
                 }
@@ -2468,6 +2481,7 @@ function CompletedMatchesSection({
               sets={setsByMatch.get(match.id) || []}
               setsToWin={setsToWin}
               pointsPerSet={pointsPerSet}
+              cap={cap}
               courts={courts}
               occupiedCourts={occupiedCourts}
               playerName={playerName}
@@ -2491,6 +2505,7 @@ function MatchCard({
   sets,
   setsToWin,
   pointsPerSet,
+  cap,
   courts,
   occupiedCourts,
   playerName,
@@ -2506,6 +2521,7 @@ function MatchCard({
   sets: GameSet[];
   setsToWin: number;
   pointsPerSet: number;
+  cap: number | null;
   courts: number;
   occupiedCourts: Set<number>;
   playerName: (id: number | null) => string;
@@ -2528,7 +2544,7 @@ function MatchCard({
 }) {
   const { t } = useT();
   const maxSets = setsToWin * 2 - 1;
-  const maxScore = getMaxScore(pointsPerSet);
+  const maxScore = getMaxScore(pointsPerSet, cap);
   const team1Label = match.team1_p2
     ? `${playerName(match.team1_p1)} / ${playerName(match.team1_p2)}`
     : playerName(match.team1_p1);
@@ -2540,7 +2556,7 @@ function MatchCard({
   let team1SetsWon = 0;
   let team2SetsWon = 0;
   for (const s of sets) {
-    if (isSetComplete(s, pointsPerSet)) {
+    if (isSetComplete(s, pointsPerSet, cap)) {
       if (s.team1_score > s.team2_score) team1SetsWon++;
       else team2SetsWon++;
     }
@@ -2678,11 +2694,11 @@ function MatchCard({
 
           const validation =
             score1 > 0 || score2 > 0
-              ? isScoreValid(score1, score2, pointsPerSet)
+              ? isScoreValid(score1, score2, pointsPerSet, cap)
               : { valid: true };
 
           const complete = setData
-            ? isSetComplete(setData, pointsPerSet)
+            ? isSetComplete(setData, pointsPerSet, cap)
             : false;
 
           const handleScoreKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, setNum: number, team: 1 | 2) => {

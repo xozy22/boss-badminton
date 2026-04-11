@@ -42,7 +42,8 @@ export function calculateHighlights(
   setsByMatch: Map<number, GameSet[]>,
   pointsPerSet: number,
   _playerName: (id: number | null) => string,
-  teamLabel: (m: Match) => [string, string]
+  teamLabel: (m: Match) => [string, string],
+  cap: number | null = null
 ): TournamentHighlights {
   const completedMatches = matches.filter(
     (m) => m.status === "completed" && m.winner_team
@@ -62,7 +63,7 @@ export function calculateHighlights(
 
   for (const m of completedMatches) {
     const sets = setsByMatch.get(m.id) || [];
-    const completeSets = sets.filter((s) => isSetComplete(s, pointsPerSet));
+    const completeSets = sets.filter((s) => isSetComplete(s, pointsPerSet, cap));
     const [label1, label2] = teamLabel(m);
 
     let matchT1Points = 0;

@@ -1,53 +1,88 @@
 import type { Player, Match, GameSet, StandingEntry, TeamStandingEntry } from "./types";
 
 /**
- * Badminton Rallypoint-System:
- * Standard (pointsPerSet = 21):
- *   - Satz gewonnen bei 21 Punkten mit mind. 2 Vorsprung
- *   - Bei 20:20 → Verlaengerung bis 2 Punkte Vorsprung
- *   - Deckelung bei 30: Bei 29:29 entscheidet der naechste Punkt (30:29)
+ * 5 feste Spielmodi:
  *
- * Benutzerdefiniert (pointsPerSet != 21):
- *   - Die gesetzte Punktzahl ist das harte Maximum
- *   - Wer zuerst diese Punktzahl erreicht, gewinnt den Satz
+ * 11_1: 11 Pkt · 1 Satz            – kein Cap, keine Verlaengerung
+ * 11_2: 11 Pkt · 2 Sätze, Cap 20  – Verlaengerung bei 10:10, Deckel 20
+ * 15_1: 15 Pkt · 1 Satz            – kein Cap, keine Verlaengerung
+ * 15_2: 15 Pkt · 2 Sätze, Cap 25  – Verlaengerung bei 14:14, Deckel 25
+ * 21_2: 21 Pkt · 2 Sätze, Cap 30  – Verlaengerung bei 20:20, Deckel 30 (Standard)
  */
 
-const STANDARD_POINTS = 21;
-const STANDARD_CAP = 30;
+export type ScoringModeId = "11_1" | "11_2" | "15_1" | "15_2" | "21_2";
+
+export interface ScoringMode {
+  id: ScoringModeId;
+  sets_to_win: number;
+  points_per_set: number;
+  /** null = kein Cap (Single-Set-Modi), number = Cap-Wert */
+  cap: number | null;
+}
+
+export const SCORING_MODES: ScoringMode[] = [
+  { id: "11_1", sets_to_win: 1, points_per_set: 11, cap: null },
+  { id: "11_2", sets_to_win: 2, points_per_set: 11, cap: 20 },
+  { id: "15_1", sets_to_win: 1, points_per_set: 15, cap: null },
+  { id: "15_2", sets_to_win: 2, points_per_set: 15, cap: 25 },
+  { id: "21_2", sets_to_win: 2, points_per_set: 21, cap: 30 },
+];
+
+/** Gibt den passenden Spielmodus fuer gespeicherte (sets_to_win, points_per_set) zurueck. Fallback: 21_2 */
+export function getScoringModeId(setsToWin: number, pointsPerSet: number): ScoringModeId {
+  const found = SCORING_MODES.find(
+    (m) => m.sets_to_win === setsToWin && m.points_per_set === pointsPerSet
+  );
+  return found?.id ?? "21_2";
+}
+
+/** Gibt den Cap-Wert fuer eine Kombination zurueck (null = kein Cap) */
+export function getScoringCap(setsToWin: number, pointsPerSet: number): number | null {
+  const found = SCORING_MODES.find(
+    (m) => m.sets_to_win === setsToWin && m.points_per_set === pointsPerSet
+  );
+  return found?.cap ?? null;
+}
+
+// ---------------------------------------------------------------------------
+// Scoring-Logik
+// ---------------------------------------------------------------------------
 
 /** Prueft ob ein Score ein gueltiger Satzgewinn ist */
 export function isSetWon(
   winnerScore: number,
   loserScore: number,
-  pointsPerSet: number
+  pointsPerSet: number,
+  cap: number | null
 ): boolean {
   if (winnerScore <= loserScore) return false;
   if (winnerScore < pointsPerSet) return false;
 
-  if (pointsPerSet === STANDARD_POINTS) {
-    // Standard Rallypoint: mind. 2 Vorsprung, Deckel bei 30
+  if (cap !== null) {
+    // Modi MIT Verlaengerung (11_2, 15_2, 21_2)
     const diff = winnerScore - loserScore;
-    if (winnerScore === STANDARD_CAP && diff >= 1) return true; // 30:29
+    if (winnerScore === cap && diff >= 1) return true; // z.B. 30:29, 20:19, 25:24
     return diff >= 2;
   }
 
-  // Benutzerdefiniert: exakt die Zielpunktzahl = Sieg
+  // Modi OHNE Verlaengerung (11_1, 15_1): exakt Zielpunktzahl = Sieg
   return winnerScore >= pointsPerSet;
 }
 
 /** Prueft ob ein Satz vollstaendig und gueltig eingetragen ist */
-export function isSetComplete(s: GameSet, pointsPerSet: number): boolean {
+export function isSetComplete(s: GameSet, pointsPerSet: number, cap?: number | null): boolean {
   // Beide muessen eingetragen sein
   if (s.team1_score <= 0 && s.team2_score <= 0) return false;
 
   // Score-Kombination muss regelkonform sein
-  const validation = isScoreValid(s.team1_score, s.team2_score, pointsPerSet);
+  const resolvedCap = cap !== undefined ? cap : null;
+  const validation = isScoreValid(s.team1_score, s.team2_score, pointsPerSet, resolvedCap);
   if (!validation.valid) return false;
 
   // Mindestens ein Team muss gewonnen haben
   return (
-    isSetWon(s.team1_score, s.team2_score, pointsPerSet) ||
-    isSetWon(s.team2_score, s.team1_score, pointsPerSet)
+    isSetWon(s.team1_score, s.team2_score, pointsPerSet, resolvedCap) ||
+    isSetWon(s.team2_score, s.team1_score, pointsPerSet, resolvedCap)
   );
 }
 
@@ -55,14 +90,14 @@ export function isSetComplete(s: GameSet, pointsPerSet: number): boolean {
 export function isScoreValid(
   score1: number,
   score2: number,
-  pointsPerSet: number
+  pointsPerSet: number,
+  cap: number | null
 ): { valid: boolean; error?: string } {
   if (score1 < 0 || score2 < 0) {
     return { valid: false, error: "Punkte duerfen nicht negativ sein" };
   }
 
-  const maxAllowed =
-    pointsPerSet === STANDARD_POINTS ? STANDARD_CAP : pointsPerSet;
+  const maxAllowed = cap !== null ? cap : pointsPerSet;
 
   if (score1 > maxAllowed || score2 > maxAllowed) {
     return {
@@ -71,61 +106,73 @@ export function isScoreValid(
     };
   }
 
-  if (pointsPerSet === STANDARD_POINTS) {
+  if (cap !== null) {
+    // Modi MIT Verlaengerung (11_2, 15_2, 21_2)
     const high = Math.max(score1, score2);
     const low = Math.min(score1, score2);
     const diff = high - low;
+    const extStart = pointsPerSet - 1; // 20, 10, 14 je nach Modus
 
-    // Beide unter 21: noch laufend, ok
-    if (high < STANDARD_POINTS) {
+    // Beide unter Zielpunktzahl: noch laufend
+    if (high < pointsPerSet) {
       return { valid: true };
     }
 
-    // Normaler Satzgewinn: Gewinner hat genau 21, Verlierer 0-19
-    if (high === STANDARD_POINTS && low <= 19) {
+    // Normaler Satzgewinn: Gewinner hat genau Zielpunktzahl, Verlierer <= extStart-1
+    if (high === pointsPerSet && low <= extStart - 1) {
       return { valid: true };
     }
 
-    // 21:21 oder hoeher gleich: Unentschieden gibt es nicht
-    if (high >= STANDARD_POINTS && diff === 0) {
-      return {
-        valid: false,
-        error: "Unentschieden nicht moeglich",
-      };
+    // Gleichstand auf oder ueber Zielpunktzahl: kein Unentschieden
+    if (high >= pointsPerSet && diff === 0) {
+      return { valid: false, error: "Unentschieden nicht moeglich" };
     }
 
-    // Verlaengerung: Beide muessen mindestens 20 haben
-    if (high > STANDARD_POINTS && low < STANDARD_POINTS - 1) {
+    // Verlaengerung: Beide muessen mindestens extStart (z.B. 20, 10, 14) haben
+    if (high > pointsPerSet && low < extStart) {
       return {
         valid: false,
         error: `Bei ${high} muss der Gegner mind. ${high - 2} haben`,
       };
     }
 
-    // Verlaengerung: Differenz muss genau 2 sein (ausser Deckel 30:29)
-    if (high > STANDARD_POINTS && high < STANDARD_CAP && diff !== 2) {
+    // Verlaengerung: Differenz muss genau 2 sein (ausser am Cap)
+    if (high > pointsPerSet && high < cap && diff !== 2) {
       return {
         valid: false,
         error: "Verlaengerung: genau 2 Punkte Differenz noetig",
       };
     }
 
-    // Deckel 30: Gegner muss 28 oder 29 sein
-    if (high === STANDARD_CAP && low < STANDARD_CAP - 2) {
+    // Am Cap: Verlierer muss cap-2 oder cap-1 sein
+    if (high === cap && low < cap - 2) {
       return {
         valid: false,
-        error: "Bei 30 muss der Gegner 28 oder 29 haben",
+        error: `Bei ${cap} muss der Gegner ${cap - 2} oder ${cap - 1} haben`,
       };
     }
 
-    // Beide 30 geht nicht
-    if (score1 === STANDARD_CAP && score2 === STANDARD_CAP) {
-      return { valid: false, error: "30:30 ist nicht moeglich" };
+    // cap:cap geht nicht
+    if (score1 === cap && score2 === cap) {
+      return { valid: false, error: `${cap}:${cap} ist nicht moeglich` };
     }
   } else {
-    // Benutzerdefiniert: Gewinner darf nicht ueber Ziel, Verlierer nicht auf Ziel
+    // Modi OHNE Verlaengerung (11_1, 15_1): first-to-N
+    const high = Math.max(score1, score2);
+
+    // Beide unter Zielpunktzahl: noch laufend
+    if (high < pointsPerSet) {
+      return { valid: true };
+    }
+
+    // Gleichstand auf Zielpunktzahl: unmoeoglich
     if (score1 === pointsPerSet && score2 === pointsPerSet) {
       return { valid: false, error: `${pointsPerSet}:${pointsPerSet} ist nicht moeglich` };
+    }
+
+    // Verlierer darf nicht auch Zielpunktzahl haben
+    if (high === pointsPerSet) {
+      return { valid: true };
     }
   }
 
@@ -135,49 +182,44 @@ export function isScoreValid(
 /**
  * Auto-Vervollstaendigung: Berechnet den Gegner-Score wenn er eindeutig ist.
  *
- * Standard (21):
- *   Eingabe 0-19  → Gegner hat mit 21 gewonnen
- *   Eingabe 20    → nicht eindeutig (21:20 oder 22:20), kein Auto-Fill
- *   Eingabe 21    → nicht eindeutig (Gegner 0-19 moeglich), kein Auto-Fill
- *   Eingabe 22-29 → Verlaengerung, Gegner = Eingabe - 2
- *   Eingabe 30    → Deckel, Gegner = 29
+ * Mit Cap (11_2, 15_2, 21_2):
+ *   Eingabe 0..N-2      → Gegner hat mit N gewonnen (nur bei frischer Eingabe)
+ *   Eingabe N-1         → Verlaengerung, Gegner = N+1 (z.B. 20→22, 10→12, 14→16)
+ *   Eingabe N+1..cap-1  → Verlaengerung, Gegner = Eingabe - 2
+ *   Eingabe cap         → Deckel, Gegner = cap - 1
  *
- * Benutzerdefiniert (z.B. 15):
- *   Eingabe < Ziel → Gegner hat mit Zielpunktzahl gewonnen
- *   Eingabe = Ziel → nicht eindeutig, kein Auto-Fill
- */
-/**
- * Auto-Vervollstaendigung: Berechnet den Gegner-Score wenn er eindeutig ist.
- *
- * onlyIfFresh = true: Nur bei Neu-Eingabe (Gegner ist 0)
- *   → Scores 1-19 setzen Gegner auf 21 (Verlierer-Score)
- *   → Custom: Scores < Ziel setzen Gegner auf Zielpunktzahl
- *
- * onlyIfFresh = false: Immer (auch beim Bearbeiten)
- *   → Scores 22-29: Verlaengerung, Gegner = Eingabe - 2
- *   → Score 30: Deckel, Gegner = 29
+ * Ohne Cap (11_1, 15_1):
+ *   Eingabe < N         → Gegner hat mit N gewonnen (nur bei frischer Eingabe)
+ *   Eingabe = N         → nicht eindeutig, kein Auto-Fill
  */
 export function autoFillOpponentScore(
   enteredScore: number,
   pointsPerSet: number,
+  cap: number | null,
   onlyIfFresh: boolean
 ): number | null {
   if (enteredScore <= 0) return null;
 
-  if (pointsPerSet === STANDARD_POINTS) {
-    // Immer eindeutig (Verlaengerung/Deckel):
-    if (enteredScore === 20) return 22; // 20:22 Verlaengerung verloren
-    if (enteredScore >= 22 && enteredScore <= 29) return enteredScore - 2;
-    if (enteredScore === STANDARD_CAP) return 29;
+  if (cap !== null) {
+    const extStart = pointsPerSet - 1; // z.B. 20, 10, 14
 
-    // Nur bei frischer Eingabe (Gegner war 0):
-    if (onlyIfFresh) {
-      if (enteredScore >= 1 && enteredScore <= 19) return STANDARD_POINTS;
+    // Am Cap: Gegner = cap - 1 (immer eindeutig)
+    if (enteredScore === cap) return cap - 1;
+
+    // Verlaengerung N+1 bis cap-1: Gegner = Eingabe - 2
+    if (enteredScore > pointsPerSet && enteredScore < cap) return enteredScore - 2;
+
+    // Genau extStart eingegeben (z.B. 20 bei 21er, 10 bei 11er): Verlaengerung, Gegner = N+1
+    if (enteredScore === extStart) return pointsPerSet + 1;
+
+    // Frische Eingabe 1..N-2: Gegner hat mit N gewonnen
+    if (onlyIfFresh && enteredScore >= 1 && enteredScore < extStart) {
+      return pointsPerSet;
     }
   } else {
-    // Benutzerdefiniert: nur bei frischer Eingabe
-    if (onlyIfFresh) {
-      if (enteredScore >= 1 && enteredScore < pointsPerSet) return pointsPerSet;
+    // Kein Cap: nur bei frischer Eingabe < N
+    if (onlyIfFresh && enteredScore >= 1 && enteredScore < pointsPerSet) {
+      return pointsPerSet;
     }
   }
 
@@ -185,16 +227,21 @@ export function autoFillOpponentScore(
 }
 
 /** Gibt die maximale erlaubte Punktzahl fuer ein Turnier zurueck */
-export function getMaxScore(pointsPerSet: number): number {
-  return pointsPerSet === STANDARD_POINTS ? STANDARD_CAP : pointsPerSet;
+export function getMaxScore(pointsPerSet: number, cap: number | null): number {
+  return cap !== null ? cap : pointsPerSet;
 }
 
 /** Beschreibt das Zaehsystem als Text */
-export function getScoringDescription(pointsPerSet: number): string {
-  if (pointsPerSet === STANDARD_POINTS) {
-    return "Rallypoint bis 21, Verlaengerung bei 20:20 (max. 30)";
+export function getScoringDescription(setsToWin: number, pointsPerSet: number): string {
+  const mode = SCORING_MODES.find(
+    (m) => m.sets_to_win === setsToWin && m.points_per_set === pointsPerSet
+  );
+  if (!mode) return `Erster bis ${pointsPerSet} Punkte`;
+
+  if (mode.cap !== null) {
+    return `Rallypoint bis ${pointsPerSet}, Verlaengerung bei ${pointsPerSet - 1}:${pointsPerSet - 1} (max. ${mode.cap})`;
   }
-  return `Erster bis ${pointsPerSet} Punkte`;
+  return `Erster bis ${pointsPerSet} Punkte (1 Satz)`;
 }
 
 export function calculateStandings(
@@ -392,13 +439,15 @@ export function calculateTeamStandings(
 export function determineMatchWinner(
   matchSets: GameSet[],
   setsToWin: number,
-  pointsPerSet: number
+  pointsPerSet: number,
+  cap?: number | null
 ): 1 | 2 | null {
+  const resolvedCap = cap !== undefined ? cap : getScoringCap(setsToWin, pointsPerSet);
   let team1Sets = 0;
   let team2Sets = 0;
 
   for (const s of matchSets) {
-    if (!isSetComplete(s, pointsPerSet)) continue;
+    if (!isSetComplete(s, pointsPerSet, resolvedCap)) continue;
     if (s.team1_score > s.team2_score) team1Sets++;
     else if (s.team2_score > s.team1_score) team2Sets++;
   }

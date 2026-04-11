@@ -16,6 +16,7 @@ import {
 import type { Player, TournamentMode, TournamentFormat, Sportstaette, HallConfig } from "../lib/types";
 import { parseHallConfig, hallConfigTotalCourts, playerDisplayName } from "../lib/types";
 import { formFixedDoubleTeams, formFixedMixedTeams, recommendedSwissRounds } from "../lib/draw";
+import { SCORING_MODES, getScoringModeId, type ScoringModeId } from "../lib/scoring";
 import { loadSettings } from "./Settings";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
@@ -61,8 +62,10 @@ export default function TournamentCreate() {
   const [format, setFormat] = useState<TournamentFormat>("random_doubles");
   const [name, setName] = useState(() => generateName("doubles", "random_doubles"));
   const [nameManuallyEdited, setNameManuallyEdited] = useState(false);
-  const [setsToWin, setSetsToWin] = useState(2);
-  const [pointsPerSet, setPointsPerSet] = useState(21);
+  const [scoringMode, setScoringMode] = useState<ScoringModeId>("21_2");
+  const scoringPreset = SCORING_MODES.find((m) => m.id === scoringMode)!;
+  const setsToWin = scoringPreset.sets_to_win;
+  const pointsPerSet = scoringPreset.points_per_set;
   // courts is derived from selected halls
   const [hallConfig, setHallConfig] = useState<HallConfig[]>(() => {
     const s = loadSettings();
@@ -191,8 +194,7 @@ export default function TournamentCreate() {
       setNameManuallyEdited(td.name !== autoName);
       setMode(td.mode);
       setFormat(td.format);
-      setSetsToWin(td.sets_to_win);
-      setPointsPerSet(td.points_per_set);
+      setScoringMode(getScoringModeId(td.sets_to_win, td.points_per_set));
       // Load hall config from tournament
       if (td.hall_config) {
         const halls = parseHallConfig(td.hall_config);
@@ -480,8 +482,7 @@ export default function TournamentCreate() {
                     if (tpl.name) { setName(tpl.name); setNameManuallyEdited(true); }
                     if (tpl.mode) setMode(tpl.mode);
                     if (tpl.format) setFormat(tpl.format);
-                    if (tpl.sets_to_win) setSetsToWin(tpl.sets_to_win);
-                    if (tpl.points_per_set) setPointsPerSet(tpl.points_per_set);
+                    if (tpl.sets_to_win && tpl.points_per_set) setScoringMode(getScoringModeId(tpl.sets_to_win, tpl.points_per_set));
                     if (tpl.courts) {
                       setHallConfig([{ name: "Halle 1", courts: tpl.courts }]);
                       setSelectedHallIndices(new Set([0]));
@@ -656,29 +657,17 @@ export default function TournamentCreate() {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                      {t.tournament_sets_to_win.replace("{count}", String(setsToWin * 2 - 1))}
+                      {t.scoring_mode}
                     </label>
                     <select
-                      value={setsToWin}
-                      onChange={(e) => setSetsToWin(Number(e.target.value))}
+                      value={scoringMode}
+                      onChange={(e) => setScoringMode(e.target.value as ScoringModeId)}
                       className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                     >
-                      <option value={1}>{t.best_of_1}</option>
-                      <option value={2}>{t.best_of_3}</option>
-                      <option value={3}>{t.best_of_5}</option>
+                      {SCORING_MODES.map((m) => (
+                        <option key={m.id} value={m.id}>{t[`scoring_mode_${m.id}` as keyof typeof t] as string}</option>
+                      ))}
                     </select>
-                  </div>
-                  <div>
-                    <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
-                      {t.tournament_points_per_set}
-                    </label>
-                    <input
-                      type="number"
-                      value={pointsPerSet}
-                      onChange={(e) => setPointsPerSet(Number(e.target.value))}
-                      className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
-                      min={1}
-                    />
                   </div>
                   <div>
                     <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
@@ -1163,7 +1152,7 @@ export default function TournamentCreate() {
                 {(format === "swiss" || format === "monrad" || format === "waterfall") && (
                   <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_swiss_rounds}:</span> {numGroups}</div>
                 )}
-                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_rules}</span> Best of {setsToWin * 2 - 1} · {pointsPerSet} {t.common_points} · {courts} {courts === 1 ? t.common_field : t.common_fields}</div>
+                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_rules}</span> {t[`scoring_mode_${scoringMode}` as keyof typeof t] as string} · {courts} {courts === 1 ? t.common_field : t.common_fields}</div>
                 <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_players}</span> {t.common_selected.replace("{count}", String(selectedPlayerIds.size))} {selectedPlayerIds.size < minPlayers && <span className="text-orange-500">{t.tournament_min_players.replace("{count}", String(minPlayers))}</span>}</div>
                 {needsTeamPairing && (
                   <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_teams}</span> {manualTeams.length} {poolPlayers.length > 1 && <span className="text-orange-500">{t.tournament_teams_open.replace("{count}", String(poolPlayers.length))}</span>}</div>

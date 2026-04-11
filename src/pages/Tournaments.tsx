@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { getTournaments, deleteTournament, updateTournamentStatus, createTournament, getPlayers, addPlayerToTournament, updateTeamConfig, updateHallConfig, isTauri } from "../lib/db";
 import type { Tournament } from "../lib/types";
 import { playerDisplayName } from "../lib/types";
+import { getScoringModeId } from "../lib/scoring";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
 
@@ -167,7 +168,7 @@ export default function Tournaments() {
         <div className={`font-semibold ${theme.textPrimary}`}>{tr.name}</div>
         <div className={`text-sm ${theme.textSecondary} mt-0.5`}>
           {{ singles: t.mode_singles, doubles: t.mode_doubles, mixed: t.mode_mixed }[tr.mode]} &middot; {{ round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko, swiss: t.format_swiss, double_elimination: t.format_double_elimination, monrad: t.format_monrad, king_of_court: t.format_king_of_court, waterfall: t.format_waterfall }[tr.format]} &middot;{" "}
-          {t.tournaments_best_of.replace("{count}", String(tr.sets_to_win * 2 - 1))} ({t.tournaments_up_to.replace("{points}", String(tr.points_per_set))})
+          {t[`scoring_mode_${getScoringModeId(tr.sets_to_win, tr.points_per_set)}` as keyof typeof t] as string}
         </div>
       </Link>
       <div className="flex items-center gap-3">

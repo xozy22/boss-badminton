@@ -9,6 +9,7 @@ interface BracketViewProps {
   setsByMatch: Map<number, GameSet[]>;
   playerName: (id: number | null) => string;
   pointsPerSet: number;
+  cap: number | null;
 }
 
 // getRoundLabel is now inside the component to access translations
@@ -29,6 +30,7 @@ export default function BracketView({
   setsByMatch,
   playerName,
   pointsPerSet,
+  cap,
 }: BracketViewProps) {
   const { theme } = useTheme();
   const { t } = useT();
@@ -235,6 +237,7 @@ export default function BracketView({
                     sets={setsByMatch.get(col.matches[mi].id) || []}
                     playerName={playerName}
                     pointsPerSet={pointsPerSet}
+                    cap={cap}
                     isFinal={isFinal}
                   />
                 </div>
@@ -327,12 +330,14 @@ function BracketMatch({
   sets,
   playerName,
   pointsPerSet,
+  cap,
   isFinal,
 }: {
   match: Match;
   sets: GameSet[];
   playerName: (id: number | null) => string;
   pointsPerSet: number;
+  cap: number | null;
   isFinal: boolean;
 }) {
   const { theme } = useTheme();
@@ -346,7 +351,7 @@ function BracketMatch({
 
   let t1Sets = 0, t2Sets = 0;
   for (const s of sets) {
-    if (isSetComplete(s, pointsPerSet)) {
+    if (isSetComplete(s, pointsPerSet, cap)) {
       if (s.team1_score > s.team2_score) t1Sets++;
       else t2Sets++;
     }
