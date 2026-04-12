@@ -1,47 +1,40 @@
 import type { Player, Match, GameSet, StandingEntry, TeamStandingEntry } from "./types";
 
 /**
- * 5 feste Spielmodi:
+ * 5 Punktemodi (unabhaengig von Gewinnsaetzen):
  *
- * 11_1: 11 Pkt · 1 Satz            – kein Cap, keine Verlaengerung
- * 11_2: 11 Pkt · 2 Sätze, Cap 20  – Verlaengerung bei 10:10, Deckel 20
- * 15_1: 15 Pkt · 1 Satz            – kein Cap, keine Verlaengerung
- * 15_2: 15 Pkt · 2 Sätze, Cap 25  – Verlaengerung bei 14:14, Deckel 25
- * 21_2: 21 Pkt · 2 Sätze, Cap 30  – Verlaengerung bei 20:20, Deckel 30 (Standard)
+ * 11_hard: 11 Pkt · harter Cap       – kein Ext., Sieg bei exakt 11 Pkt
+ * 11_ext:  11 Pkt · Verlaengerung bis 20
+ * 15_hard: 15 Pkt · harter Cap       – kein Ext., Sieg bei exakt 15 Pkt
+ * 15_ext:  15 Pkt · Verlaengerung bis 25
+ * 21_ext:  21 Pkt · Verlaengerung bis 30 (Standard)
+ *
+ * Gewinnsaetze (Best of 1/3/5) werden separat in sets_to_win gespeichert.
  */
 
-export type ScoringModeId = "11_1" | "11_2" | "15_1" | "15_2" | "21_2";
+export type ScoringModeId = "11_hard" | "11_ext" | "15_hard" | "15_ext" | "21_ext";
 
 export interface ScoringMode {
   id: ScoringModeId;
-  sets_to_win: number;
   points_per_set: number;
-  /** null = kein Cap (Single-Set-Modi), number = Cap-Wert */
+  /** null = kein Cap (harter Cap), number = max. Punkte bei Verlaengerung */
   cap: number | null;
 }
 
 export const SCORING_MODES: ScoringMode[] = [
-  { id: "11_1", sets_to_win: 1, points_per_set: 11, cap: null },
-  { id: "11_2", sets_to_win: 2, points_per_set: 11, cap: 20 },
-  { id: "15_1", sets_to_win: 1, points_per_set: 15, cap: null },
-  { id: "15_2", sets_to_win: 2, points_per_set: 15, cap: 25 },
-  { id: "21_2", sets_to_win: 2, points_per_set: 21, cap: 30 },
+  { id: "11_hard", points_per_set: 11, cap: null },
+  { id: "11_ext",  points_per_set: 11, cap: 20   },
+  { id: "15_hard", points_per_set: 15, cap: null  },
+  { id: "15_ext",  points_per_set: 15, cap: 25   },
+  { id: "21_ext",  points_per_set: 21, cap: 30   },
 ];
 
-/** Gibt den passenden Spielmodus fuer gespeicherte (sets_to_win, points_per_set) zurueck. Fallback: 21_2 */
-export function getScoringModeId(setsToWin: number, pointsPerSet: number): ScoringModeId {
+/** Gibt den passenden Spielmodus fuer (points_per_set, cap) zurueck. Fallback: 21_ext */
+export function getScoringModeId(pointsPerSet: number, cap: number | null): ScoringModeId {
   const found = SCORING_MODES.find(
-    (m) => m.sets_to_win === setsToWin && m.points_per_set === pointsPerSet
+    (m) => m.points_per_set === pointsPerSet && m.cap === cap
   );
-  return found?.id ?? "21_2";
-}
-
-/** Gibt den Cap-Wert fuer eine Kombination zurueck (null = kein Cap) */
-export function getScoringCap(setsToWin: number, pointsPerSet: number): number | null {
-  const found = SCORING_MODES.find(
-    (m) => m.sets_to_win === setsToWin && m.points_per_set === pointsPerSet
-  );
-  return found?.cap ?? null;
+  return found?.id ?? "21_ext";
 }
 
 // ---------------------------------------------------------------------------
@@ -232,16 +225,11 @@ export function getMaxScore(pointsPerSet: number, cap: number | null): number {
 }
 
 /** Beschreibt das Zaehsystem als Text */
-export function getScoringDescription(setsToWin: number, pointsPerSet: number): string {
-  const mode = SCORING_MODES.find(
-    (m) => m.sets_to_win === setsToWin && m.points_per_set === pointsPerSet
-  );
-  if (!mode) return `Erster bis ${pointsPerSet} Punkte`;
-
-  if (mode.cap !== null) {
-    return `Rallypoint bis ${pointsPerSet}, Verlaengerung bei ${pointsPerSet - 1}:${pointsPerSet - 1} (max. ${mode.cap})`;
+export function getScoringDescription(pointsPerSet: number, cap: number | null): string {
+  if (cap !== null) {
+    return `Rallypoint bis ${pointsPerSet}, Verlaengerung bei ${pointsPerSet - 1}:${pointsPerSet - 1} (max. ${cap})`;
   }
-  return `Erster bis ${pointsPerSet} Punkte (1 Satz)`;
+  return `Erster bis ${pointsPerSet} Punkte (kein Ext.)`;
 }
 
 export function calculateStandings(
@@ -442,7 +430,7 @@ export function determineMatchWinner(
   pointsPerSet: number,
   cap?: number | null
 ): 1 | 2 | null {
-  const resolvedCap = cap !== undefined ? cap : getScoringCap(setsToWin, pointsPerSet);
+  const resolvedCap = cap !== undefined ? cap : null;
   let team1Sets = 0;
   let team2Sets = 0;
 

@@ -9,7 +9,7 @@ import type {
   StandingEntry,
 } from "../../lib/types";
 import { MODE_LABELS, FORMAT_LABELS, playerDisplayName } from "../../lib/types";
-import { isSetComplete, getScoringDescription, getScoringCap, calculateStandings, calculateTeamStandings } from "../../lib/scoring";
+import { isSetComplete, getScoringDescription, calculateStandings, calculateTeamStandings } from "../../lib/scoring";
 import { calculateHighlights } from "../../lib/highlights";
 import type { PrintColors } from "../../lib/theme";
 import { PRINT_COLORS } from "../../lib/theme";
@@ -78,7 +78,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
               {MODE_LABELS[tournament.mode]} &middot;{" "}
               {FORMAT_LABELS[tournament.format]} &middot; Best of{" "}
               {tournament.sets_to_win * 2 - 1} &middot;{" "}
-              {getScoringDescription(tournament.sets_to_win, tournament.points_per_set)}
+              {getScoringDescription(tournament.points_per_set, tournament.cap)}
             </div>
           </div>
           <div style={{ fontSize: 10, color: "#999", textAlign: "right" }}>
@@ -98,7 +98,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
       let t1Sets = 0;
       let t2Sets = 0;
       for (const s of sets) {
-        if (isSetComplete(s, tournament.points_per_set, getScoringCap(tournament.sets_to_win, tournament.points_per_set))) {
+        if (isSetComplete(s, tournament.points_per_set, tournament.cap)) {
           if (s.team1_score > s.team2_score) t1Sets++;
           else t2Sets++;
         }
@@ -398,7 +398,7 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
         tournament.points_per_set,
         playerName,
         (m) => [teamLabel(m, 1), teamLabel(m, 2)],
-        getScoringCap(tournament.sets_to_win, tournament.points_per_set)
+        tournament.cap
       );
 
       const highlightItems: { icon: string; label: string; value: string }[] = [];

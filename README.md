@@ -34,7 +34,9 @@
 - **9 Formats**: Round Robin, Elimination (KO), Random Doubles, Group Stage + KO, Swiss System, Double Elimination, Monrad, King of the Court, Waterfall
 - **Format Info Modal**: Detailed description with ASCII diagram and pros/cons for every format
 - **3 Modes**: Singles, Doubles, Mixed
-- **5 Scoring Modes**: Fixed dropdown with 11 Pkt · 1 Satz, 11 Pkt · 2 Sätze (Cap 20), 15 Pkt · 1 Satz, 15 Pkt · 2 Sätze (Cap 25), 21 Pkt · 2 Sätze (Cap 30 — default). All auto-fill, validation, and winner logic adapts automatically to the selected mode
+- **5 Point Systems** (independently configurable): 11 Pts Hard Cap, 11 Pts Ext. to 20, 15 Pts Hard Cap, 15 Pts Ext. to 25, 21 Pts Ext. to 30 (default)
+- **Sets to Win** (independently configurable): Best of 1, Best of 3, Best of 5 — stored separately from the point system so any combination is possible
+- All auto-fill, validation, and winner logic adapts automatically to the selected point system and sets-to-win
 - **Tournament Wizard**: Step-by-step creation with tab navigation (Settings -> Players -> Teams -> Seeding -> Create)
   - Auto-save on every step - no data loss when navigating between tabs
   - Draft summary showing all settings and participants before starting

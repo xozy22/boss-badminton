@@ -75,7 +75,6 @@ import {
   isSetComplete,
   SCORING_MODES,
   getScoringModeId,
-  getScoringCap,
   type ScoringModeId,
 } from "../lib/scoring";
 import type {
@@ -113,6 +112,7 @@ function EditTournamentModal({
     format: TournamentFormat;
     setsToWin: number;
     pointsPerSet: number;
+    cap: number | null;
     courts: number;
     numGroups: number;
     qualifyPerGroup: number;
@@ -125,11 +125,12 @@ function EditTournamentModal({
   const [mode, setMode] = useState<TournamentMode>(tournament.mode);
   const [format, setFormat] = useState<TournamentFormat>(tournament.format);
   const [scoringMode, setScoringMode] = useState<ScoringModeId>(
-    getScoringModeId(tournament.sets_to_win, tournament.points_per_set)
+    getScoringModeId(tournament.points_per_set, tournament.cap)
   );
   const scoringPreset = SCORING_MODES.find((m) => m.id === scoringMode)!;
-  const setsToWin = scoringPreset.sets_to_win;
   const pointsPerSet = scoringPreset.points_per_set;
+  const cap = scoringPreset.cap;
+  const [setsToWin, setSetsToWin] = useState<number>(tournament.sets_to_win);
   const [courts, setCourts] = useState(tournament.courts);
   const [numGroups, setNumGroups] = useState(tournament.num_groups || 2);
   const [qualifyPerGroup, setQualifyPerGroup] = useState(tournament.qualify_per_group || 2);
@@ -195,13 +196,22 @@ function EditTournamentModal({
             <div>
               <label className={labelClass}>{t.scoring_mode}</label>
               <select value={scoringMode} onChange={(e) => setScoringMode(e.target.value as ScoringModeId)} className={inputClass}>
-                <option value="11_1">{t.scoring_mode_11_1}</option>
-                <option value="11_2">{t.scoring_mode_11_2}</option>
-                <option value="15_1">{t.scoring_mode_15_1}</option>
-                <option value="15_2">{t.scoring_mode_15_2}</option>
-                <option value="21_2">{t.scoring_mode_21_2}</option>
+                {SCORING_MODES.map((m) => (
+                  <option key={m.id} value={m.id}>{t[`scoring_mode_${m.id}` as keyof typeof t] as string}</option>
+                ))}
               </select>
             </div>
+            <div>
+              <label className={labelClass}>{t.scoring_sets_to_win}</label>
+              <select value={setsToWin} onChange={(e) => setSetsToWin(Number(e.target.value))} className={inputClass}>
+                <option value={1}>{t.best_of_1}</option>
+                <option value={2}>{t.best_of_3}</option>
+                <option value={3}>{t.best_of_5}</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelClass}>{t.edit_tournament_courts_label}</label>
               <select value={courts} onChange={(e) => setCourts(Number(e.target.value))} className={inputClass}>
@@ -264,7 +274,7 @@ function EditTournamentModal({
             {t.common_cancel}
           </button>
           <button
-            onClick={() => onSave({ name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, entryFeeSingle: Number(entryFeeSingle) || 0, entryFeeDouble: Number(entryFeeDouble) || 0 })}
+            onClick={() => onSave({ name, mode, format, setsToWin, pointsPerSet, cap, courts, numGroups, qualifyPerGroup, entryFeeSingle: Number(entryFeeSingle) || 0, entryFeeDouble: Number(entryFeeDouble) || 0 })}
             className={`flex-1 ${theme.primaryBg} text-white px-4 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm transition-all text-sm font-medium`}
           >
             {t.common_save}
@@ -1143,7 +1153,7 @@ export default function TournamentView() {
     const t1 = team === 1 ? value : existing?.team1_score ?? 0;
     const t2 = team === 2 ? value : existing?.team2_score ?? 0;
 
-    const maxScore = getMaxScore(tournament.points_per_set, getScoringCap(tournament.sets_to_win, tournament.points_per_set));
+    const maxScore = getMaxScore(tournament.points_per_set, tournament.cap);
     const clampedT1 = Math.min(Math.max(t1, 0), maxScore);
     const clampedT2 = Math.min(Math.max(t2, 0), maxScore);
 
@@ -1174,7 +1184,7 @@ export default function TournamentView() {
       const autoScore = autoFillOpponentScore(
         enteredScore,
         tournament.points_per_set,
-        getScoringCap(tournament.sets_to_win, tournament.points_per_set),
+        tournament.cap,
         true
       );
       if (autoScore !== null) {
@@ -1199,7 +1209,7 @@ export default function TournamentView() {
       updatedSets,
       tournament.sets_to_win,
       tournament.points_per_set,
-      getScoringCap(tournament.sets_to_win, tournament.points_per_set)
+      tournament.cap
     );
     const currentMatch = allMatches.find(m => m.id === matchId);
     if (winner) {
@@ -1593,7 +1603,7 @@ export default function TournamentView() {
               {({round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko, swiss: t.format_swiss, double_elimination: t.format_double_elimination, monrad: t.format_monrad, king_of_court: t.format_king_of_court, waterfall: t.format_waterfall} as Record<string, string>)[tournament.format]}
             </span>
             <span className={`text-xs font-medium ${theme.cardBg} ${theme.textSecondary} border ${theme.cardBorder} px-2.5 py-1 rounded-full`}>
-              {getScoringDescription(tournament.sets_to_win, tournament.points_per_set)}
+              {getScoringDescription(tournament.points_per_set, tournament.cap)}
             </span>
             {tournament.courts > 1 && (
               <span className="text-xs font-medium bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full">
@@ -1844,7 +1854,8 @@ export default function TournamentView() {
               data.numGroups,
               data.qualifyPerGroup,
               data.entryFeeSingle,
-              data.entryFeeDouble
+              data.entryFeeDouble,
+              data.cap
             );
             setShowEditModal(false);
             loadAll();
@@ -2226,7 +2237,7 @@ export default function TournamentView() {
                           sets={setsByMatch.get(match.id) || []}
                           setsToWin={tournament.sets_to_win}
                           pointsPerSet={tournament.points_per_set}
-                          cap={getScoringCap(tournament.sets_to_win, tournament.points_per_set)}
+                          cap={tournament.cap}
                           courts={tournament.courts || 1}
                           occupiedCourts={globalOccupiedCourts}
                           playerName={playerName}
@@ -2246,7 +2257,7 @@ export default function TournamentView() {
                           setsByMatch={setsByMatch}
                           setsToWin={tournament.sets_to_win}
                           pointsPerSet={tournament.points_per_set}
-                          cap={getScoringCap(tournament.sets_to_win, tournament.points_per_set)}
+                          cap={tournament.cap}
                           courts={tournament.courts || 1}
                           occupiedCourts={globalOccupiedCourts}
                           playerName={playerName}
@@ -2287,7 +2298,7 @@ export default function TournamentView() {
           setsByMatch={setsByMatch}
           playerName={playerName}
           pointsPerSet={tournament.points_per_set}
-          cap={getScoringCap(tournament.sets_to_win, tournament.points_per_set)}
+          cap={tournament.cap}
         />
       )}
 
@@ -2303,7 +2314,7 @@ export default function TournamentView() {
                 setsByMatch={setsByMatch}
                 playerName={playerName}
                 pointsPerSet={tournament.points_per_set}
-                cap={getScoringCap(tournament.sets_to_win, tournament.points_per_set)}
+                cap={tournament.cap}
               />
             </>
           )}
@@ -2316,7 +2327,7 @@ export default function TournamentView() {
                 setsByMatch={setsByMatch}
                 playerName={playerName}
                 pointsPerSet={tournament.points_per_set}
-                cap={getScoringCap(tournament.sets_to_win, tournament.points_per_set)}
+                cap={tournament.cap}
               />
             </>
           )}

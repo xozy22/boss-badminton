@@ -62,10 +62,11 @@ export default function TournamentCreate() {
   const [format, setFormat] = useState<TournamentFormat>("random_doubles");
   const [name, setName] = useState(() => generateName("doubles", "random_doubles"));
   const [nameManuallyEdited, setNameManuallyEdited] = useState(false);
-  const [scoringMode, setScoringMode] = useState<ScoringModeId>("21_2");
+  const [scoringMode, setScoringMode] = useState<ScoringModeId>("21_ext");
   const scoringPreset = SCORING_MODES.find((m) => m.id === scoringMode)!;
-  const setsToWin = scoringPreset.sets_to_win;
   const pointsPerSet = scoringPreset.points_per_set;
+  const cap = scoringPreset.cap;
+  const [setsToWin, setSetsToWin] = useState<number>(2); // 1 = Best of 1, 2 = Best of 3, 3 = Best of 5
   // courts is derived from selected halls
   const [hallConfig, setHallConfig] = useState<HallConfig[]>(() => {
     const s = loadSettings();
@@ -121,14 +122,14 @@ export default function TournamentCreate() {
           id, finalName, mode, format, setsToWin, pointsPerSet, courts,
           (format === "group_ko" || format === "swiss" || format === "monrad" || format === "waterfall") ? numGroups : 0,
           format === "group_ko" ? qualifyPerGroup : 0,
-          feeSingle, feeDouble
+          feeSingle, feeDouble, cap
         );
       } catch (err) {
         console.error("Auto-save error:", err);
       }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [isEditMode, editLoaded, editId, name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, useEntryFee, entryFeeSingle, entryFeeDouble]);
+  }, [isEditMode, editLoaded, editId, name, mode, format, setsToWin, pointsPerSet, cap, courts, numGroups, qualifyPerGroup, useEntryFee, entryFeeSingle, entryFeeDouble]);
 
   // Auto-save player selection when it changes
   useEffect(() => {
@@ -194,7 +195,8 @@ export default function TournamentCreate() {
       setNameManuallyEdited(td.name !== autoName);
       setMode(td.mode);
       setFormat(td.format);
-      setScoringMode(getScoringModeId(td.sets_to_win, td.points_per_set));
+      setScoringMode(getScoringModeId(td.points_per_set, td.cap));
+      setSetsToWin(td.sets_to_win);
       // Load hall config from tournament
       if (td.hall_config) {
         const halls = parseHallConfig(td.hall_config);
@@ -298,7 +300,7 @@ export default function TournamentCreate() {
         id, finalName, mode, format, setsToWin, pointsPerSet, courts,
         (format === "group_ko" || format === "swiss" || format === "monrad" || format === "waterfall") ? numGroups : 0,
         format === "group_ko" ? qualifyPerGroup : 0,
-        feeSingle, feeDouble
+        feeSingle, feeDouble, cap
       );
       // Sync players: remove those no longer selected, add new ones
       const existingPlayers = await getTournamentPlayers(id);
@@ -318,7 +320,7 @@ export default function TournamentCreate() {
         finalName, mode, format, setsToWin, pointsPerSet, courts,
         (format === "group_ko" || format === "swiss" || format === "monrad" || format === "waterfall") ? numGroups : 0,
         format === "group_ko" ? qualifyPerGroup : 0,
-        feeSingle, feeDouble
+        feeSingle, feeDouble, cap
       );
       for (const pid of selectedPlayerIds) {
         await addPlayerToTournament(id, pid);
@@ -482,7 +484,16 @@ export default function TournamentCreate() {
                     if (tpl.name) { setName(tpl.name); setNameManuallyEdited(true); }
                     if (tpl.mode) setMode(tpl.mode);
                     if (tpl.format) setFormat(tpl.format);
-                    if (tpl.sets_to_win && tpl.points_per_set) setScoringMode(getScoringModeId(tpl.sets_to_win, tpl.points_per_set));
+                    if (tpl.points_per_set !== undefined) {
+                      // Backward compat: old templates may not have cap; derive from sets_to_win + points_per_set
+                      const legacyCap = (tpl.cap !== undefined) ? tpl.cap : (
+                        (tpl.points_per_set === 11 && tpl.sets_to_win === 2) ? 20 :
+                        (tpl.points_per_set === 15 && tpl.sets_to_win === 2) ? 25 :
+                        (tpl.points_per_set === 21) ? 30 : null
+                      );
+                      setScoringMode(getScoringModeId(tpl.points_per_set, legacyCap));
+                    }
+                    if (tpl.sets_to_win) setSetsToWin(tpl.sets_to_win);
                     if (tpl.courts) {
                       setHallConfig([{ name: "Halle 1", courts: tpl.courts }]);
                       setSelectedHallIndices(new Set([0]));
@@ -667,6 +678,20 @@ export default function TournamentCreate() {
                       {SCORING_MODES.map((m) => (
                         <option key={m.id} value={m.id}>{t[`scoring_mode_${m.id}` as keyof typeof t] as string}</option>
                       ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`}>
+                      {t.scoring_sets_to_win}
+                    </label>
+                    <select
+                      value={setsToWin}
+                      onChange={(e) => setSetsToWin(Number(e.target.value))}
+                      className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+                    >
+                      <option value={1}>{t.best_of_1}</option>
+                      <option value={2}>{t.best_of_3}</option>
+                      <option value={3}>{t.best_of_5}</option>
                     </select>
                   </div>
                   <div>
@@ -1152,7 +1177,7 @@ export default function TournamentCreate() {
                 {(format === "swiss" || format === "monrad" || format === "waterfall") && (
                   <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_swiss_rounds}:</span> {numGroups}</div>
                 )}
-                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_rules}</span> {t[`scoring_mode_${scoringMode}` as keyof typeof t] as string} · {courts} {courts === 1 ? t.common_field : t.common_fields}</div>
+                <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_rules}</span> {t[`scoring_mode_${scoringMode}` as keyof typeof t] as string} · {setsToWin === 1 ? t.best_of_1 : setsToWin === 2 ? t.best_of_3 : t.best_of_5} · {courts} {courts === 1 ? t.common_field : t.common_fields}</div>
                 <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_players}</span> {t.common_selected.replace("{count}", String(selectedPlayerIds.size))} {selectedPlayerIds.size < minPlayers && <span className="text-orange-500">{t.tournament_min_players.replace("{count}", String(minPlayers))}</span>}</div>
                 {needsTeamPairing && (
                   <div><span className={`font-medium ${theme.textPrimary}`}>{t.tournament_summary_teams}</span> {manualTeams.length} {poolPlayers.length > 1 && <span className="text-orange-500">{t.tournament_teams_open.replace("{count}", String(poolPlayers.length))}</span>}</div>

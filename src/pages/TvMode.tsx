@@ -8,7 +8,7 @@ import {
   getAllSetsByTournament,
   isTauri,
 } from "../lib/db";
-import { isSetComplete, getScoringCap } from "../lib/scoring";
+import { isSetComplete } from "../lib/scoring";
 import type {
   Tournament,
   Player,
@@ -289,7 +289,7 @@ export default function TvMode() {
               const sets = setsByMatch.get(match.id) || [];
               let t1Sets = 0, t2Sets = 0;
               for (const s of sets) {
-                if (isSetComplete(s, tournament.points_per_set, getScoringCap(tournament.sets_to_win, tournament.points_per_set))) {
+                if (isSetComplete(s, tournament.points_per_set, tournament.cap)) {
                   if (s.team1_score > s.team2_score) t1Sets++;
                   else t2Sets++;
                 }

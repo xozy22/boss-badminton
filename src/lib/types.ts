@@ -76,6 +76,7 @@ export interface Tournament {
   format: TournamentFormat;
   sets_to_win: number;
   points_per_set: number;
+  cap: number | null;
   courts: number;
   num_groups: number;
   qualify_per_group: number;

@@ -67,6 +67,7 @@ export default function TemplateExportModal({
                 template.format = tournament.format;
                 template.sets_to_win = tournament.sets_to_win;
                 template.points_per_set = tournament.points_per_set;
+                template.cap = tournament.cap;
                 template.courts = tournament.courts;
                 template.num_groups = tournament.num_groups;
                 template.qualify_per_group = tournament.qualify_per_group;

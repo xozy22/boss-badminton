@@ -34,7 +34,9 @@
 - **9 Formate**: Jeder gegen Jeden, KO-System, Wechselnde Partner, Gruppenphase + KO, Schweizer System, Doppel-KO, Monrad, King of the Court, Waterfall
 - **Format-Info-Modal**: Ausfuehrliche Beschreibung mit ASCII-Diagramm und Vor-/Nachteile fuer jedes Format
 - **3 Modi**: Einzel, Doppel, Mixed
-- **5 Spielmodi**: Festes Dropdown mit 11 Pkt · 1 Satz, 11 Pkt · 2 Sätze (Cap 20), 15 Pkt · 1 Satz, 15 Pkt · 2 Sätze (Cap 25), 21 Pkt · 2 Sätze (Cap 30 — Standard). Auto-Fill, Validierung und Gewinner-Logik passen sich automatisch an den gewaehlten Modus an
+- **5 Punktemodi** (unabhaengig konfigurierbar): 11 Pkt Harter Cap, 11 Pkt Verlaengerung bis 20, 15 Pkt Harter Cap, 15 Pkt Verlaengerung bis 25, 21 Pkt Verlaengerung bis 30 (Standard)
+- **Gewinnsaetze** (unabhaengig konfigurierbar): Best of 1, Best of 3, Best of 5 — separat vom Punktemodus gespeichert, sodass jede Kombination moeglich ist
+- Auto-Fill, Validierung und Gewinner-Logik passen sich automatisch an Punktemodus und Gewinnsaetze an
 - **Turnier-Wizard**: Schrittweise Erstellung mit Tab-Navigation (Einstellungen -> Spieler -> Teams -> Setzliste -> Erstellen)
   - Auto-Save bei jedem Schritt - kein Datenverlust beim Wechseln zwischen Tabs
   - Draft-Zusammenfassung mit allen Einstellungen und Teilnehmern vor dem Start

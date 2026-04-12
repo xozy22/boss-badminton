@@ -315,6 +315,18 @@ pub fn run() {
             ",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "add cap column to tournaments",
+            sql: "ALTER TABLE tournaments ADD COLUMN cap INTEGER;
+                  UPDATE tournaments SET cap = CASE
+                    WHEN points_per_set = 11 AND sets_to_win = 2 THEN 20
+                    WHEN points_per_set = 15 AND sets_to_win = 2 THEN 25
+                    WHEN points_per_set = 21 THEN 30
+                    ELSE NULL
+                  END;",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

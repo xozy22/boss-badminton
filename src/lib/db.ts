@@ -305,13 +305,14 @@ export async function createTournament(
   numGroups: number = 0,
   qualifyPerGroup: number = 0,
   entryFeeSingle: number = 0,
-  entryFeeDouble: number = 0
+  entryFeeDouble: number = 0,
+  cap: number | null = null
 ): Promise<number> {
   if (isTauri()) {
     const d = await getTauriDb();
     const result = await d.execute(
-      "INSERT INTO tournaments (name, mode, format, sets_to_win, points_per_set, courts, num_groups, qualify_per_group, entry_fee_single, entry_fee_double) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
-      [name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, entryFeeSingle, entryFeeDouble]
+      "INSERT INTO tournaments (name, mode, format, sets_to_win, points_per_set, courts, num_groups, qualify_per_group, entry_fee_single, entry_fee_double, cap) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+      [name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, entryFeeSingle, entryFeeDouble, cap]
     );
     return result.lastInsertId!;
   }
@@ -324,6 +325,7 @@ export async function createTournament(
     format,
     sets_to_win: setsToWin,
     points_per_set: pointsPerSet,
+    cap,
     courts,
     num_groups: numGroups,
     qualify_per_group: qualifyPerGroup,
@@ -350,13 +352,14 @@ export async function updateTournament(
   numGroups: number,
   qualifyPerGroup: number,
   entryFeeSingle: number = 0,
-  entryFeeDouble: number = 0
+  entryFeeDouble: number = 0,
+  cap: number | null = null
 ): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();
     await d.execute(
-      "UPDATE tournaments SET name=$1, mode=$2, format=$3, sets_to_win=$4, points_per_set=$5, courts=$6, num_groups=$7, qualify_per_group=$8, entry_fee_single=$9, entry_fee_double=$10 WHERE id=$11",
-      [name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, entryFeeSingle, entryFeeDouble, id]
+      "UPDATE tournaments SET name=$1, mode=$2, format=$3, sets_to_win=$4, points_per_set=$5, courts=$6, num_groups=$7, qualify_per_group=$8, entry_fee_single=$9, entry_fee_double=$10, cap=$11 WHERE id=$12",
+      [name, mode, format, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, entryFeeSingle, entryFeeDouble, cap, id]
     );
     return;
   }
@@ -368,6 +371,7 @@ export async function updateTournament(
     t.format = format;
     t.sets_to_win = setsToWin;
     t.points_per_set = pointsPerSet;
+    t.cap = cap;
     t.courts = courts;
     t.num_groups = numGroups;
     t.qualify_per_group = qualifyPerGroup;

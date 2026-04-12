@@ -120,11 +120,12 @@ export interface Translations {
   tournament_sets_to_win: string;
   tournament_points_per_set: string;
   scoring_mode: string;
-  scoring_mode_11_1: string;
-  scoring_mode_11_2: string;
-  scoring_mode_15_1: string;
-  scoring_mode_15_2: string;
-  scoring_mode_21_2: string;
+  scoring_mode_11_hard: string;
+  scoring_mode_11_ext: string;
+  scoring_mode_15_hard: string;
+  scoring_mode_15_ext: string;
+  scoring_mode_21_ext: string;
+  scoring_sets_to_win: string;
   tournament_venue: string;
   tournament_venue_none: string;
   tournament_halls_courts: string;
