@@ -404,6 +404,7 @@ export const de: Translations = {
   court_choose_court: "Feld waehlen",
   court_drag_or_double_click: "Drag auf ein Feld oder Doppelklick zum Zuweisen",
   court_double_click_jump: "Doppelklick: Zum Spiel springen",
+  court_next_round_separator: "— Runde {n} —",
 
   // ===== Court Timer =====
   court_timer_started: "Gestartet: {time}",

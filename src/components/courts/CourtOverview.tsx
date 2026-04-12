@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { Match, HallConfig } from "../../lib/types";
+import type { Match, HallConfig, Round } from "../../lib/types";
 import { getCourtHallLabel } from "../../lib/types";
 import { CourtTimer } from "./CourtTimer";
 import { useTheme } from "../../lib/ThemeContext";
@@ -9,13 +9,14 @@ interface Props {
   courts: number;
   matches: Match[];          // ALL matches across ALL rounds (for court assignments)
   activeRoundMatches?: Match[];  // Matches of the currently viewed round (for unassigned queue)
+  futureRoundQueues?: { round: Round; matches: Match[] }[];  // Early-draw: next rounds in queue
   playerName: (id: number | null) => string;
   onDrop?: (matchId: number, court: number) => void;
   onMatchClick?: (matchId: number) => void;
   hallConfig?: HallConfig[];
 }
 
-export default function CourtOverview({ courts, matches, activeRoundMatches, playerName, onDrop, onMatchClick, hallConfig }: Props) {
+export default function CourtOverview({ courts, matches, activeRoundMatches, futureRoundQueues, playerName, onDrop, onMatchClick, hallConfig }: Props) {
   const { theme } = useTheme();
   const { t } = useT();
   // Finde fuer jedes Feld das aktive (nicht abgeschlossene) Match - aus ALLEN Runden
@@ -228,81 +229,104 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, pla
         </div>
       )}
 
-      {/* Unassigned matches */}
-      {unassigned.length > 0 && (
-        <div className="mt-3">
-          <div className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">
-            {t.court_waiting.replace("{count}", String(unassigned.length))}
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            {unassigned.map((m) => {
-              const { t1, t2 } = teamLabel(m);
-              return (
-                <div
-                  key={m.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, m.id)}
-                  onDoubleClick={() => handleDoubleClick(m.id)}
-                  className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl px-3 py-2 text-xs cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-md transition-all duration-200 select-none relative ${courtPickerMatchId === m.id ? "z-40" : ""}`}
-                  title={t.court_drag_or_double_click}
-                >
-                  <span className={`font-medium ${theme.textPrimary}`}>{t1}</span>
-                  <span className={`${theme.textMuted} mx-1`}>{t.common_vs}</span>
-                  <span className={`font-medium ${theme.textPrimary}`}>{t2}</span>
+      {/* Unassigned match card — shared renderer */}
+      {(() => {
+        const renderUnassignedCard = (m: Match) => {
+          const { t1, t2 } = teamLabel(m);
+          return (
+            <div
+              key={m.id}
+              draggable
+              onDragStart={(e) => handleDragStart(e, m.id)}
+              onDoubleClick={() => handleDoubleClick(m.id)}
+              className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl px-3 py-2 text-xs cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-md transition-all duration-200 select-none relative ${courtPickerMatchId === m.id ? "z-40" : ""}`}
+              title={t.court_drag_or_double_click}
+            >
+              <span className={`font-medium ${theme.textPrimary}`}>{t1}</span>
+              <span className={`${theme.textMuted} mx-1`}>{t.common_vs}</span>
+              <span className={`font-medium ${theme.textPrimary}`}>{t2}</span>
 
-                  {/* Court picker popup */}
-                  {courtPickerMatchId === m.id && (
-                    <div className={`absolute top-full left-0 mt-1 ${theme.cardBg} border ${theme.cardBorder} rounded-xl shadow-xl z-50 overflow-hidden`}>
-                      <div className={`px-3 py-1.5 text-[10px] font-bold ${theme.textMuted} uppercase tracking-wide border-b ${theme.cardBorder}`}>
-                        {t.court_choose_court}
+              {/* Court picker popup */}
+              {courtPickerMatchId === m.id && (
+                <div className={`absolute top-full left-0 mt-1 ${theme.cardBg} border ${theme.cardBorder} rounded-xl shadow-xl z-50 overflow-hidden`}>
+                  <div className={`px-3 py-1.5 text-[10px] font-bold ${theme.textMuted} uppercase tracking-wide border-b ${theme.cardBorder}`}>
+                    {t.court_choose_court}
+                  </div>
+                  {freeCourtsByHall ? (
+                    freeCourtsByHall.map((group) => (
+                      <div key={group.hallName}>
+                        <div className={`px-3 py-1 text-[10px] font-semibold ${theme.textMuted} ${theme.cardBg}`}>
+                          {group.hallName}
+                        </div>
+                        {group.courts.map((c) => {
+                          const { localCourt } = getCourtHallLabel(c, hallConfig!);
+                          return (
+                            <button
+                              key={c}
+                              onClick={(e) => { e.stopPropagation(); handlePickCourt(c); }}
+                              className={`w-full px-4 py-2 text-left text-xs font-medium ${theme.textPrimary} hover:${theme.selectedBg} hover:pl-5 transition-all duration-150`}
+                            >
+                              {t.court_field.replace("{n}", String(localCourt))}
+                            </button>
+                          );
+                        })}
                       </div>
-                      {freeCourtsByHall ? (
-                        // Multi-hall: group by hall
-                        freeCourtsByHall.map((group) => (
-                          <div key={group.hallName}>
-                            <div className={`px-3 py-1 text-[10px] font-semibold ${theme.textMuted} ${theme.cardBg}`}>
-                              {group.hallName}
-                            </div>
-                            {group.courts.map((c) => {
-                              const { localCourt } = getCourtHallLabel(c, hallConfig!);
-                              return (
-                                <button
-                                  key={c}
-                                  onClick={(e) => { e.stopPropagation(); handlePickCourt(c); }}
-                                  className={`w-full px-4 py-2 text-left text-xs font-medium ${theme.textPrimary} hover:${theme.selectedBg} hover:pl-5 transition-all duration-150`}
-                                >
-                                  {t.court_field.replace("{n}", String(localCourt))}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        ))
-                      ) : (
-                        // Flat list
-                        freeCourts.map((c) => (
-                          <button
-                            key={c}
-                            onClick={(e) => { e.stopPropagation(); handlePickCourt(c); }}
-                            className={`w-full px-4 py-2 text-left text-xs font-medium ${theme.textPrimary} hover:${theme.selectedBg} hover:pl-5 transition-all duration-150`}
-                          >
-                            {t.court_field.replace("{n}", String(c))}
-                          </button>
-                        ))
-                      )}
+                    ))
+                  ) : (
+                    freeCourts.map((c) => (
                       <button
-                        onClick={(e) => { e.stopPropagation(); setCourtPickerMatchId(null); }}
-                        className={`w-full px-4 py-1.5 text-left text-[10px] ${theme.textMuted} border-t ${theme.cardBorder} hover:opacity-80`}
+                        key={c}
+                        onClick={(e) => { e.stopPropagation(); handlePickCourt(c); }}
+                        className={`w-full px-4 py-2 text-left text-xs font-medium ${theme.textPrimary} hover:${theme.selectedBg} hover:pl-5 transition-all duration-150`}
                       >
-                        {t.common_cancel}
+                        {t.court_field.replace("{n}", String(c))}
                       </button>
-                    </div>
+                    ))
                   )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setCourtPickerMatchId(null); }}
+                    className={`w-full px-4 py-1.5 text-left text-[10px] ${theme.textMuted} border-t ${theme.cardBorder} hover:opacity-80`}
+                  >
+                    {t.common_cancel}
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        return (
+          <>
+            {/* Current-round unassigned queue */}
+            {unassigned.length > 0 && (
+              <div className="mt-3">
+                <div className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">
+                  {t.court_waiting.replace("{count}", String(unassigned.length))}
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {unassigned.map(renderUnassignedCard)}
+                </div>
+              </div>
+            )}
+
+            {/* Future rounds (early draw) */}
+            {futureRoundQueues?.map(({ round, matches: futureMatches }) => {
+              const pending = futureMatches.filter((m) => !m.court && m.status !== "completed");
+              if (pending.length === 0) return null;
+              return (
+                <div key={round.id} className="mt-3">
+                  <div className={`text-[11px] font-medium uppercase tracking-wide mb-1.5 ${theme.textMuted}`}>
+                    {t.court_next_round_separator.replace("{n}", String(round.round_number))}
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    {pending.map(renderUnassignedCard)}
+                  </div>
                 </div>
               );
             })}
-          </div>
-        </div>
-      )}
+          </>
+        );
+      })()}
     </div>
   );
 }

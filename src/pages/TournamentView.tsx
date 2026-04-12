@@ -600,6 +600,12 @@ export default function TournamentView() {
   const generateNextRound = async () => {
     if (!tournament) return;
 
+    // Remember if the current last round was fully complete BEFORE creating the new one.
+    // If it was, we switch to the new round's tab automatically (existing behaviour).
+    // If not (early draw), we stay on the current tab so ongoing matches stay visible.
+    const lastRoundId = rounds.length > 0 ? rounds[rounds.length - 1].id : null;
+    const wasFullyComplete = lastRoundId ? allRoundMatchesCompleted(lastRoundId) : true;
+
     const allMatchesLocal: Match[] = [];
     for (const [, matches] of matchesByRound) {
       allMatchesLocal.push(...matches);
@@ -645,7 +651,11 @@ export default function TournamentView() {
       await createMatch(roundId, m.team1_p1, m.team1_p2, m.team2_p1, m.team2_p2, court);
     }
 
-    setActiveRound(roundId);
+    // Only auto-navigate to the new round tab if the previous round was already complete.
+    // For early draws the user stays on the current round to keep ongoing matches visible.
+    if (wasFullyComplete) {
+      setActiveRound(roundId);
+    }
     loadAll();
   };
 
@@ -1379,6 +1389,11 @@ export default function TournamentView() {
     return matches.length > 0 && matches.every((m) => m.status === "completed");
   };
 
+  const atLeastOneMatchCompleted = (roundId: number): boolean => {
+    const matches = matchesByRound.get(roundId) || [];
+    return matches.some((m) => m.status === "completed");
+  };
+
   // Global occupied courts: across ALL rounds, not just active round
   const globalOccupiedCourts = React.useMemo(() => {
     const occupied = new Set<number>();
@@ -1392,6 +1407,18 @@ export default function TournamentView() {
     return occupied;
   }, [matchesByRound]);
 
+  // Early draw: compute pending matches from rounds AFTER the currently viewed round.
+  // Used to show next-round matches in the CourtOverview queue with a round label.
+  const futureRoundQueues = React.useMemo(() => {
+    if (!activeRound || showAllGroups) return undefined;
+    const activeRoundObj = rounds.find((r) => r.id === activeRound);
+    if (!activeRoundObj) return undefined;
+    return rounds
+      .filter((r) => r.round_number > activeRoundObj.round_number)
+      .map((r) => ({ round: r, matches: matchesByRound.get(r.id) || [] }))
+      .filter(({ matches }) => matches.some((m) => !m.court && m.status !== "completed"));
+  }, [activeRound, showAllGroups, rounds, matchesByRound]);
+
   const canGenerateNextRound =
     tournament?.status === "active" &&
     tournament.format !== "group_ko" &&
@@ -1404,7 +1431,7 @@ export default function TournamentView() {
     (tournament.format === "random_doubles" ||
       (tournament.format === "round_robin" && tournament.mode !== "singles")) &&
     rounds.length > 0 &&
-    allRoundMatchesCompleted(rounds[rounds.length - 1].id);
+    atLeastOneMatchCompleted(rounds[rounds.length - 1].id);
 
   // KO: Check if current KO round is complete and more rounds needed
   const isElimination = tournament?.format === "elimination";
@@ -2149,6 +2176,7 @@ export default function TournamentView() {
               activeRoundMatches={showAllGroups
                 ? groupRounds.flatMap((r) => matchesByRound.get(r.id) || [])
                 : activeRound ? matchesByRound.get(activeRound) : undefined}
+              futureRoundQueues={futureRoundQueues}
               playerName={playerName}
               hallConfig={tournament.hall_config ? parseHallConfig(tournament.hall_config) : undefined}
               onDrop={(matchId, court) => handleCourtChange(matchId, court)}

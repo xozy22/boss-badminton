@@ -405,6 +405,7 @@ export interface Translations {
   court_choose_court: string;
   court_drag_or_double_click: string;
   court_double_click_jump: string;
+  court_next_round_separator: string;
 
   // ===== Court Timer =====
   court_timer_started: string;
