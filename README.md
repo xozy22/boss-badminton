@@ -108,6 +108,7 @@
 - **Score Validation**: Invalid results detected and marked
 - **Match Winner Auto-Reset**: Correcting a score automatically resets the winner
 - **Fair Draw**: With odd player count, the player with most matches sits out; with random doubles, previous partnerships weighted to avoid repetition
+- **Early Round Draw**: For Random Doubles and Round Robin (doubles/mixed), the next round can be drawn as soon as one match of the current round is completed — no need to wait for all courts to finish. New matches appear in the court queue under a "— Round N —" separator and are immediately assignable to free courts
 - **Court Timer**: Configurable warning (yellow) and critical (red) thresholds
 
 ### TV/Projector Mode

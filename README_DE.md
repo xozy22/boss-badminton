@@ -108,6 +108,7 @@
 - **Score-Validierung**: Ungueltige Ergebnisse werden erkannt und markiert
 - **Gewinner-Auto-Reset**: Bei Ergebniskorrektur wird der Gewinner automatisch zurueckgesetzt
 - **Faire Auslosung**: Bei ungerader Spielerzahl setzt der Spieler mit den meisten Spielen aus; bei wechselnden Partnern werden bisherige Partnerschaften gewichtet vermieden
+- **Vorzeitiges Losen**: Bei Wechselnden Partnern und Jeder-gegen-Jeden (Doppel/Mixed) kann die nächste Runde ausgelost werden, sobald ein Spiel der aktuellen Runde abgeschlossen ist — ohne auf alle Felder warten zu müssen. Die neuen Spiele erscheinen in der Queue unterhalb einer „— Runde N —" Trennlinie und können sofort freien Feldern zugewiesen werden
 - **Court-Timer**: Konfigurierbare Warnung (gelb) und Kritisch (rot) Schwellenwerte
 
 ### TV-/Beamer-Modus
