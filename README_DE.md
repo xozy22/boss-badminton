@@ -49,6 +49,7 @@
   - "Restliche automatisch zuordnen" fuer schnelles Auffuellen
   - Teams werden persistiert und beim Bearbeiten wiederhergestellt
   - Turniererstellung blockiert bis alle Teams gebildet sind
+- **Separates KO-Scoring**: Beim Starten der KO-Phase im Format Gruppenphase + KO kann optional ein anderer Punktemodus und andere Gewinnsätze für die KO-Runden eingestellt werden (z.B. Best of 1 in der Gruppe, Best of 3 im KO)
 - **Smarte KO-Qualifikation**: KO-Bracket-Groesse waehlbar (4/8/16/32), automatisch mit besten Nachrueckern aufgefuellt
 - **Prozentuale Rangliste**: Siegquote %, Satzquote %, Punktequote %
 - **Startgeld-Verwaltung**: Intelligente Abrechnung pro Person oder pro Team
@@ -66,7 +67,7 @@
   - **Import-Button** auf der Turnierliste — oeffnet nativen Datei-Dialog, legt Turnier mit allen Einstellungen an und fuegt passende Spieler direkt hinzu, navigiert dann in den Wizard
 - **Archivierung**: Beendete Turniere archivieren und wiederherstellen
 - **Turnier wieder oeffnen**: Versehentlich beendete Turniere reaktivieren
-- **Letzte Runde rueckgaengig**: Letzte Runde loeschen und zurueck
+- **Letzte Runde rueckgaengig**: Letzte Runde loeschen und zurueck — im Format Gruppenphase + KO wird beim Rueckgaengig der KO-Runde die Gruppenphase wiederhergestellt (KO starten erscheint wieder), beim Rueckgaengig aller Gruppenrunden wird der Vor-Start-Zustand hergestellt
 - **Verletzung/Aufgabe mit Rueckgaengig**: Spieler als verletzt markieren (Walkovers fuer offene Spiele), fuer zukuenftige Runden wiederherstellen (Walkovers bleiben erhalten)
 - **Anwesenheitscheck**: Vor der Auslosung zeigt ein Modal alle angemeldeten Spieler mit Checkboxen (alle standardmaessig aktiviert). Abwesende Spieler abwaehlen — sie werden vor der Auslosung aus dem Turnier entfernt, was weniger Freilose und eine fairere Auslosung ergibt
 - **Auto-Benennung**: Turniername automatisch generiert aus Datum + Modus + Format, editierbar

@@ -419,6 +419,30 @@ export async function updateTournamentPhase(id: number, phase: string | null): P
   saveStore(store);
 }
 
+export async function updateTournamentKoScoring(
+  id: number,
+  koPointsPerSet: number | null,
+  koSetsToWin: number | null,
+  koCap: number | null
+): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute(
+      "UPDATE tournaments SET ko_points_per_set=$1, ko_sets_to_win=$2, ko_cap=$3 WHERE id=$4",
+      [koPointsPerSet, koSetsToWin, koCap, id]
+    );
+    return;
+  }
+  const store = loadStore();
+  const t = store.tournaments.find((t) => t.id === id);
+  if (t) {
+    (t as any).ko_points_per_set = koPointsPerSet;
+    (t as any).ko_sets_to_win = koSetsToWin;
+    (t as any).ko_cap = koCap;
+  }
+  saveStore(store);
+}
+
 export async function updateTournamentStatus(id: number, status: string): Promise<void> {
   if (isTauri()) {
     const d = await getTauriDb();

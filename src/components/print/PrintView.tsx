@@ -79,6 +79,9 @@ const PrintView = forwardRef<HTMLDivElement, PrintViewProps>(
               {FORMAT_LABELS[tournament.format]} &middot; Best of{" "}
               {tournament.sets_to_win * 2 - 1} &middot;{" "}
               {getScoringDescription(tournament.points_per_set, tournament.cap)}
+              {tournament.format === "group_ko" && tournament.ko_points_per_set != null && (
+                <> &middot; KO: {getScoringDescription(tournament.ko_points_per_set, tournament.ko_cap)}</>
+              )}
             </div>
           </div>
           <div style={{ fontSize: 10, color: "#999", textAlign: "right" }}>

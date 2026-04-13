@@ -126,7 +126,11 @@ export interface Translations {
   scoring_mode_15_ext: string;
   scoring_mode_21_ext: string;
   scoring_sets_to_win: string;
-  tournament_venue: string;
+  ko_modal_title: string;
+  ko_modal_group_phase_scoring: string;
+  ko_modal_use_different: string;
+  ko_modal_ko_scoring: string;
+  ko_modal_start_button: string;
   tournament_venue_none: string;
   tournament_halls_courts: string;
   tournament_courts_selected: string;

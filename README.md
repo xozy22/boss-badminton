@@ -49,6 +49,7 @@
   - "Auto-assign remaining" for quick fill
   - Teams are persisted and restored when editing
   - Tournament creation blocked until all teams are formed
+- **Separate KO Scoring**: When starting the KO phase in Group + KO format, a modal allows optionally setting a different point system and sets-to-win for KO rounds (e.g. Best of 1 in groups, Best of 3 in KO)
 - **Smart KO Qualification**: Configurable KO bracket size (4/8/16/32), auto-filled with best runners-up across groups
 - **Percentage-based Standings**: Match win %, set win %, point win %
 - **Entry Fee Management**: Smart per-person or per-team billing
@@ -66,7 +67,7 @@
   - **Import button** on the Tournaments list page — opens native file dialog, creates tournament with all settings pre-filled and matching players already added, then navigates straight to the wizard
 - **Archiving**: Archive and restore completed tournaments
 - **Reopen Tournament**: Reactivate accidentally ended tournaments
-- **Undo Last Round**: Delete the last round and go back
+- **Undo Last Round**: Delete the last round and go back — in Group + KO format, undoing the KO round restores the group phase (Start KO button reappears), undoing all group rounds resets to pre-start state
 - **Injury/Retirement with Undo**: Mark players as injured (walkovers for open matches), restore for future rounds (walkovers preserved)
 - **Attendance Check**: Before the draw runs, a modal lists all registered players with checkboxes (all checked by default). Uncheck absent players — they are removed from the tournament before the draw, resulting in fewer byes and a fairer bracket
 - **Auto-Naming**: Tournament name auto-generated from date + mode + format, editable

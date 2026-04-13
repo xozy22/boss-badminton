@@ -39,6 +39,7 @@ import {
   getRetiredPlayerIds,
   getTournamentPlayersDetailed,
   isTauri,
+  updateTournamentKoScoring,
 } from "../lib/db";
 import {
   generateRoundRobinSingles,
@@ -96,6 +97,149 @@ const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
   doubles: ["round_robin", "elimination", "random_doubles", "group_ko", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination"],
   mixed: ["round_robin", "elimination", "random_doubles", "group_ko", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination"],
 };
+
+/** Returns effective scoring for a given round phase. For group_ko format:
+ *  - "group" phase → always tournament group settings
+ *  - "ko" phase → ko_* settings if set, else group settings
+ *  For all other formats, always returns the tournament settings. */
+function getEffectiveScoring(tournament: Tournament, phase: string | null) {
+  if (
+    tournament.format === "group_ko" &&
+    phase === "ko" &&
+    tournament.ko_points_per_set != null
+  ) {
+    return {
+      pointsPerSet: tournament.ko_points_per_set,
+      setsToWin: tournament.ko_sets_to_win ?? tournament.sets_to_win,
+      cap: tournament.ko_cap,
+    };
+  }
+  return {
+    pointsPerSet: tournament.points_per_set,
+    setsToWin: tournament.sets_to_win,
+    cap: tournament.cap,
+  };
+}
+
+function StartKoModal({
+  tournament,
+  theme,
+  onClose,
+  onConfirm,
+}: {
+  tournament: Tournament;
+  theme: ThemeColors;
+  onClose: () => void;
+  onConfirm: (koPointsPerSet: number | null, koSetsToWin: number | null, koCap: number | null) => void;
+}) {
+  const { t } = useT();
+  const [useDifferent, setUseDifferent] = useState(false);
+  const [scoringMode, setScoringMode] = useState<ScoringModeId>(
+    getScoringModeId(tournament.points_per_set, tournament.cap)
+  );
+  const [setsToWin, setSetsToWin] = useState<number>(tournament.sets_to_win);
+  const scoringPreset = SCORING_MODES.find((m) => m.id === scoringMode)!;
+
+  const inputClass = `w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`;
+  const labelClass = `block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`;
+
+  const groupScoringLabel = `${t[`scoring_mode_${getScoringModeId(tournament.points_per_set, tournament.cap)}` as keyof typeof t] as string} · ${tournament.sets_to_win === 1 ? t.best_of_1 : tournament.sets_to_win === 2 ? t.best_of_3 : t.best_of_5}`;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
+        <div className="flex justify-between items-center mb-5">
+          <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
+            🏆 {t.ko_modal_title}
+          </h3>
+          <button
+            onClick={onClose}
+            className={`${theme.textMuted} text-xl leading-none w-8 h-8 flex items-center justify-center rounded-lg transition-colors`}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Group phase scoring info */}
+        <div className={`rounded-xl p-3 mb-4 border ${theme.cardBorder} ${theme.cardBg} bg-opacity-50`}>
+          <div className={`text-xs font-medium ${theme.textMuted} uppercase tracking-wide mb-1`}>
+            {t.ko_modal_group_phase_scoring}
+          </div>
+          <div className={`text-sm font-medium ${theme.textPrimary}`}>
+            {groupScoringLabel}
+          </div>
+        </div>
+
+        {/* Toggle for different KO scoring */}
+        <label className="flex items-center gap-3 cursor-pointer mb-4">
+          <input
+            type="checkbox"
+            checked={useDifferent}
+            onChange={(e) => setUseDifferent(e.target.checked)}
+            className="w-4 h-4 rounded"
+          />
+          <span className={`text-sm ${theme.textSecondary}`}>{t.ko_modal_use_different}</span>
+        </label>
+
+        {/* KO scoring dropdowns */}
+        {useDifferent && (
+          <div className="space-y-4">
+            <div className={`text-xs font-medium ${theme.textMuted} uppercase tracking-wide`}>
+              {t.ko_modal_ko_scoring}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>{t.scoring_mode}</label>
+                <select
+                  value={scoringMode}
+                  onChange={(e) => setScoringMode(e.target.value as ScoringModeId)}
+                  className={inputClass}
+                >
+                  {SCORING_MODES.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {t[`scoring_mode_${m.id}` as keyof typeof t] as string}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>{t.scoring_sets_to_win}</label>
+                <select
+                  value={setsToWin}
+                  onChange={(e) => setSetsToWin(Number(e.target.value))}
+                  className={inputClass}
+                >
+                  <option value={1}>{t.best_of_1}</option>
+                  <option value={2}>{t.best_of_3}</option>
+                  <option value={3}>{t.best_of_5}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onClose}
+            className={`flex-1 ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
+          >
+            {t.common_cancel}
+          </button>
+          <button
+            onClick={() => onConfirm(
+              useDifferent ? scoringPreset.points_per_set : null,
+              useDifferent ? setsToWin : null,
+              useDifferent ? scoringPreset.cap : null
+            )}
+            className="flex-1 bg-violet-600 text-white px-4 py-2.5 rounded-xl hover:bg-violet-700 shadow-sm transition-all text-sm font-medium"
+          >
+            🏆 {t.ko_modal_start_button}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function EditTournamentModal({
   tournament,
@@ -327,10 +471,19 @@ export default function TournamentView() {
   const [retireTarget, setRetireTarget] = useState<{ player: Player; partnerNote: string } | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
   const [editingMatchIds, setEditingMatchIds] = useState<Set<number>>(new Set());
+  const [showStartKoModal, setShowStartKoModal] = useState(false);
   const recentlyCompletedRef = React.useRef(recentlyCompleted)
   recentlyCompletedRef.current = recentlyCompleted;
+  const activeRoundRef = React.useRef(activeRound);
+  activeRoundRef.current = activeRound;
 
   const tournamentId = Number(id);
+
+  // Phase-aware scoring: derive effective scoring based on the active round's phase
+  const activeRoundPhase = rounds.find((r) => r.id === activeRound)?.phase ?? null;
+  const effectiveScoring = tournament
+    ? getEffectiveScoring(tournament, activeRoundPhase)
+    : { pointsPerSet: 21, setsToWin: 2, cap: 30 };
 
   const loadAll = useCallback(async () => {
     const td = await getTournament(tournamentId);
@@ -379,9 +532,22 @@ export default function TournamentView() {
     setStandings(s);
 
     if (r.length > 0) {
-      // Bei group_ko: standardmaessig "Alle Gruppen" anzeigen
       if (td.format === "group_ko" && r.some((rr) => rr.phase === "group")) {
-        setShowAllGroups(true);
+        const koRs = r.filter((rr) => rr.phase === "ko");
+        if (koRs.length > 0) {
+          // KO rounds exist: preserve current round if still valid, otherwise auto-select first KO round
+          setActiveRound((prev) => {
+            const stillValid = prev !== null && r.some((rr) => rr.id === prev);
+            return stillValid ? prev : koRs[0].id;
+          });
+          setShowAllGroups(false);
+        } else {
+          // Still in group phase: only default to "Alle Gruppen" on the very first load
+          // (when nothing is selected yet). Preserve existing round selection on reloads.
+          if (activeRoundRef.current === null) {
+            setShowAllGroups(true);
+          }
+        }
       } else {
         setActiveRound((prev) => prev ?? r[0].id);
       }
@@ -1153,7 +1319,7 @@ export default function TournamentView() {
     const t1 = team === 1 ? value : existing?.team1_score ?? 0;
     const t2 = team === 2 ? value : existing?.team2_score ?? 0;
 
-    const maxScore = getMaxScore(tournament.points_per_set, tournament.cap);
+    const maxScore = getMaxScore(effectiveScoring.pointsPerSet, effectiveScoring.cap);
     const clampedT1 = Math.min(Math.max(t1, 0), maxScore);
     const clampedT2 = Math.min(Math.max(t2, 0), maxScore);
 
@@ -1183,8 +1349,8 @@ export default function TournamentView() {
     if (enteredScore > 0 && currentOther === 0) {
       const autoScore = autoFillOpponentScore(
         enteredScore,
-        tournament.points_per_set,
-        tournament.cap,
+        effectiveScoring.pointsPerSet,
+        effectiveScoring.cap,
         true
       );
       if (autoScore !== null) {
@@ -1207,9 +1373,9 @@ export default function TournamentView() {
 
     const winner = determineMatchWinner(
       updatedSets,
-      tournament.sets_to_win,
-      tournament.points_per_set,
-      tournament.cap
+      effectiveScoring.setsToWin,
+      effectiveScoring.pointsPerSet,
+      effectiveScoring.cap
     );
     const currentMatch = allMatches.find(m => m.id === matchId);
     if (winner) {
@@ -1335,12 +1501,12 @@ export default function TournamentView() {
         const isTeam1 = m.team1_p1 === pid || m.team1_p2 === pid;
         const winnerTeam: 1 | 2 = isTeam1 ? 2 : 1;
 
-        const maxSets = tournament.sets_to_win;
+        const maxSets = effectiveScoring.setsToWin;
         for (let s = 1; s <= maxSets; s++) {
           await upsertSet(
             m.id, s,
-            isTeam1 ? 0 : tournament.points_per_set,
-            isTeam1 ? tournament.points_per_set : 0
+            isTeam1 ? 0 : effectiveScoring.pointsPerSet,
+            isTeam1 ? effectiveScoring.pointsPerSet : 0
           );
         }
         await updateMatchResult(m.id, winnerTeam);
@@ -1383,14 +1549,28 @@ export default function TournamentView() {
   const [showUndoRound, setShowUndoRound] = useState(false);
   const handleUndoLastRound = async () => {
     if (rounds.length === 0) return;
-    // Find the last round (non-group phase for group_ko, otherwise just last)
     const lastRound = rounds[rounds.length - 1];
+    const isLastRound = rounds.length === 1;
+    const koRoundsCount = rounds.filter((r) => r.phase === "ko").length;
+    // Undoing the sole KO round while group rounds still remain → go back to group phase
+    const isUndoingLastKoRound = !isLastRound &&
+      lastRound.phase === "ko" &&
+      tournament?.format === "group_ko" &&
+      koRoundsCount === 1;
+
     await deleteRound(lastRound.id);
     setShowUndoRound(false);
-    // If we deleted the only round, set tournament back to draft
-    if (rounds.length === 1) {
+
+    if (isLastRound) {
+      // Deleted the very last round: reset tournament fully to pre-start state
       await updateTournamentStatus(tournamentId, "draft");
+      await updateTournamentPhase(tournamentId, "ready");
+    } else if (isUndoingLastKoRound) {
+      // Still have group rounds: go back to group phase so "Start KO" reappears
+      await updateTournamentPhase(tournamentId, "group");
+      await updateTournamentKoScoring(tournamentId, null, null, null);
     }
+
     loadAll();
   };
 
@@ -1603,8 +1783,15 @@ export default function TournamentView() {
               {({round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko, swiss: t.format_swiss, double_elimination: t.format_double_elimination, monrad: t.format_monrad, king_of_court: t.format_king_of_court, waterfall: t.format_waterfall} as Record<string, string>)[tournament.format]}
             </span>
             <span className={`text-xs font-medium ${theme.cardBg} ${theme.textSecondary} border ${theme.cardBorder} px-2.5 py-1 rounded-full`}>
-              {getScoringDescription(tournament.points_per_set, tournament.cap)}
+              {isGroupKo && tournament.ko_points_per_set != null
+                ? `${t.ko_modal_group_phase_scoring}: ${getScoringDescription(tournament.points_per_set, tournament.cap)}`
+                : getScoringDescription(tournament.points_per_set, tournament.cap)}
             </span>
+            {isGroupKo && tournament.ko_points_per_set != null && (
+              <span className={`text-xs font-medium bg-violet-100 text-violet-700 border border-violet-200 px-2.5 py-1 rounded-full`}>
+                KO: {getScoringDescription(tournament.ko_points_per_set, tournament.ko_cap)}
+              </span>
+            )}
             {tournament.courts > 1 && (
               <span className="text-xs font-medium bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full">
                 {tournament.courts} {t.common_fields}
@@ -1687,7 +1874,7 @@ export default function TournamentView() {
           )}
           {canStartKo && (
             <button
-              onClick={startKoPhase}
+              onClick={() => setShowStartKoModal(true)}
               className="bg-violet-600 text-white px-5 py-2.5 rounded-xl hover:bg-violet-700 shadow-sm hover:shadow-md transition-all text-sm font-medium"
             >
               🏆 {t.tournament_view_start_ko}
@@ -1903,6 +2090,21 @@ export default function TournamentView() {
           theme={theme}
           onClose={() => setRetireTarget(null)}
           onConfirm={handlePlayerRetire}
+        />
+      )}
+
+      {/* Start KO Modal */}
+      {showStartKoModal && tournament && (
+        <StartKoModal
+          tournament={tournament}
+          theme={theme}
+          onClose={() => setShowStartKoModal(false)}
+          onConfirm={async (koPointsPerSet, koSetsToWin, koCap) => {
+            await updateTournamentKoScoring(tournament.id, koPointsPerSet, koSetsToWin, koCap);
+            await loadAll();
+            setShowStartKoModal(false);
+            await startKoPhase();
+          }}
         />
       )}
 
@@ -2235,9 +2437,9 @@ export default function TournamentView() {
                           key={match.id}
                           match={match}
                           sets={setsByMatch.get(match.id) || []}
-                          setsToWin={tournament.sets_to_win}
-                          pointsPerSet={tournament.points_per_set}
-                          cap={tournament.cap}
+                          setsToWin={effectiveScoring.setsToWin}
+                          pointsPerSet={effectiveScoring.pointsPerSet}
+                          cap={effectiveScoring.cap}
                           courts={tournament.courts || 1}
                           occupiedCourts={globalOccupiedCourts}
                           playerName={playerName}
@@ -2255,9 +2457,9 @@ export default function TournamentView() {
                         <CompletedMatchesSection
                           matches={completed}
                           setsByMatch={setsByMatch}
-                          setsToWin={tournament.sets_to_win}
-                          pointsPerSet={tournament.points_per_set}
-                          cap={tournament.cap}
+                          setsToWin={effectiveScoring.setsToWin}
+                          pointsPerSet={effectiveScoring.pointsPerSet}
+                          cap={effectiveScoring.cap}
                           courts={tournament.courts || 1}
                           occupiedCourts={globalOccupiedCourts}
                           playerName={playerName}
@@ -2297,8 +2499,8 @@ export default function TournamentView() {
           matchesByRound={matchesByRound}
           setsByMatch={setsByMatch}
           playerName={playerName}
-          pointsPerSet={tournament.points_per_set}
-          cap={tournament.cap}
+          pointsPerSet={isGroupKo && tournament.ko_points_per_set != null ? tournament.ko_points_per_set : tournament.points_per_set}
+          cap={isGroupKo && tournament.ko_points_per_set != null ? tournament.ko_cap : tournament.cap}
         />
       )}
 

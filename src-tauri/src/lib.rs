@@ -327,6 +327,14 @@ pub fn run() {
                   END;",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 7,
+            description: "add ko scoring columns to tournaments",
+            sql: "ALTER TABLE tournaments ADD COLUMN ko_points_per_set INTEGER;
+                  ALTER TABLE tournaments ADD COLUMN ko_sets_to_win INTEGER;
+                  ALTER TABLE tournaments ADD COLUMN ko_cap INTEGER;",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
