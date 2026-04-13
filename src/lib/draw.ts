@@ -446,16 +446,30 @@ export function splitTeamsIntoGroups(
 }
 
 // --- Group Phase ---
-// Splits players into numGroups groups (shuffled, evenly distributed)
+// Splits players into numGroups groups.
+// If seeds (player IDs, best first) are provided, seeded players are distributed
+// round-robin across groups first (seed 1 → group 0, seed 2 → group 1, …),
+// then remaining players are filled in randomly.
 export function splitIntoGroups(
   players: Player[],
-  numGroups: number
+  numGroups: number,
+  seeds?: number[]
 ): Player[][] {
-  const shuffled = shuffle(players);
   const groups: Player[][] = Array.from({ length: numGroups }, () => []);
-  for (let i = 0; i < shuffled.length; i++) {
-    groups[i % numGroups].push(shuffled[i]);
+
+  if (seeds && seeds.length > 0) {
+    const playerMap = new Map(players.map((p) => [p.id, p]));
+    const seeded = seeds.filter((id) => playerMap.has(id)).map((id) => playerMap.get(id)!);
+    const seededIds = new Set(seeded.map((p) => p.id));
+    const rest = shuffle(players.filter((p) => !seededIds.has(p.id)));
+
+    seeded.forEach((p, i) => groups[i % numGroups].push(p));
+    rest.forEach((p, i) => groups[(seeded.length + i) % numGroups].push(p));
+  } else {
+    const shuffled = shuffle(players);
+    shuffled.forEach((p, i) => groups[i % numGroups].push(p));
   }
+
   return groups;
 }
 

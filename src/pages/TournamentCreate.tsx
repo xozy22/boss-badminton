@@ -329,7 +329,11 @@ export default function TournamentCreate() {
 
     // Pass seed order and/or manual teams via navigation state
     const navState: Record<string, unknown> = {};
-    if (useSeeding && (format === "elimination" || format === "double_elimination") && seedOrder.length > 0) {
+    if (useSeeding && (
+      format === "elimination" ||
+      format === "double_elimination" ||
+      (format === "group_ko" && mode === "singles")
+    ) && seedOrder.length > 0) {
       navState.seeds = seedOrder.filter((pid) => selectedPlayerIds.has(pid));
     }
     if (needsTeamPairing && manualTeams.length > 0) {
@@ -446,7 +450,11 @@ export default function TournamentCreate() {
   const playersValid = selectedPlayerIds.size >= minPlayers;
   const teamsValid = !needsTeamPairing || (manualTeams.length > 0 && poolPlayers.length < 2);
 
-  const showSeedingStep = useSeeding && (format === "elimination" || format === "double_elimination");
+  const showSeedingStep = useSeeding && (
+    format === "elimination" ||
+    format === "double_elimination" ||
+    (format === "group_ko" && mode === "singles")
+  );
   const seedingValid = !showSeedingStep || seedOrder.filter((pid) => selectedPlayerIds.has(pid)).length >= 2;
 
   const steps = [
@@ -844,7 +852,8 @@ export default function TournamentCreate() {
             </div>
 
             {/* Seeding Toggle - for elimination and double_elimination */}
-            {(format === "elimination" || format === "double_elimination") && (
+            {(format === "elimination" || format === "double_elimination" ||
+              (format === "group_ko" && mode === "singles")) && (
               <div className={`flex items-center gap-3 p-3 rounded-xl border ${theme.cardBorder} ${useSeeding ? theme.selectedBg : ''}`}>
                 <input
                   type="checkbox"

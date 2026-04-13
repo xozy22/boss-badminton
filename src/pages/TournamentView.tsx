@@ -447,7 +447,7 @@ export default function TournamentView() {
     } else if (tournament.format === "group_ko") {
       // Gruppenphase starten
       await updateTournamentPhase(tournamentId, "group");
-      const groups = splitIntoGroups(ep, tournament.num_groups || 2);
+      const groups = splitIntoGroups(ep, tournament.num_groups || 2, navSeeds);
       let roundCounter = 1;
 
       if (tournament.mode === "singles") {
