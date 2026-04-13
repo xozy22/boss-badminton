@@ -57,7 +57,7 @@
   - Payment status per player (Cash, Transfer, PayPal) with editable date
   - Paid (green) and open (red) amounts visible in header
   - Overview with total sum, grouped by club
-- **Seeding**: Drag & Drop or arrow keys for KO tournament seeding
+- **Seeding**: Drag & Drop or arrow keys for seeding — supported for KO, Double-KO, and Group Stage + KO (singles); seeded players are distributed across groups (Seed 1 → Group A, Seed 2 → Group B, …)
 - **Template System**: Export/import tournaments as JSON files
   - Selectable: Settings, Players, Teams (individually or combined)
   - Players matched by name on import (ID-independent)

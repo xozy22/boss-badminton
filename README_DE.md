@@ -57,7 +57,7 @@
   - Zahlungsstatus pro Spieler (Bar, Ueberweisung, PayPal) mit editierbarem Datum
   - Bezahlter (gruen) und offener (rot) Betrag im Header sichtbar
   - Uebersicht mit Gesamtsumme, gruppiert nach Verein
-- **Setzliste/Seeding**: Drag & Drop oder Pfeiltasten fuer KO-Turnier-Seeding
+- **Setzliste/Seeding**: Drag & Drop oder Pfeiltasten — unterstuetzt fuer KO, Doppel-KO und Gruppenphase + KO (Einzel); Gesetzte werden auf Gruppen verteilt (Seed 1 → Gruppe A, Seed 2 → Gruppe B, …)
 - **Vorlagen-System**: Turniere als JSON-Datei exportieren/importieren
   - Waehlbar: Einstellungen, Spieler, Teams (einzeln oder kombiniert)
   - Spieler werden beim Import per Name gematcht (ID-unabhaengig)
