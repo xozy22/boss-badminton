@@ -131,6 +131,7 @@ export interface Translations {
   ko_modal_use_different: string;
   ko_modal_ko_scoring: string;
   ko_modal_start_button: string;
+  tournament_venue: string;
   tournament_venue_none: string;
   tournament_halls_courts: string;
   tournament_courts_selected: string;
