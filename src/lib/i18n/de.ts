@@ -356,9 +356,14 @@ export const de: Translations = {
 
   // ===== Seeding Step =====
   seeding_title: "Setzliste",
-  seeding_description: "Ordne die Spieler nach Staerke per Drag & Drop oder mit den Pfeilen (Platz 1 = staerkster Spieler).",
+  seeding_description: "Waehle die gesetzten Spieler aus und ordne sie nach Staerke (Platz 1 = staerkster Spieler). Nicht gesetzte Spieler werden zufaellig zugelost.",
   seeding_move_up: "Nach oben",
   seeding_move_down: "Nach unten",
+  seeding_is_seeded: "Gesetzt",
+  seeding_section_seeded: "Gesetzte Spieler",
+  seeding_section_unseeded: "Ungesetzt",
+  seeding_unseeded_hint: "Diese Spieler werden zufaellig zugelost.",
+  seeding_empty_hint: "Kein Spieler gesetzt \u2014 Turnier wird zufaellig zugelost.",
 
   // ===== Team Pairing Step =====
   teams_title: "Teams bilden",

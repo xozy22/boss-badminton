@@ -58,7 +58,8 @@
   - Zahlungsstatus pro Spieler (Bar, Ueberweisung, PayPal) mit editierbarem Datum
   - Bezahlter (gruen) und offener (rot) Betrag im Header sichtbar
   - Uebersicht mit Gesamtsumme, gruppiert nach Verein
-- **Setzliste/Seeding**: Drag & Drop oder Pfeiltasten — unterstuetzt fuer KO, Doppel-KO und Gruppenphase + KO (Einzel); Gesetzte werden auf Gruppen verteilt (Seed 1 → Gruppe A, Seed 2 → Gruppe B, …)
+- **Setzliste/Seeding**: Pro Spieler per Checkbox auswaehlen wer gesetzt ist (Opt-In, standardmaessig niemand gesetzt), dann per Drag & Drop oder Pfeiltasten sortieren — unterstuetzt fuer KO, Doppel-KO und Gruppenphase + KO (Einzel); ungesetzte Spieler werden zufaellig zugelost
+  - **Snake-Verteilung auf Gruppen**: 4 Gruppen + 8 Gesetzte → G1=[1,8], G2=[2,7], G3=[3,6], G4=[4,5] — Top-Seeds werden gleichmaessig verteilt statt frueh aufeinander zu treffen
 - **Vorlagen-System**: Turniere als JSON-Datei exportieren/importieren
   - Waehlbar: Einstellungen, Spieler, Teams (einzeln oder kombiniert)
   - Spieler werden beim Import per Name gematcht (ID-unabhaengig)

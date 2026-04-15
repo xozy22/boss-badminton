@@ -448,8 +448,11 @@ export function splitTeamsIntoGroups(
 // --- Group Phase ---
 // Splits players into numGroups groups.
 // If seeds (player IDs, best first) are provided, seeded players are distributed
-// round-robin across groups first (seed 1 → group 0, seed 2 → group 1, …),
-// then remaining players are filled in randomly.
+// snake/serpentine across groups: first pass forward (seed 1 → G1, seed 2 → G2, …),
+// second pass backward (seed N+1 → GN, seed N+2 → GN-1, …), third pass forward, etc.
+// Example: 4 groups + 8 seeds → G1=[1,8], G2=[2,7], G3=[3,6], G4=[4,5].
+// This ensures the strongest seeds are spread evenly and top seeds don't meet early.
+// Unseeded players are shuffled and filled round-robin afterwards.
 export function splitIntoGroups(
   players: Player[],
   numGroups: number,
@@ -463,8 +466,14 @@ export function splitIntoGroups(
     const seededIds = new Set(seeded.map((p) => p.id));
     const rest = shuffle(players.filter((p) => !seededIds.has(p.id)));
 
-    seeded.forEach((p, i) => groups[i % numGroups].push(p));
-    rest.forEach((p, i) => groups[(seeded.length + i) % numGroups].push(p));
+    // Snake/serpentine: forward on even rounds, backward on odd rounds
+    seeded.forEach((p, i) => {
+      const round = Math.floor(i / numGroups);
+      const posInRound = i % numGroups;
+      const groupIdx = round % 2 === 0 ? posInRound : numGroups - 1 - posInRound;
+      groups[groupIdx].push(p);
+    });
+    rest.forEach((p, i) => groups[i % numGroups].push(p));
   } else {
     const shuffled = shuffle(players);
     shuffled.forEach((p, i) => groups[i % numGroups].push(p));

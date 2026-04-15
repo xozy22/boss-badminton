@@ -356,9 +356,14 @@ export const en: Translations = {
 
   // ===== Seeding Step =====
   seeding_title: "Seeding List",
-  seeding_description: "Arrange players by strength via drag & drop or with arrows (Rank 1 = strongest player).",
+  seeding_description: "Select which players are seeded and arrange them by strength (Rank 1 = strongest player). Unseeded players will be drawn randomly.",
   seeding_move_up: "Move up",
   seeding_move_down: "Move down",
+  seeding_is_seeded: "Seeded",
+  seeding_section_seeded: "Seeded Players",
+  seeding_section_unseeded: "Unseeded",
+  seeding_unseeded_hint: "These players will be drawn randomly.",
+  seeding_empty_hint: "No seeded players \u2014 tournament will be drawn randomly.",
 
   // ===== Team Pairing Step =====
   teams_title: "Form Teams",

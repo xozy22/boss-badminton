@@ -360,6 +360,11 @@ export interface Translations {
   seeding_description: string;
   seeding_move_up: string;
   seeding_move_down: string;
+  seeding_is_seeded: string;
+  seeding_section_seeded: string;
+  seeding_section_unseeded: string;
+  seeding_unseeded_hint: string;
+  seeding_empty_hint: string;
 
   // ===== Team Pairing Step =====
   teams_title: string;

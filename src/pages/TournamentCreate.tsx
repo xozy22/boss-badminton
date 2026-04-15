@@ -92,6 +92,7 @@ export default function TournamentCreate() {
   const [entryFeeDouble, setEntryFeeDouble] = useState<string>("10");
   const [useSeeding, setUseSeeding] = useState(false);
   const [seedOrder, setSeedOrder] = useState<number[]>([]); // player IDs in seed order
+  const [seededPlayerIds, setSeededPlayerIds] = useState<Set<number>>(new Set()); // opt-in per player
 
   const [dragSeedIdx, setDragSeedIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
@@ -333,8 +334,11 @@ export default function TournamentCreate() {
       format === "elimination" ||
       format === "double_elimination" ||
       (format === "group_ko" && mode === "singles")
-    ) && seedOrder.length > 0) {
-      navState.seeds = seedOrder.filter((pid) => selectedPlayerIds.has(pid));
+    )) {
+      const finalSeeds = seedOrder.filter(
+        (pid) => selectedPlayerIds.has(pid) && seededPlayerIds.has(pid)
+      );
+      if (finalSeeds.length > 0) navState.seeds = finalSeeds;
     }
     if (needsTeamPairing && manualTeams.length > 0) {
       navState.teams = manualTeams;
@@ -357,24 +361,44 @@ export default function TournamentCreate() {
   };
 
   const moveSeed = (idx: number, direction: -1 | 1) => {
-    const filtered = seedOrder.filter((pid) => selectedPlayerIds.has(pid));
+    const seededList = seedOrder.filter(
+      (pid) => selectedPlayerIds.has(pid) && seededPlayerIds.has(pid)
+    );
     const newIdx = idx + direction;
-    if (newIdx < 0 || newIdx >= filtered.length) return;
+    if (newIdx < 0 || newIdx >= seededList.length) return;
 
-    const newFiltered = [...filtered];
-    [newFiltered[idx], newFiltered[newIdx]] = [newFiltered[newIdx], newFiltered[idx]];
-    setSeedOrder(newFiltered);
+    const newSeeded = [...seededList];
+    [newSeeded[idx], newSeeded[newIdx]] = [newSeeded[newIdx], newSeeded[idx]];
+    const unseededRest = seedOrder.filter(
+      (pid) => selectedPlayerIds.has(pid) && !seededPlayerIds.has(pid)
+    );
+    setSeedOrder([...newSeeded, ...unseededRest]);
   };
 
   const handleSeedDrop = (dropIdx: number) => {
     if (dragSeedIdx === null || dragSeedIdx === dropIdx) return;
-    const filtered = seedOrder.filter((pid) => selectedPlayerIds.has(pid));
-    const newArr = [...filtered];
-    const [moved] = newArr.splice(dragSeedIdx, 1);
-    newArr.splice(dropIdx, 0, moved);
-    setSeedOrder(newArr);
+    const seededList = seedOrder.filter(
+      (pid) => selectedPlayerIds.has(pid) && seededPlayerIds.has(pid)
+    );
+    const newSeeded = [...seededList];
+    const [moved] = newSeeded.splice(dragSeedIdx, 1);
+    newSeeded.splice(dropIdx, 0, moved);
+    const unseededRest = seedOrder.filter(
+      (pid) => selectedPlayerIds.has(pid) && !seededPlayerIds.has(pid)
+    );
+    setSeedOrder([...newSeeded, ...unseededRest]);
     setDragSeedIdx(null);
     setDragOverIdx(null);
+  };
+
+  const toggleSeeded = (playerId: number) => {
+    setSeededPlayerIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(playerId)) next.delete(playerId);
+      else next.add(playerId);
+      return next;
+    });
+    setSeedOrder((s) => (s.includes(playerId) ? s : [...s, playerId]));
   };
 
   // Keep seedOrder in sync when players are added/removed
@@ -384,6 +408,12 @@ export default function TournamentCreate() {
       if (next.has(id)) {
         next.delete(id);
         setSeedOrder((s) => s.filter((pid) => pid !== id));
+        setSeededPlayerIds((s) => {
+          if (!s.has(id)) return s;
+          const n = new Set(s);
+          n.delete(id);
+          return n;
+        });
       } else {
         next.add(id);
         setSeedOrder((s) => s.includes(id) ? s : [...s, id]);
@@ -455,7 +485,8 @@ export default function TournamentCreate() {
     format === "double_elimination" ||
     (format === "group_ko" && mode === "singles")
   );
-  const seedingValid = !showSeedingStep || seedOrder.filter((pid) => selectedPlayerIds.has(pid)).length >= 2;
+  // Seeding step is always valid — 0 seeded players = fully random draw (opt-out)
+  const seedingValid = true;
 
   const steps = [
     { key: "settings" as const, label: t.tournament_step_settings, icon: "⚙️", valid: settingsValid },
@@ -1147,12 +1178,14 @@ export default function TournamentCreate() {
             <SeedingStep
               seedOrder={seedOrder}
               selectedPlayerIds={selectedPlayerIds}
+              seededPlayerIds={seededPlayerIds}
               players={players}
               theme={theme}
               dragSeedIdx={dragSeedIdx}
               dragOverIdx={dragOverIdx}
               onSeedDrop={handleSeedDrop}
               onMoveSeed={moveSeed}
+              onToggleSeeded={toggleSeeded}
               onDragStart={(idx, e) => {
                 setDragSeedIdx(idx);
                 e.dataTransfer.effectAllowed = "move";

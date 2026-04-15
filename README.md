@@ -58,7 +58,8 @@
   - Payment status per player (Cash, Transfer, PayPal) with editable date
   - Paid (green) and open (red) amounts visible in header
   - Overview with total sum, grouped by club
-- **Seeding**: Drag & Drop or arrow keys for seeding — supported for KO, Double-KO, and Group Stage + KO (singles); seeded players are distributed across groups (Seed 1 → Group A, Seed 2 → Group B, …)
+- **Seeding**: Pick exactly which players are seeded via per-player checkbox (opt-in, nothing seeded by default), then order them via Drag & Drop or arrow keys — supported for KO, Double-KO, and Group Stage + KO (singles); unseeded players are drawn randomly
+  - **Snake distribution for groups**: 4 groups + 8 seeds → G1=[1,8], G2=[2,7], G3=[3,6], G4=[4,5] — top seeds are spread evenly instead of clashing early
 - **Template System**: Export/import tournaments as JSON files
   - Selectable: Settings, Players, Teams (individually or combined)
   - Players matched by name on import (ID-independent)
