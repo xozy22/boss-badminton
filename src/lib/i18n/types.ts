@@ -329,6 +329,7 @@ export interface Translations {
   edit_tournament_qualify_group: string;
   edit_tournament_fee_single: string;
   edit_tournament_fee_double: string;
+  edit_tournament_saved: string;
 
   // ===== Delete Tournament Modal =====
   delete_tournament_title: string;

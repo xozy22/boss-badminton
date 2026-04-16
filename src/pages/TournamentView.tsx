@@ -437,6 +437,7 @@ export default function TournamentView() {
   const location = useLocation();
   const navSeeds = (location.state as any)?.seeds as number[] | undefined;
   const navTeamsFromState = (location.state as any)?.teams as [number, number][] | undefined;
+  const navSavedSuccess = !!(location.state as any)?.savedSuccess;
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const navTeams = useMemo(() => {
     if (navTeamsFromState && navTeamsFromState.length > 0) return navTeamsFromState;
@@ -462,6 +463,7 @@ export default function TournamentView() {
   const [showAllGroups, setShowAllGroups] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(navSavedSuccess);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [paymentData, setPaymentData] = useState<TournamentPlayerInfo[]>([]);
   const [collapsedClubs, setCollapsedClubs] = useState<Set<string>>(new Set());
@@ -558,6 +560,14 @@ export default function TournamentView() {
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  // Auto-dismiss save-success toast and clear nav state so refresh doesn't re-trigger
+  useEffect(() => {
+    if (!navSavedSuccess) return;
+    window.history.replaceState({}, document.title);
+    const timer = setTimeout(() => setSaveSuccess(false), 3000);
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const playerName = (playerId: number | null): string => {
     if (playerId === null || playerId === undefined) return "-";
@@ -2021,6 +2031,13 @@ export default function TournamentView() {
           activeRoundId={activeRound}
           onClose={() => setShowPrint(false)}
         />
+      )}
+
+      {/* Save-success toast (shown after returning from edit wizard) */}
+      {saveSuccess && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-none">
+          ✓ {t.edit_tournament_saved}
+        </div>
       )}
 
       {/* Edit Tournament Modal */}

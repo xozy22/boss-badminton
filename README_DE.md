@@ -42,7 +42,7 @@
   - Draft-Zusammenfassung mit allen Einstellungen und Teilnehmern vor dem Start
   - Start-Button erst nach Wizard-Abschluss und Team-Validierung aktiviert
   - Vereinsfilter + Geschlechterfilter + Suche bei Spielerauswahl
-  - Auto-Fokus Suchfeld nach Auswahl fuer schnelles Hinzufuegen
+  - Auto-Fokus Suchfeld nach Auswahl fuer schnelles Hinzufuegen; Suchtext wird automatisch markiert sodass sofort eine neue Suche eingegeben werden kann
   - Ausgewaehlte Spieler als farbige Chips (blau/pink nach Geschlecht)
 - **Manuelle Team-Zuordnung**: Zwei Spieler nacheinander anklicken bildet ein Team in Doppel/Mixed
   - Mixed-Modus: Damen/Herren in getrennten Spalten, gleiches Geschlecht ausgegraut
@@ -72,6 +72,7 @@
 - **Verletzung/Aufgabe mit Rueckgaengig**: Spieler als verletzt markieren (Walkovers fuer offene Spiele), fuer zukuenftige Runden wiederherstellen (Walkovers bleiben erhalten)
 - **Anwesenheitscheck**: Vor der Auslosung zeigt ein Modal alle angemeldeten Spieler mit Checkboxen (alle standardmaessig aktiviert). Abwesende Spieler abwaehlen — sie werden vor der Auslosung aus dem Turnier entfernt, was weniger Freilose und eine fairere Auslosung ergibt
 - **Auto-Benennung**: Turniername automatisch generiert aus Datum + Modus + Format, editierbar
+- **Speichern-Bestaetigung**: Gruener Toast bestätigt dass alle Änderungen (Einstellungen, Spieler, Teams, Hallen) nach dem Bearbeiten eines Turnier-Drafts gespeichert wurden
 
 ### Spielerverwaltung
 - **Vorname + Nachname** als separate Felder

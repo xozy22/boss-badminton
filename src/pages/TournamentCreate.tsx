@@ -357,6 +357,7 @@ export default function TournamentCreate() {
     // Mark wizard as completed
     await updateTournamentPhase(id, "ready");
 
+    if (isEditMode) navState.savedSuccess = true;
     navigate(`/tournaments/${id}`, { state: Object.keys(navState).length > 0 ? navState : undefined });
   };
 
@@ -421,7 +422,7 @@ export default function TournamentCreate() {
       return next;
     });
     // Re-focus search field so user can continue searching immediately
-    setTimeout(() => searchInputRef.current?.focus(), 0);
+    setTimeout(() => { searchInputRef.current?.focus(); searchInputRef.current?.select(); }, 0);
   };
 
   const minPlayers = mode === "singles" ? 2 : 4;

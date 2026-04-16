@@ -42,7 +42,7 @@
   - Draft summary showing all settings and participants before starting
   - Start button only enabled after wizard completion and team validation
   - Club filter + gender filter + search for player selection
-  - Auto-focus search after selection for rapid player picking
+  - Auto-focus search after selection for rapid player picking; search text auto-selected so next query can be typed immediately
   - Selected players shown as colored chips (blue/pink by gender)
 - **Manual Team Pairing**: Click two players to form a team in Doubles/Mixed
   - Mixed mode: Women/Men in separate columns, same gender greyed out
@@ -72,6 +72,7 @@
 - **Injury/Retirement with Undo**: Mark players as injured (walkovers for open matches), restore for future rounds (walkovers preserved)
 - **Attendance Check**: Before the draw runs, a modal lists all registered players with checkboxes (all checked by default). Uncheck absent players — they are removed from the tournament before the draw, resulting in fewer byes and a fairer bracket
 - **Auto-Naming**: Tournament name auto-generated from date + mode + format, editable
+- **Save Confirmation**: Green toast notification confirms all changes (settings, players, teams, halls) were saved after editing a tournament draft
 
 ### Player Management
 - **First Name + Last Name** as separate fields

@@ -328,6 +328,7 @@ export const de: Translations = {
   edit_tournament_qualify_group: "Qualifikanten/Gruppe",
   edit_tournament_fee_single: "Startgeld Einzel (EUR)",
   edit_tournament_fee_double: "Startgeld Doppel (EUR)",
+  edit_tournament_saved: "Einstellungen gespeichert",
 
   // ===== Delete Tournament Modal =====
   delete_tournament_title: "Turnier loeschen?",

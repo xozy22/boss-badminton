@@ -328,6 +328,7 @@ export const en: Translations = {
   edit_tournament_qualify_group: "Qualifiers/Group",
   edit_tournament_fee_single: "Entry fee singles (EUR)",
   edit_tournament_fee_double: "Entry fee doubles (EUR)",
+  edit_tournament_saved: "Settings saved",
 
   // ===== Delete Tournament Modal =====
   delete_tournament_title: "Delete tournament?",
