@@ -93,7 +93,7 @@
 - **Hallen mit individueller Feldanzahl**: Jede Sportstaette hat mehrere Hallen, jede Halle eigene Felder
 - Inline Hallen-Editor: Name + Feldanzahl pro Halle, Hinzufuegen/Entfernen
 - **JSON Export/Import**: Sportstaetten als Datei exportieren und importieren (nativer Speichern-Dialog in der gepackten App)
-- **Turnier-Integration**: Bei Turniererstellung Sportstaette waehlen, Hallen per Checkbox auswaehlen
+- **Turnier-Integration**: Bei Turniererstellung Sportstaette waehlen, Hallen per Checkbox auswaehlen; Sportstaetten-Auswahl wird gespeichert und beim erneuten Bearbeiten eines Turnier-Drafts wiederhergestellt
 - **Gruppierte Court-Anzeige**: Felder im Turnier nach Halle gruppiert mit Sektions-Headern
 - **Standard-Hallen in Einstellungen**: Greifen wenn keine Sportstaette gewaehlt
 

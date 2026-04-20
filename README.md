@@ -93,7 +93,7 @@
 - **Halls with individual court counts**: Each venue has multiple halls, each hall its own courts
 - Inline hall editor: name + court count per hall, add/remove
 - **JSON Export/Import**: Export and import venues as files (native save dialog in packaged app)
-- **Tournament Integration**: Select venue during creation, choose halls via checkbox
+- **Tournament Integration**: Select venue during creation, choose halls via checkbox; venue selection is persisted and restored when editing a tournament draft
 - **Grouped Court Display**: Courts in tournament grouped by hall with section headers
 - **Default Halls in Settings**: Applied when no venue is selected
 

@@ -335,6 +335,12 @@ pub fn run() {
                   ALTER TABLE tournaments ADD COLUMN ko_cap INTEGER;",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 8,
+            description: "add venue_id to tournaments",
+            sql: "ALTER TABLE tournaments ADD COLUMN venue_id INTEGER;",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

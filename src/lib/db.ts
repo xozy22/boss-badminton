@@ -337,6 +337,7 @@ export async function createTournament(
     entry_fee_double: entryFeeDouble,
     team_config: null,
     hall_config: null,
+    venue_id: null,
     created_at: new Date().toISOString(),
     status: "draft",
   });
@@ -407,6 +408,18 @@ export async function updateHallConfig(id: number, hallConfig: import("./types")
   const store = loadStore();
   const t = store.tournaments.find((t) => t.id === id);
   if (t) (t as any).hall_config = json;
+  saveStore(store);
+}
+
+export async function updateTournamentVenueId(id: number, venueId: number | null): Promise<void> {
+  if (isTauri()) {
+    const d = await getTauriDb();
+    await d.execute("UPDATE tournaments SET venue_id=$1 WHERE id=$2", [venueId, id]);
+    return;
+  }
+  const store = loadStore();
+  const t = store.tournaments.find((t) => t.id === id);
+  if (t) (t as any).venue_id = venueId;
   saveStore(store);
 }
 

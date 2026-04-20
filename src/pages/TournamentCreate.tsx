@@ -6,6 +6,7 @@ import {
   updateTournament,
   updateTeamConfig,
   updateHallConfig,
+  updateTournamentVenueId,
   addPlayerToTournament,
   removePlayerFromTournament,
   getTournament,
@@ -157,7 +158,7 @@ export default function TournamentCreate() {
     return () => clearTimeout(timer);
   }, [isEditMode, editLoaded, editId, selectedPlayerIds]);
 
-  // Auto-save team config + hall config when they change
+  // Auto-save team config + hall config + venue when they change
   useEffect(() => {
     if (!isEditMode || !editLoaded) return;
     const id = Number(editId);
@@ -165,12 +166,13 @@ export default function TournamentCreate() {
       try {
         await updateTeamConfig(id, manualTeams.length > 0 ? manualTeams : null);
         await updateHallConfig(id, selectedHalls.length > 0 ? selectedHalls : null);
+        await updateTournamentVenueId(id, selectedVenueId !== "" ? selectedVenueId : null);
       } catch (err) {
         console.error("Auto-save config error:", err);
       }
     }, 500);
     return () => clearTimeout(timer);
-  }, [isEditMode, editLoaded, editId, manualTeams, selectedHalls]);
+  }, [isEditMode, editLoaded, editId, manualTeams, selectedHalls, selectedVenueId]);
 
   useEffect(() => {
     getPlayers().then(setPlayers);
@@ -226,6 +228,7 @@ export default function TournamentCreate() {
           console.error("TournamentCreate: failed to parse team_config JSON:", err);
         }
       }
+      if (td.venue_id) setSelectedVenueId(td.venue_id);
       setEditLoaded(true);
     };
     loadTournament();
@@ -351,8 +354,9 @@ export default function TournamentCreate() {
       await updateTeamConfig(id, null);
     }
 
-    // Persist hall config
+    // Persist hall config + venue
     await updateHallConfig(id, selectedHalls.length > 0 ? selectedHalls : null);
+    await updateTournamentVenueId(id, selectedVenueId !== "" ? selectedVenueId : null);
 
     // Mark wizard as completed
     await updateTournamentPhase(id, "ready");

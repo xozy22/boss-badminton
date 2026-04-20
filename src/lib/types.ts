@@ -88,6 +88,7 @@ export interface Tournament {
   entry_fee_double: number;
   team_config: string | null;
   hall_config: string | null;
+  venue_id: number | null;
   created_at: string;
   status: TournamentStatus;
 }
