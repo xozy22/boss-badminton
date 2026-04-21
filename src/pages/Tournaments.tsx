@@ -1,8 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getTournaments, deleteTournament, updateTournamentStatus, createTournament, getPlayers, addPlayerToTournament, updateTeamConfig, updateHallConfig, isTauri } from "../lib/db";
-import type { Tournament } from "../lib/types";
-import { playerDisplayName } from "../lib/types";
+import { getTournaments, deleteTournament, updateTournamentStatus, createTournament, createPlayer, getPlayers, addPlayerToTournament, updateTeamConfig, updateHallConfig, isTauri } from "../lib/db";
+import type { Tournament, Gender } from "../lib/types";
 import { getScoringModeId } from "../lib/scoring";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
@@ -43,28 +42,116 @@ export default function Tournaments() {
     const qualifyPerGroup = (tpl.qualify_per_group as number) || 0;
     const entryFeeSingle = (tpl.entry_fee_single as number) || 0;
     const entryFeeDouble = (tpl.entry_fee_double as number) || 0;
+    const cap = (typeof tpl.cap === "number" ? tpl.cap : null);
+    const minRestMinutes = (tpl.min_rest_minutes as number) || 0;
 
-    const id = await createTournament(name, mode as any, format as any, setsToWin, pointsPerSet, courts, numGroups, qualifyPerGroup, entryFeeSingle, entryFeeDouble);
+    const id = await createTournament(
+      name,
+      mode as any,
+      format as any,
+      setsToWin,
+      pointsPerSet,
+      courts,
+      numGroups,
+      qualifyPerGroup,
+      entryFeeSingle,
+      entryFeeDouble,
+      cap,
+      minRestMinutes
+    );
 
+    // --- Robust player import: auto-create missing, build id-map ---
     if (tpl.players && Array.isArray(tpl.players)) {
-      const allPlayers = await getPlayers();
-      const matched: number[] = [];
-      for (const tp of tpl.players as { id: number; name: string; gender: string }[]) {
-        const match = allPlayers.find((p) => playerDisplayName(p).toLowerCase() === tp.name?.toLowerCase());
-        if (match) {
-          await addPlayerToTournament(id, match.id);
-          matched.push(match.id);
+      const norm = (s: unknown) => String(s || "").trim().toLowerCase();
+
+      // Normalize template player records (support v1 name-only + v2 first/last)
+      type TplPlayer = {
+        tplId: number;
+        first_name: string;
+        last_name: string;
+        gender: Gender;
+        birth_date: string | null;
+        club: string | null;
+      };
+      const tplPlayers: TplPlayer[] = (tpl.players as any[])
+        .map((tp: any): TplPlayer | null => {
+          const gender: Gender = (tp.gender === "f" || tp.gender === "m") ? tp.gender : "m";
+          if (typeof tp.first_name === "string" || typeof tp.last_name === "string") {
+            const fn = String(tp.first_name || "").trim();
+            const ln = String(tp.last_name || "").trim();
+            if (!fn && !ln) return null;
+            return {
+              tplId: Number(tp.id),
+              first_name: fn,
+              last_name: ln,
+              gender,
+              birth_date: tp.birth_date ?? null,
+              club: tp.club ?? null,
+            };
+          }
+          // v1 legacy: split full name on last space
+          const full = String(tp.name || "").trim();
+          if (!full) return null;
+          const idx = full.lastIndexOf(" ");
+          return {
+            tplId: Number(tp.id),
+            first_name: idx > 0 ? full.slice(0, idx) : full,
+            last_name: idx > 0 ? full.slice(idx + 1) : "",
+            gender,
+            birth_date: null,
+            club: null,
+          };
+        })
+        .filter((p: TplPlayer | null): p is TplPlayer => p !== null);
+
+      // Snapshot current local players
+      let localPlayers = await getPlayers();
+      const findLocal = (fp: TplPlayer) =>
+        localPlayers.find((lp) =>
+          norm(lp.first_name) === norm(fp.first_name) &&
+          norm(lp.last_name) === norm(fp.last_name) &&
+          lp.gender === fp.gender
+        );
+
+      // Create missing players
+      let createdCount = 0;
+      for (const fp of tplPlayers) {
+        if (findLocal(fp)) continue;
+        try {
+          await createPlayer(fp.first_name, fp.last_name, fp.gender, fp.birth_date, fp.club);
+          createdCount++;
+        } catch (err) {
+          console.error("Template import: createPlayer failed for", fp, err);
         }
       }
+
+      // Refresh local player list so newly created ones are visible
+      if (createdCount > 0) {
+        localPlayers = await getPlayers();
+      }
+
+      // Build id-map (template id → local id) and attach all matched players to the new tournament
+      const idMap = new Map<number, number>();
+      for (const fp of tplPlayers) {
+        const match = findLocal(fp);
+        if (match) {
+          idMap.set(fp.tplId, match.id);
+          try {
+            await addPlayerToTournament(id, match.id);
+          } catch (err) {
+            console.error("Template import: addPlayerToTournament failed for", match, err);
+          }
+        }
+      }
+
+      // Remap team pairings through the id-map
       if (tpl.team_config && Array.isArray(tpl.team_config)) {
         const remapped: [number, number][] = [];
-        for (const [id1, id2] of tpl.team_config as [number, number][]) {
-          const p1Name = (tpl.players as any[]).find((p) => p.id === id1)?.name;
-          const p2Name = (tpl.players as any[]).find((p) => p.id === id2)?.name;
-          const allPlayers2 = await getPlayers();
-          const newP1 = allPlayers2.find((p) => playerDisplayName(p).toLowerCase() === p1Name?.toLowerCase());
-          const newP2 = allPlayers2.find((p) => playerDisplayName(p).toLowerCase() === p2Name?.toLowerCase());
-          if (newP1 && newP2) remapped.push([newP1.id, newP2.id]);
+        for (const pair of tpl.team_config) {
+          if (!Array.isArray(pair) || pair.length < 2) continue;
+          const n1 = idMap.get(Number(pair[0]));
+          const n2 = idMap.get(Number(pair[1]));
+          if (n1 !== undefined && n2 !== undefined) remapped.push([n1, n2]);
         }
         if (remapped.length > 0) await updateTeamConfig(id, remapped);
       }
@@ -93,7 +180,7 @@ export default function Tournaments() {
         return;
       } catch (err) {
         console.error("Tauri import failed:", err);
-        alert(t.tournaments_import_error);
+        alert(`${t.tournaments_import_error}\n\n${err instanceof Error ? err.message : String(err)}`);
         return;
       }
     }
@@ -110,7 +197,7 @@ export default function Tournaments() {
       await applyTemplate(tpl);
     } catch (err) {
       console.error("Import failed:", err);
-      alert(t.tournaments_import_error);
+      alert(`${t.tournaments_import_error}\n\n${err instanceof Error ? err.message : String(err)}`);
     }
   };
 

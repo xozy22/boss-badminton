@@ -161,7 +161,6 @@ export const en: Translations = {
   rest_warning_player_row: "{player} — {minutes} min rest remaining",
   rest_warning_confirm: "Assign anyway",
   rest_warning_cancel: "Cancel",
-  tournament_load_template: "Load template",
   tournament_step_settings: "Settings",
   tournament_step_players: "Players",
   tournament_step_teams: "Teams",
@@ -363,12 +362,6 @@ export const en: Translations = {
   template_teams: "Teams",
   template_teams_desc: "Formed doubles/mixed pairings",
   template_export_button: "Export",
-  template_import_result_title: "Template imported",
-  template_import_result_subtitle: "Players and settings were imported from the file.",
-  template_import_matched: "{count} existing players matched",
-  template_import_created: "{count} new players created",
-  template_import_skipped: "{count} players could not be created (see console)",
-  template_import_teams: "Teams: {matched} imported, {skipped} skipped",
 
   // ===== Seeding Step =====
   seeding_title: "Seeding List",
@@ -715,6 +708,7 @@ export const en: Translations = {
   settings_confirm_wipe: "This will permanently delete ALL data in the database. This cannot be undone!",
   settings_confirm_word_wipe: "RESET",
   settings_wipe_success: "Database has been completely reset.",
+  settings_wipe_restarting: "Wiping database - app is restarting...",
 
   // ===== Undo last round =====
   tournament_view_undo_round: "Undo last round",

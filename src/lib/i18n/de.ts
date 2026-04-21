@@ -161,7 +161,6 @@ export const de: Translations = {
   rest_warning_player_row: "{player} — noch {minutes} Min. Pause",
   rest_warning_confirm: "Trotzdem zuweisen",
   rest_warning_cancel: "Abbrechen",
-  tournament_load_template: "Vorlage laden",
   tournament_step_settings: "Einstellungen",
   tournament_step_players: "Spieler",
   tournament_step_teams: "Teams",
@@ -363,12 +362,6 @@ export const de: Translations = {
   template_teams: "Teams",
   template_teams_desc: "Gebildete Doppel-/Mixed-Paarungen",
   template_export_button: "Exportieren",
-  template_import_result_title: "Vorlage importiert",
-  template_import_result_subtitle: "Die Spieler und Einstellungen wurden aus der Datei uebernommen.",
-  template_import_matched: "{count} bestehende Spieler zugeordnet",
-  template_import_created: "{count} neue Spieler angelegt",
-  template_import_skipped: "{count} Spieler konnten nicht angelegt werden (siehe Konsole)",
-  template_import_teams: "Teams: {matched} uebernommen, {skipped} uebersprungen",
 
   // ===== Seeding Step =====
   seeding_title: "Setzliste",
@@ -715,6 +708,7 @@ export const de: Translations = {
   settings_confirm_wipe: "Hiermit werden ALLE Daten in der Datenbank unwiderruflich geloescht!",
   settings_confirm_word_wipe: "RESET",
   settings_wipe_success: "Datenbank wurde komplett zurueckgesetzt.",
+  settings_wipe_restarting: "Datenbank wird geloescht - App startet neu...",
 
   // ===== Undo last round =====
   tournament_view_undo_round: "Letzte Runde rueckgaengig",

@@ -241,8 +241,13 @@ export default function Settings() {
         await wipeAllTournaments();
         setMessage({ type: "success", text: t.settings_tournaments_deleted });
       } else if (confirmTarget === "wipe") {
+        // Feedback BEFORE the invoke: in Tauri terminiert der Prozess während wipeEntireDatabase(),
+        // eine setMessage-Zeile danach würde nie ausgeführt werden.
+        setMessage({ type: "success", text: isTauri() ? t.settings_wipe_restarting : t.settings_wipe_success });
+        setConfirmTarget(null);
+        setConfirmText("");
         await wipeEntireDatabase();
-        setMessage({ type: "success", text: t.settings_wipe_success });
+        return;
       }
     } catch (err) {
       setMessage({ type: "error", text: `${err}` });

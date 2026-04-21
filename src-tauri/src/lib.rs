@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 const DB_FILENAME: &str = "turnierplaner.db";
 const CONFIG_FILENAME: &str = "db_config.json";
+const WIPE_MARKER_FILENAME: &str = "wipe_pending.marker";
 
 /// Liest den benutzerdefinierten DB-Pfad aus der Config-Datei, falls vorhanden
 fn get_custom_db_dir(app_data_dir: &PathBuf) -> Option<String> {
@@ -13,9 +14,10 @@ fn get_custom_db_dir(app_data_dir: &PathBuf) -> Option<String> {
         if let Ok(content) = fs::read_to_string(&config_path) {
             if let Ok(config) = serde_json::from_str::<serde_json::Value>(&content) {
                 if let Some(dir) = config.get("db_dir").and_then(|v| v.as_str()) {
-                    let db_path = PathBuf::from(dir).join(DB_FILENAME);
-                    // Nur verwenden wenn die DB dort auch existiert
-                    if db_path.exists() {
+                    let db_dir = PathBuf::from(dir);
+                    // Verwenden wenn das Verzeichnis existiert (auch ohne DB-Datei,
+                    // damit nach einem Wipe die DB im Custom-Ordner neu angelegt wird)
+                    if db_dir.exists() && db_dir.is_dir() {
                         return Some(dir.to_string());
                     }
                 }
@@ -23,6 +25,22 @@ fn get_custom_db_dir(app_data_dir: &PathBuf) -> Option<String> {
         }
     }
     None
+}
+
+/// Löscht DB-Datei (+ WAL + SHM) falls ein Wipe-Marker vorhanden ist.
+/// Wird vor der SQL-Plugin-Init aufgerufen, damit keine File-Locks stören.
+fn handle_pending_wipe(app_data_dir: &PathBuf) {
+    let marker = app_data_dir.join(WIPE_MARKER_FILENAME);
+    if !marker.exists() {
+        return;
+    }
+    let db_path = resolve_db_path(app_data_dir);
+    let _ = fs::remove_file(&db_path);
+    for ext in &["-wal", "-shm"] {
+        let side = PathBuf::from(format!("{}{}", db_path.to_string_lossy(), ext));
+        let _ = fs::remove_file(&side);
+    }
+    let _ = fs::remove_file(&marker);
 }
 
 /// Gibt den vollen Pfad zur aktuellen Datenbank zurueck
@@ -142,6 +160,21 @@ fn restore_db(app_handle: tauri::AppHandle, source_path: String) -> Result<(), S
         .map_err(|e| format!("Wiederherstellung fehlgeschlagen: {}", e))?;
 
     Ok(())
+}
+
+#[tauri::command]
+fn wipe_database_and_restart(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let app_data_dir = app_handle.path().app_data_dir()
+        .map_err(|e| format!("Kann App-Datenverzeichnis nicht ermitteln: {}", e))?;
+    // App-Daten-Verzeichnis sicherstellen (falls es gelöscht wurde)
+    fs::create_dir_all(&app_data_dir)
+        .map_err(|e| format!("Verzeichnis anlegen fehlgeschlagen: {}", e))?;
+    // Marker schreiben - der nächste Startup löscht die DB-Datei vor der SQL-Plugin-Init
+    let marker = app_data_dir.join(WIPE_MARKER_FILENAME);
+    fs::write(&marker, b"1")
+        .map_err(|e| format!("Marker schreiben fehlgeschlagen: {}", e))?;
+    // App neu starten - restart() kehrt nicht zurück, daher ist der Return-Typ nur für den Fehlerfall davor
+    app_handle.restart();
 }
 
 #[tauri::command]
@@ -362,6 +395,9 @@ pub fn run() {
             // Sicherstellen dass das App-Datenverzeichnis existiert
             let _ = fs::create_dir_all(&app_data_dir);
 
+            // Falls ein Wipe angefordert wurde: DB-Datei löschen BEVOR das SQL-Plugin sie öffnet
+            handle_pending_wipe(&app_data_dir);
+
             let conn_string = build_connection_string(&app_data_dir);
 
             app.handle().plugin(
@@ -386,6 +422,7 @@ pub fn run() {
             open_folder,
             backup_db,
             restore_db,
+            wipe_database_and_restart,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -159,7 +159,6 @@ export interface Translations {
   rest_warning_player_row: string;
   rest_warning_confirm: string;
   rest_warning_cancel: string;
-  tournament_load_template: string;
   tournament_step_settings: string;
   tournament_step_players: string;
   tournament_step_teams: string;
@@ -364,12 +363,6 @@ export interface Translations {
   template_teams: string;
   template_teams_desc: string;
   template_export_button: string;
-  template_import_result_title: string;
-  template_import_result_subtitle: string;
-  template_import_matched: string;
-  template_import_created: string;
-  template_import_skipped: string;
-  template_import_teams: string;
 
   // ===== Seeding Step =====
   seeding_title: string;
@@ -716,6 +709,7 @@ export interface Translations {
   settings_confirm_wipe: string;
   settings_confirm_word_wipe: string;
   settings_wipe_success: string;
+  settings_wipe_restarting: string;
 
   // ===== Undo last round =====
   tournament_view_undo_round: string;
