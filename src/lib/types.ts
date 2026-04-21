@@ -89,6 +89,7 @@ export interface Tournament {
   team_config: string | null;
   hall_config: string | null;
   venue_id: number | null;
+  min_rest_minutes: number;
   created_at: string;
   status: TournamentStatus;
 }

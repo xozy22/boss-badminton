@@ -60,7 +60,7 @@ export default function TemplateExportModal({
           </button>
           <button
             onClick={async () => {
-              const template: Record<string, unknown> = { version: 1 };
+              const template: Record<string, unknown> = { version: 2 };
               if (templateInclude.settings) {
                 template.name = tournament.name;
                 template.mode = tournament.mode;
@@ -73,9 +73,21 @@ export default function TemplateExportModal({
                 template.qualify_per_group = tournament.qualify_per_group;
                 template.entry_fee_single = tournament.entry_fee_single;
                 template.entry_fee_double = tournament.entry_fee_double;
+                template.min_rest_minutes = tournament.min_rest_minutes;
+                if (tournament.hall_config) {
+                  try { template.hall_config = JSON.parse(tournament.hall_config); } catch (err) { console.error("TemplateExport: failed to parse hall_config JSON:", err); }
+                }
               }
               if (templateInclude.players) {
-                template.players = players.map((p) => ({ id: p.id, name: playerDisplayName(p), gender: p.gender }));
+                template.players = players.map((p) => ({
+                  id: p.id,
+                  first_name: p.first_name,
+                  last_name: p.last_name,
+                  name: playerDisplayName(p), // legacy fallback field for v1 readers
+                  gender: p.gender,
+                  birth_date: p.birth_date,
+                  club: p.club,
+                }));
               }
               if (templateInclude.teams && tournament.team_config) {
                 try { template.team_config = JSON.parse(tournament.team_config); } catch (err) { console.error("TemplateExport: failed to parse team_config JSON:", err); }

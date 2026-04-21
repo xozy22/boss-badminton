@@ -150,6 +150,15 @@ export interface Translations {
   tournament_entry_fee_hint_team: string;
   tournament_entry_fee_single: string;
   tournament_entry_fee_double: string;
+  tournament_min_rest_enable: string;
+  tournament_min_rest_hint: string;
+  tournament_min_rest_label: string;
+  tournament_min_rest_unit: string;
+  rest_warning_title: string;
+  rest_warning_body: string;
+  rest_warning_player_row: string;
+  rest_warning_confirm: string;
+  rest_warning_cancel: string;
   tournament_load_template: string;
   tournament_step_settings: string;
   tournament_step_players: string;
@@ -355,6 +364,12 @@ export interface Translations {
   template_teams: string;
   template_teams_desc: string;
   template_export_button: string;
+  template_import_result_title: string;
+  template_import_result_subtitle: string;
+  template_import_matched: string;
+  template_import_created: string;
+  template_import_skipped: string;
+  template_import_teams: string;
 
   // ===== Seeding Step =====
   seeding_title: string;

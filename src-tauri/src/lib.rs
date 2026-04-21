@@ -341,6 +341,12 @@ pub fn run() {
             sql: "ALTER TABLE tournaments ADD COLUMN venue_id INTEGER;",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 9,
+            description: "add min_rest_minutes to tournaments",
+            sql: "ALTER TABLE tournaments ADD COLUMN min_rest_minutes INTEGER NOT NULL DEFAULT 0;",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

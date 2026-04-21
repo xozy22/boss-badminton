@@ -474,6 +474,11 @@ export default function TournamentView() {
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
   const [editingMatchIds, setEditingMatchIds] = useState<Set<number>>(new Set());
   const [showStartKoModal, setShowStartKoModal] = useState(false);
+  const [restWarning, setRestWarning] = useState<{
+    matchId: number;
+    court: number;
+    players: { id: number; name: string; minutesLeft: number }[];
+  } | null>(null);
   const recentlyCompletedRef = React.useRef(recentlyCompleted)
   recentlyCompletedRef.current = recentlyCompleted;
   const activeRoundRef = React.useRef(activeRound);
@@ -1416,7 +1421,62 @@ export default function TournamentView() {
     loadAll();
   };
 
-  const handleCourtChange = async (matchId: number, court: number | null) => {
+  const handleCourtChange = async (matchId: number, court: number | null, bypassRestCheck = false) => {
+    // Rest-time check: only when assigning (not clearing) and tournament has min_rest configured
+    if (!bypassRestCheck && court !== null && tournament && tournament.min_rest_minutes > 0) {
+      let targetMatch: Match | undefined;
+      for (const [, ms] of matchesByRound) {
+        const m = ms.find((x) => x.id === matchId);
+        if (m) { targetMatch = m; break; }
+      }
+      if (targetMatch) {
+        const now = Date.now();
+        const minRestMs = tournament.min_rest_minutes * 60 * 1000;
+        const playerIds = [
+          targetMatch.team1_p1,
+          targetMatch.team1_p2,
+          targetMatch.team2_p1,
+          targetMatch.team2_p2,
+        ].filter((pid): pid is number => pid !== null && pid !== undefined && pid > 0);
+
+        const resting: { id: number; name: string; minutesLeft: number }[] = [];
+        for (const pid of playerIds) {
+          let latestCompletedAt: string | null = null;
+          for (const [, ms] of matchesByRound) {
+            for (const m of ms) {
+              if (m.id === matchId) continue;
+              if (m.status !== "completed" || !m.completed_at) continue;
+              if (
+                m.team1_p1 === pid ||
+                m.team1_p2 === pid ||
+                m.team2_p1 === pid ||
+                m.team2_p2 === pid
+              ) {
+                if (!latestCompletedAt || m.completed_at > latestCompletedAt) {
+                  latestCompletedAt = m.completed_at;
+                }
+              }
+            }
+          }
+          if (latestCompletedAt) {
+            const elapsedMs = now - new Date(latestCompletedAt).getTime();
+            if (elapsedMs < minRestMs) {
+              resting.push({
+                id: pid,
+                name: playerName(pid),
+                minutesLeft: Math.max(1, Math.ceil((minRestMs - elapsedMs) / 60000)),
+              });
+            }
+          }
+        }
+
+        if (resting.length > 0) {
+          setRestWarning({ matchId, court, players: resting });
+          return;
+        }
+      }
+    }
+
     await updateMatchCourt(matchId, court);
     loadAll();
   };
@@ -2108,6 +2168,51 @@ export default function TournamentView() {
           onClose={() => setRetireTarget(null)}
           onConfirm={handlePlayerRetire}
         />
+      )}
+
+      {/* Rest Time Warning Modal */}
+      {restWarning && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`${theme.cardBg} rounded-2xl shadow-xl border ${theme.cardBorder} max-w-md w-full p-6`}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="text-2xl">⏱️</div>
+              <div className="flex-1">
+                <h3 className={`text-lg font-bold ${theme.textPrimary}`}>{t.rest_warning_title}</h3>
+                <p className={`text-sm ${theme.textMuted} mt-1`}>{t.rest_warning_body}</p>
+              </div>
+            </div>
+            <ul className={`mb-5 space-y-1.5 pl-1`}>
+              {restWarning.players.map((p) => (
+                <li key={p.id} className={`text-sm ${theme.textPrimary} flex items-start gap-2`}>
+                  <span className="text-amber-500">•</span>
+                  <span>
+                    {t.rest_warning_player_row
+                      .replace("{player}", p.name)
+                      .replace("{minutes}", String(p.minutesLeft))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setRestWarning(null)}
+                className={`px-4 py-2 rounded-xl border ${theme.cardBorder} ${theme.textPrimary} text-sm font-medium hover:opacity-80 transition-opacity`}
+              >
+                {t.rest_warning_cancel}
+              </button>
+              <button
+                onClick={async () => {
+                  const w = restWarning;
+                  setRestWarning(null);
+                  await handleCourtChange(w.matchId, w.court, true);
+                }}
+                className={`px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors`}
+              >
+                {t.rest_warning_confirm}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Start KO Modal */}

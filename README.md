@@ -60,10 +60,14 @@
   - Overview with total sum, grouped by club
 - **Seeding**: Pick exactly which players are seeded via per-player checkbox (opt-in, nothing seeded by default), then order them via Drag & Drop or arrow keys — supported for KO, Double-KO, and Group Stage + KO (singles); unseeded players are drawn randomly
   - **Snake distribution for groups**: 4 groups + 8 seeds → G1=[1,8], G2=[2,7], G3=[3,6], G4=[4,5] — top seeds are spread evenly instead of clashing early
-- **Template System**: Export/import tournaments as JSON files
+- **Template System** (v2, cross-PC transfer): Export/import tournaments as JSON files
   - Selectable: Settings, Players, Teams (individually or combined)
-  - Players matched by name on import (ID-independent)
-  - Teams automatically remapped
+  - **Full player records** (first name, last name, gender, birth date, club) are exported — not just display names
+  - **Auto-create on import**: Players that don't exist on the target PC are automatically created in the player database
+  - **ID remapping**: Teams are re-linked through an internal ID map so team pairings survive cross-PC transfer even when player IDs differ
+  - **Hall config** (multi-hall setups with court counts) is preserved
+  - **Summary modal** after import shows how many players were matched / newly created / skipped, and how many team pairings were transferred
+  - Backward compatible with v1 templates (full name is split into first + last name)
   - Export uses native save dialog in the packaged app (EXE/DMG)
   - **Import button** on the Tournaments list page — opens native file dialog, creates tournament with all settings pre-filled and matching players already added, then navigates straight to the wizard
 - **Archiving**: Archive and restore completed tournaments
@@ -115,6 +119,7 @@
 - **Fair Draw**: With odd player count, the player with most matches sits out; with random doubles, previous partnerships weighted to avoid repetition
 - **Early Round Draw**: For Random Doubles and Round Robin (doubles/mixed), the next round can be drawn as soon as one match of the current round is completed — no need to wait for all courts to finish. New matches appear in the court queue under a "— Round N —" separator and are immediately assignable to free courts
 - **Court Timer**: Configurable warning (yellow) and critical (red) thresholds
+- **Minimum Rest Time**: Optional per-tournament setting (minutes) — when assigning a match to a court, a warning modal lists any player who hasn't rested long enough since their last completed match with the remaining minutes, giving the tournament director a clear info base with an "Assign anyway" bypass
 
 ### TV/Projector Mode
 - **Separate fullscreen window** optimized for landscape and distance readability

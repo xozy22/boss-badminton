@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   getPlayers,
+  createPlayer,
   createTournament,
   updateTournament,
   updateTeamConfig,
@@ -14,7 +15,7 @@ import {
   getSportstaetten,
   updateTournamentPhase,
 } from "../lib/db";
-import type { Player, TournamentMode, TournamentFormat, Sportstaette, HallConfig } from "../lib/types";
+import type { Player, TournamentMode, TournamentFormat, Sportstaette, HallConfig, Gender } from "../lib/types";
 import { parseHallConfig, hallConfigTotalCourts, playerDisplayName } from "../lib/types";
 import { formFixedDoubleTeams, formFixedMixedTeams, recommendedSwissRounds } from "../lib/draw";
 import { SCORING_MODES, getScoringModeId, type ScoringModeId } from "../lib/scoring";
@@ -91,6 +92,8 @@ export default function TournamentCreate() {
   const [useEntryFee, setUseEntryFee] = useState(false);
   const [entryFeeSingle, setEntryFeeSingle] = useState<string>("5");
   const [entryFeeDouble, setEntryFeeDouble] = useState<string>("10");
+  const [useMinRest, setUseMinRest] = useState(false);
+  const [minRestMinutes, setMinRestMinutes] = useState<string>("15");
   const [useSeeding, setUseSeeding] = useState(false);
   const [seedOrder, setSeedOrder] = useState<number[]>([]); // player IDs in seed order
   const [seededPlayerIds, setSeededPlayerIds] = useState<Set<number>>(new Set()); // opt-in per player
@@ -99,6 +102,13 @@ export default function TournamentCreate() {
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [showFormatInfo, setShowFormatInfo] = useState(false);
   const [showExcelImport, setShowExcelImport] = useState(false);
+  const [templateImportResult, setTemplateImportResult] = useState<{
+    matched: number;
+    created: number;
+    skipped: number;
+    teamsMatched: number;
+    teamsSkipped: number;
+  } | null>(null);
 
   // Team pairing state
   const [manualTeams, setManualTeams] = useState<[number, number][]>([]);
@@ -119,19 +129,20 @@ export default function TournamentCreate() {
       const finalName = name.trim() || generateName(mode, format);
       const feeSingle = useEntryFee ? (Number(entryFeeSingle) || 0) : 0;
       const feeDouble = useEntryFee ? (Number(entryFeeDouble) || 0) : 0;
+      const rest = useMinRest ? Math.max(0, Number(minRestMinutes) || 0) : 0;
       try {
         await updateTournament(
           id, finalName, mode, format, setsToWin, pointsPerSet, courts,
           (format === "group_ko" || format === "swiss" || format === "monrad" || format === "waterfall") ? numGroups : 0,
           format === "group_ko" ? qualifyPerGroup : 0,
-          feeSingle, feeDouble, cap
+          feeSingle, feeDouble, cap, rest
         );
       } catch (err) {
         console.error("Auto-save error:", err);
       }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [isEditMode, editLoaded, editId, name, mode, format, setsToWin, pointsPerSet, cap, courts, numGroups, qualifyPerGroup, useEntryFee, entryFeeSingle, entryFeeDouble]);
+  }, [isEditMode, editLoaded, editId, name, mode, format, setsToWin, pointsPerSet, cap, courts, numGroups, qualifyPerGroup, useEntryFee, entryFeeSingle, entryFeeDouble, useMinRest, minRestMinutes]);
 
   // Auto-save player selection when it changes
   useEffect(() => {
@@ -219,6 +230,10 @@ export default function TournamentCreate() {
         setEntryFeeSingle(String(td.entry_fee_single));
         setEntryFeeDouble(String(td.entry_fee_double));
       }
+      if (td.min_rest_minutes && td.min_rest_minutes > 0) {
+        setUseMinRest(true);
+        setMinRestMinutes(String(td.min_rest_minutes));
+      }
       setSelectedPlayerIds(new Set(tp.map((p) => p.id)));
       if (td.team_config) {
         try {
@@ -295,6 +310,7 @@ export default function TournamentCreate() {
     const finalName = name.trim() || generateName(mode, format);
     const feeSingle = useEntryFee ? (Number(entryFeeSingle) || 0) : 0;
     const feeDouble = useEntryFee ? (Number(entryFeeDouble) || 0) : 0;
+    const rest = useMinRest ? Math.max(0, Number(minRestMinutes) || 0) : 0;
 
     let id: number;
 
@@ -304,7 +320,7 @@ export default function TournamentCreate() {
         id, finalName, mode, format, setsToWin, pointsPerSet, courts,
         (format === "group_ko" || format === "swiss" || format === "monrad" || format === "waterfall") ? numGroups : 0,
         format === "group_ko" ? qualifyPerGroup : 0,
-        feeSingle, feeDouble, cap
+        feeSingle, feeDouble, cap, rest
       );
       // Sync players: remove those no longer selected, add new ones
       const existingPlayers = await getTournamentPlayers(id);
@@ -324,7 +340,7 @@ export default function TournamentCreate() {
         finalName, mode, format, setsToWin, pointsPerSet, courts,
         (format === "group_ko" || format === "swiss" || format === "monrad" || format === "waterfall") ? numGroups : 0,
         format === "group_ko" ? qualifyPerGroup : 0,
-        feeSingle, feeDouble, cap
+        feeSingle, feeDouble, cap, rest
       );
       for (const pid of selectedPlayerIds) {
         await addPlayerToTournament(id, pid);
@@ -522,7 +538,7 @@ export default function TournamentCreate() {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 const reader = new FileReader();
-                reader.onload = (evt) => {
+                reader.onload = async (evt) => {
                   try {
                     const tpl = JSON.parse(evt.target?.result as string);
                     if (tpl.name) { setName(tpl.name); setNameManuallyEdited(true); }
@@ -538,7 +554,16 @@ export default function TournamentCreate() {
                       setScoringMode(getScoringModeId(tpl.points_per_set, legacyCap));
                     }
                     if (tpl.sets_to_win) setSetsToWin(tpl.sets_to_win);
-                    if (tpl.courts) {
+                    // v2: prefer hall_config when present (preserves multi-hall setup)
+                    if (tpl.hall_config && Array.isArray(tpl.hall_config) && tpl.hall_config.length > 0) {
+                      const halls: HallConfig[] = tpl.hall_config
+                        .filter((h: any) => h && typeof h.name === "string" && typeof h.courts === "number")
+                        .map((h: any) => ({ name: h.name, courts: Math.max(1, Math.floor(h.courts)) }));
+                      if (halls.length > 0) {
+                        setHallConfig(halls);
+                        setSelectedHallIndices(new Set(halls.map((_, i) => i)));
+                      }
+                    } else if (tpl.courts) {
                       setHallConfig([{ name: "Halle 1", courts: tpl.courts }]);
                       setSelectedHallIndices(new Set([0]));
                     }
@@ -549,26 +574,123 @@ export default function TournamentCreate() {
                       setEntryFeeSingle(String(tpl.entry_fee_single || 0));
                       setEntryFeeDouble(String(tpl.entry_fee_double || 0));
                     }
-                    if (tpl.players && Array.isArray(tpl.players)) {
-                      // Match by name since IDs may differ
-                      const ids = new Set<number>();
-                      for (const tp of tpl.players) {
-                        const match = players.find((p) => playerDisplayName(p).toLowerCase() === tp.name?.toLowerCase());
-                        if (match) ids.add(match.id);
-                      }
-                      if (ids.size > 0) setSelectedPlayerIds(ids);
+                    if (tpl.min_rest_minutes && tpl.min_rest_minutes > 0) {
+                      setUseMinRest(true);
+                      setMinRestMinutes(String(tpl.min_rest_minutes));
                     }
-                    if (tpl.team_config && Array.isArray(tpl.team_config)) {
-                      // Remap team IDs by name
-                      const remapped: [number, number][] = [];
-                      for (const [id1, id2] of tpl.team_config) {
-                        const p1Name = tpl.players?.find((p: any) => p.id === id1)?.name;
-                        const p2Name = tpl.players?.find((p: any) => p.id === id2)?.name;
-                        const newP1 = players.find((p) => playerDisplayName(p).toLowerCase() === p1Name?.toLowerCase());
-                        const newP2 = players.find((p) => playerDisplayName(p).toLowerCase() === p2Name?.toLowerCase());
-                        if (newP1 && newP2) remapped.push([newP1.id, newP2.id]);
+
+                    // --- Robust player import: auto-create missing, build id-map ---
+                    if (tpl.players && Array.isArray(tpl.players)) {
+                      const norm = (s: unknown) => String(s || "").trim().toLowerCase();
+                      // Normalize template player records (support v1 name-only + v2 first/last)
+                      type TplPlayer = {
+                        tplId: number;
+                        first_name: string;
+                        last_name: string;
+                        gender: Gender;
+                        birth_date: string | null;
+                        club: string | null;
+                      };
+                      const tplPlayers: TplPlayer[] = tpl.players
+                        .map((tp: any): TplPlayer | null => {
+                          const gender: Gender = (tp.gender === "f" || tp.gender === "m") ? tp.gender : "m";
+                          if (typeof tp.first_name === "string" || typeof tp.last_name === "string") {
+                            const fn = String(tp.first_name || "").trim();
+                            const ln = String(tp.last_name || "").trim();
+                            if (!fn && !ln) return null;
+                            return {
+                              tplId: Number(tp.id),
+                              first_name: fn,
+                              last_name: ln,
+                              gender,
+                              birth_date: tp.birth_date ?? null,
+                              club: tp.club ?? null,
+                            };
+                          }
+                          // v1 legacy: split full name on last space
+                          const full = String(tp.name || "").trim();
+                          if (!full) return null;
+                          const idx = full.lastIndexOf(" ");
+                          return {
+                            tplId: Number(tp.id),
+                            first_name: idx > 0 ? full.slice(0, idx) : full,
+                            last_name: idx > 0 ? full.slice(idx + 1) : "",
+                            gender,
+                            birth_date: null,
+                            club: null,
+                          };
+                        })
+                        .filter((p: TplPlayer | null): p is TplPlayer => p !== null);
+
+                      // Snapshot current local players (avoid relying on stale state)
+                      let localPlayers = await getPlayers();
+                      const findLocal = (fp: TplPlayer) =>
+                        localPlayers.find((lp) =>
+                          norm(lp.first_name) === norm(fp.first_name) &&
+                          norm(lp.last_name) === norm(fp.last_name) &&
+                          lp.gender === fp.gender
+                        );
+
+                      // Create missing players
+                      let createdCount = 0;
+                      let skippedCount = 0;
+                      for (const fp of tplPlayers) {
+                        if (findLocal(fp)) continue;
+                        try {
+                          await createPlayer(fp.first_name, fp.last_name, fp.gender, fp.birth_date, fp.club);
+                          createdCount++;
+                        } catch (err) {
+                          console.error("Template import: createPlayer failed for", fp, err);
+                          skippedCount++;
+                        }
                       }
-                      if (remapped.length > 0) setManualTeams(remapped);
+
+                      // Refresh local player list so newly created ones are visible
+                      if (createdCount > 0) {
+                        localPlayers = await getPlayers();
+                        setPlayers(localPlayers);
+                      }
+
+                      // Build id-map and selection set from (possibly enlarged) local list
+                      const idMap = new Map<number, number>();
+                      const newSelected = new Set<number>();
+                      let matchedCount = 0;
+                      for (const fp of tplPlayers) {
+                        const match = findLocal(fp);
+                        if (match) {
+                          idMap.set(fp.tplId, match.id);
+                          newSelected.add(match.id);
+                          matchedCount++;
+                        }
+                      }
+                      setSelectedPlayerIds(newSelected);
+
+                      // Remap team pairings through the id-map
+                      let teamsMatched = 0;
+                      let teamsSkipped = 0;
+                      if (tpl.team_config && Array.isArray(tpl.team_config)) {
+                        const remapped: [number, number][] = [];
+                        for (const pair of tpl.team_config) {
+                          if (!Array.isArray(pair) || pair.length < 2) { teamsSkipped++; continue; }
+                          const n1 = idMap.get(Number(pair[0]));
+                          const n2 = idMap.get(Number(pair[1]));
+                          if (n1 !== undefined && n2 !== undefined) {
+                            remapped.push([n1, n2]);
+                            teamsMatched++;
+                          } else {
+                            teamsSkipped++;
+                          }
+                        }
+                        if (remapped.length > 0) setManualTeams(remapped);
+                      }
+
+                      setTemplateImportResult({
+                        matched: matchedCount - createdCount,
+                        created: createdCount,
+                        skipped: skippedCount,
+                        teamsMatched,
+                        teamsSkipped,
+                      });
                     }
                   } catch (err) {
                     console.error("Vorlage laden fehlgeschlagen:", err);
@@ -914,6 +1036,35 @@ export default function TournamentCreate() {
               </div>
             )}
 
+            {/* Minimum Rest Time Toggle + Field */}
+            <div className={`flex items-start gap-3 p-3 rounded-xl border ${theme.cardBorder} ${useMinRest ? theme.selectedBg : ''}`}>
+              <input
+                type="checkbox"
+                checked={useMinRest}
+                onChange={(e) => setUseMinRest(e.target.checked)}
+                className="rounded accent-emerald-600 mt-1"
+              />
+              <div className="flex-1">
+                <span className={`text-sm font-medium ${theme.textPrimary}`}>⏱️ {t.tournament_min_rest_enable}</span>
+                <p className={`text-xs ${theme.textMuted}`}>{t.tournament_min_rest_hint}</p>
+                {useMinRest && (
+                  <div className="mt-3">
+                    <label className={`block text-xs font-medium ${theme.textSecondary} mb-1`}>
+                      {t.tournament_min_rest_label} ({t.tournament_min_rest_unit})
+                    </label>
+                    <input
+                      type="number"
+                      value={minRestMinutes}
+                      onChange={(e) => setMinRestMinutes(e.target.value)}
+                      className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-2 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+                      min={0}
+                      step="1"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Entry Fee Toggle + Fields */}
             <div className={`flex items-start gap-3 p-3 rounded-xl border ${theme.cardBorder} ${useEntryFee ? theme.selectedBg : ''}`}>
               <input
@@ -1236,6 +1387,7 @@ export default function TournamentCreate() {
                   const label = isFixed ? t.tournament_entry_fee_per_team : t.tournament_entry_fee_per_person;
                   return `${amount} EUR (${label.replace(" (EUR)", "")})`;
                 })() : "—"}</div>
+                <div><span className={`font-medium ${theme.textPrimary}`}>⏱️ {t.tournament_min_rest_label}:</span> {useMinRest && Number(minRestMinutes) > 0 ? `${Number(minRestMinutes) || 0} ${t.tournament_min_rest_unit}` : "—"}</div>
               </div>
             </div>
 
@@ -1279,6 +1431,54 @@ export default function TournamentCreate() {
           }}
           onClose={() => setShowExcelImport(false)}
         />
+      )}
+
+      {templateImportResult && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`${theme.cardBg} rounded-2xl shadow-xl border ${theme.cardBorder} max-w-md w-full p-6`}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="text-2xl">📋</div>
+              <div className="flex-1">
+                <h3 className={`text-lg font-bold ${theme.textPrimary}`}>{t.template_import_result_title}</h3>
+                <p className={`text-sm ${theme.textMuted} mt-1`}>{t.template_import_result_subtitle}</p>
+              </div>
+            </div>
+            <ul className={`mb-5 space-y-1.5 text-sm ${theme.textPrimary}`}>
+              <li className="flex items-center gap-2">
+                <span className="text-emerald-600">✓</span>
+                <span>{t.template_import_matched.replace("{count}", String(templateImportResult.matched))}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-sky-600">+</span>
+                <span>{t.template_import_created.replace("{count}", String(templateImportResult.created))}</span>
+              </li>
+              {templateImportResult.skipped > 0 && (
+                <li className="flex items-center gap-2">
+                  <span className="text-amber-500">!</span>
+                  <span>{t.template_import_skipped.replace("{count}", String(templateImportResult.skipped))}</span>
+                </li>
+              )}
+              {(templateImportResult.teamsMatched > 0 || templateImportResult.teamsSkipped > 0) && (
+                <li className="flex items-center gap-2">
+                  <span className="text-slate-500">🤝</span>
+                  <span>
+                    {t.template_import_teams
+                      .replace("{matched}", String(templateImportResult.teamsMatched))
+                      .replace("{skipped}", String(templateImportResult.teamsSkipped))}
+                  </span>
+                </li>
+              )}
+            </ul>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setTemplateImportResult(null)}
+                className={`px-4 py-2 rounded-xl ${theme.primaryBg} hover:${theme.primaryHoverBg} text-white text-sm font-medium transition-colors`}
+              >
+                {t.common_ok}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

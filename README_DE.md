@@ -60,10 +60,14 @@
   - Uebersicht mit Gesamtsumme, gruppiert nach Verein
 - **Setzliste/Seeding**: Pro Spieler per Checkbox auswaehlen wer gesetzt ist (Opt-In, standardmaessig niemand gesetzt), dann per Drag & Drop oder Pfeiltasten sortieren — unterstuetzt fuer KO, Doppel-KO und Gruppenphase + KO (Einzel); ungesetzte Spieler werden zufaellig zugelost
   - **Snake-Verteilung auf Gruppen**: 4 Gruppen + 8 Gesetzte → G1=[1,8], G2=[2,7], G3=[3,6], G4=[4,5] — Top-Seeds werden gleichmaessig verteilt statt frueh aufeinander zu treffen
-- **Vorlagen-System**: Turniere als JSON-Datei exportieren/importieren
+- **Vorlagen-System** (v2, cross-PC-faehig): Turniere als JSON-Datei exportieren/importieren
   - Waehlbar: Einstellungen, Spieler, Teams (einzeln oder kombiniert)
-  - Spieler werden beim Import per Name gematcht (ID-unabhaengig)
-  - Teams werden automatisch remapped
+  - **Vollstaendige Spielerdaten** (Vorname, Nachname, Geschlecht, Geburtsdatum, Verein) werden exportiert — nicht nur Anzeigenamen
+  - **Auto-Anlage beim Import**: Spieler, die auf dem Ziel-PC noch nicht existieren, werden automatisch in der Spielerverwaltung angelegt
+  - **ID-Remapping**: Teams werden ueber eine interne ID-Map neu verknuepft, so dass Paarungen auch bei unterschiedlichen Spieler-IDs erhalten bleiben
+  - **Hallen-Konfiguration** (Multi-Hallen-Setups mit Feldanzahlen) bleibt erhalten
+  - **Zusammenfassungs-Dialog** nach dem Import zeigt wie viele Spieler zugeordnet / neu angelegt / uebersprungen wurden und wie viele Team-Paarungen uebernommen wurden
+  - Rueckwaertskompatibel mit v1-Vorlagen (Gesamtname wird in Vor- und Nachname gesplittet)
   - Export nutzt nativen Speichern-Dialog in der gepackten App (EXE/DMG)
   - **Import-Button** auf der Turnierliste — oeffnet nativen Datei-Dialog, legt Turnier mit allen Einstellungen an und fuegt passende Spieler direkt hinzu, navigiert dann in den Wizard
 - **Archivierung**: Beendete Turniere archivieren und wiederherstellen
@@ -115,6 +119,7 @@
 - **Faire Auslosung**: Bei ungerader Spielerzahl setzt der Spieler mit den meisten Spielen aus; bei wechselnden Partnern werden bisherige Partnerschaften gewichtet vermieden
 - **Vorzeitiges Losen**: Bei Wechselnden Partnern und Jeder-gegen-Jeden (Doppel/Mixed) kann die nächste Runde ausgelost werden, sobald ein Spiel der aktuellen Runde abgeschlossen ist — ohne auf alle Felder warten zu müssen. Die neuen Spiele erscheinen in der Queue unterhalb einer „— Runde N —" Trennlinie und können sofort freien Feldern zugewiesen werden
 - **Court-Timer**: Konfigurierbare Warnung (gelb) und Kritisch (rot) Schwellenwerte
+- **Mindest-Ruhezeit**: Optionale Einstellung pro Turnier (in Minuten) — beim Zuweisen eines Matches zeigt ein Warnmodal alle Spieler, die seit ihrem letzten beendeten Spiel noch nicht lange genug pausiert haben, inklusive verbleibender Minuten; der Turnierleiter entscheidet und kann mit "Trotzdem zuweisen" durchgehen
 
 ### TV-/Beamer-Modus
 - **Separates Vollbild-Fenster** optimiert fuer Querformat und Lesbarkeit aus der Ferne
