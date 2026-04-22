@@ -14,6 +14,7 @@ import type {
 } from "../../lib/types";
 import { useTheme } from "../../lib/ThemeContext";
 import { useT } from "../../lib/I18nContext";
+import { useToast } from "../../lib/ToastContext";
 
 interface PrintDialogProps {
   tournament: Tournament;
@@ -38,6 +39,7 @@ export default function PrintDialog({
 }: PrintDialogProps) {
   const { theme, themeId } = useTheme();
   const { t } = useT();
+  const { showError } = useToast();
   const [mode, setMode] = useState<PrintMode>("full");
   const [pdfLoading, setPdfLoading] = useState(false);
   const [certLoading, setCertLoading] = useState(false);
@@ -217,7 +219,7 @@ export default function PrintDialog({
     const printWindow = window.open("", "_blank", "width=900,height=700");
     if (!printWindow) {
       // Fallback: if window.open is blocked (Tauri), use PDF export instead
-      alert("Print window blocked. Please use 'Save as PDF' instead.");
+      showError(t.print_window_blocked);
       return;
     }
 

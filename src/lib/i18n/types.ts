@@ -27,6 +27,7 @@ export interface Translations {
   common_last_name: string;
   common_actions: string;
   common_loading: string;
+  common_saving: string;
   common_done: string;
   common_none: string;
   common_yes: string;
@@ -159,6 +160,7 @@ export interface Translations {
   rest_warning_player_row: string;
   rest_warning_confirm: string;
   rest_warning_cancel: string;
+  tournament_player_resting_tooltip: string;
   tournament_step_settings: string;
   tournament_step_players: string;
   tournament_step_teams: string;
@@ -453,6 +455,10 @@ export interface Translations {
   management_paid_amount: string;
   management_open_amount: string;
   management_remove_from_tournament: string;
+  management_remove_confirm_title: string;
+  management_remove_confirm_message: string;
+  management_remove_confirm_hint: string;
+  management_remove_confirm_action: string;
   management_retire_title: string;
   management_partner_also_retires: string;
   management_date_placeholder: string;
@@ -505,6 +511,7 @@ export interface Translations {
   print_standings: string;
   print_standings_desc: string;
   print_button: string;
+  print_window_blocked: string;
 
   // ===== Print View =====
   print_participants: string;

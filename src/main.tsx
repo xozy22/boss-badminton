@@ -26,12 +26,15 @@ import "./index.css";
 import App from "./App";
 import { ThemeProvider } from "./lib/ThemeContext";
 import { I18nProvider } from "./lib/I18nContext";
+import { ToastProvider } from "./lib/ToastContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
       <I18nProvider>
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </I18nProvider>
     </ThemeProvider>
   </StrictMode>

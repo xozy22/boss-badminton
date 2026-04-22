@@ -6,11 +6,13 @@ import type { Tournament, Player, Match, GameSet } from "../lib/types";
 import { playerDisplayName } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 import { PRINT_COLORS, loadThemeId } from "../lib/theme";
 
 export default function Statistics() {
   const { theme } = useTheme();
   const { t } = useT();
+  useDocumentTitle(t.nav_statistics);
 
   const [loading, setLoading] = useState(true);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);

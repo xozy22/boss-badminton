@@ -5,10 +5,14 @@ import type { Tournament, Gender } from "../lib/types";
 import { getScoringModeId } from "../lib/scoring";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
+import { useToast } from "../lib/ToastContext";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 
 export default function Tournaments() {
   const { theme } = useTheme();
   const { t } = useT();
+  const { showError } = useToast();
+  useDocumentTitle(t.nav_tournaments);
   const navigate = useNavigate();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [showArchive, setShowArchive] = useState(false);
@@ -180,7 +184,7 @@ export default function Tournaments() {
         return;
       } catch (err) {
         console.error("Tauri import failed:", err);
-        alert(`${t.tournaments_import_error}\n\n${err instanceof Error ? err.message : String(err)}`);
+        showError(`${t.tournaments_import_error}\n\n${err instanceof Error ? err.message : String(err)}`);
         return;
       }
     }

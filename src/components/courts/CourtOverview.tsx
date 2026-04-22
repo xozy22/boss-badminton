@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import type { Match, HallConfig, Round } from "../../lib/types";
+import type { Match, HallConfig, Round, TournamentStatus } from "../../lib/types";
 import { getCourtHallLabel } from "../../lib/types";
 import { CourtTimer } from "./CourtTimer";
 import { useTheme } from "../../lib/ThemeContext";
 import { useT } from "../../lib/I18nContext";
+import RestIndicator from "../players/RestIndicator";
 
 interface Props {
   courts: number;
@@ -14,9 +15,12 @@ interface Props {
   onDrop?: (matchId: number, court: number) => void;
   onMatchClick?: (matchId: number) => void;
   hallConfig?: HallConfig[];
+  /** For the ⏱ rest indicator next to player names. */
+  minRestMinutes?: number;
+  tournamentStatus?: TournamentStatus;
 }
 
-export default function CourtOverview({ courts, matches, activeRoundMatches, futureRoundQueues, playerName, onDrop, onMatchClick, hallConfig }: Props) {
+export default function CourtOverview({ courts, matches, activeRoundMatches, futureRoundQueues, playerName, onDrop, onMatchClick, hallConfig, minRestMinutes = 0, tournamentStatus }: Props) {
   const { theme } = useTheme();
   const { t } = useT();
   // Finde fuer jedes Feld das aktive (nicht abgeschlossene) Match - aus ALLEN Runden
@@ -37,14 +41,39 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, fut
     [sourceForUnassigned]
   );
 
-  const teamLabel = (m: Match) => {
-    const t1 = m.team1_p2
-      ? `${playerName(m.team1_p1)} / ${playerName(m.team1_p2)}`
-      : playerName(m.team1_p1);
-    const t2 = m.team2_p2
-      ? `${playerName(m.team2_p1)} / ${playerName(m.team2_p2)}`
-      : playerName(m.team2_p1);
-    return { t1, t2 };
+  // JSX renderer with inline ⏱ RestIndicator next to each resting player.
+  // Active/non-completed matches only — the indicator is for scheduling clarity.
+  const showRestIcons = tournamentStatus === "active" && minRestMinutes > 0;
+  const renderTeam = (p1: number, p2: number | null, m: Match) => {
+    const scheduled = m.status !== "completed";
+    const wantIcons = showRestIcons && scheduled;
+    return (
+      <>
+        <span>{playerName(p1)}</span>
+        {wantIcons && (
+          <RestIndicator
+            playerId={p1}
+            matches={matches}
+            minRestMinutes={minRestMinutes}
+            excludeMatchId={m.id}
+          />
+        )}
+        {p2 != null && (
+          <>
+            <span className="mx-1 text-gray-400">/</span>
+            <span>{playerName(p2)}</span>
+            {wantIcons && (
+              <RestIndicator
+                playerId={p2}
+                matches={matches}
+                minRestMinutes={minRestMinutes}
+                excludeMatchId={m.id}
+              />
+            )}
+          </>
+        )}
+      </>
+    );
   };
 
   const handleDragStart = (e: React.DragEvent, matchId: number) => {
@@ -167,11 +196,11 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, fut
         {match ? (
           <div className="text-xs">
             <div className={`font-semibold ${theme.textPrimary} truncate`}>
-              {teamLabel(match).t1}
+              {renderTeam(match.team1_p1, match.team1_p2, match)}
             </div>
             <div className={`${theme.textMuted} text-[10px] my-0.5`}>{t.common_vs}</div>
             <div className={`font-semibold ${theme.textPrimary} truncate`}>
-              {teamLabel(match).t2}
+              {renderTeam(match.team2_p1, match.team2_p2, match)}
             </div>
           </div>
         ) : (
@@ -232,7 +261,6 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, fut
       {/* Unassigned match card — shared renderer */}
       {(() => {
         const renderUnassignedCard = (m: Match) => {
-          const { t1, t2 } = teamLabel(m);
           return (
             <div
               key={m.id}
@@ -242,9 +270,13 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, fut
               className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl px-3 py-2 text-xs cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-md transition-all duration-200 select-none relative ${courtPickerMatchId === m.id ? "z-40" : ""}`}
               title={t.court_drag_or_double_click}
             >
-              <span className={`font-medium ${theme.textPrimary}`}>{t1}</span>
+              <span className={`font-medium ${theme.textPrimary}`}>
+                {renderTeam(m.team1_p1, m.team1_p2, m)}
+              </span>
               <span className={`${theme.textMuted} mx-1`}>{t.common_vs}</span>
-              <span className={`font-medium ${theme.textPrimary}`}>{t2}</span>
+              <span className={`font-medium ${theme.textPrimary}`}>
+                {renderTeam(m.team2_p1, m.team2_p2, m)}
+              </span>
 
               {/* Court picker popup */}
               {courtPickerMatchId === m.id && (

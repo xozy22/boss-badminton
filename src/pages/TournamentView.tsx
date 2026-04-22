@@ -6,6 +6,7 @@ import type { ThemeColors } from "../lib/theme";
 import TemplateExportModal from "../components/tournament/TemplateExportModal";
 import DeleteTournamentModal from "../components/tournament/DeleteTournamentModal";
 import RetirePlayerModal from "../components/tournament/RetirePlayerModal";
+import RemovePlayerModal from "../components/tournament/RemovePlayerModal";
 import AttendanceCheckModal from "../components/tournament/AttendanceCheckModal";
 import RanglisteTab from "../components/tournament/RanglisteTab";
 import GruppenTab from "../components/tournament/GruppenTab";
@@ -13,6 +14,8 @@ import VerwaltungTab from "../components/tournament/VerwaltungTab";
 import CourtOverview from "../components/courts/CourtOverview";
 import BracketView from "../components/bracket/BracketView";
 import { CourtTimer } from "../components/courts/CourtTimer";
+import RestIndicator from "../components/players/RestIndicator";
+import { getRestingPlayers } from "../lib/restTime";
 import {
   getTournament,
   getTournamentPlayers,
@@ -91,6 +94,8 @@ import type {
 } from "../lib/types";
 import { parseHallConfig, playerDisplayName } from "../lib/types";
 import { useT } from "../lib/I18nContext";
+import { useToast } from "../lib/ToastContext";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 
 const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
   singles: ["round_robin", "elimination", "group_ko", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination"],
@@ -432,6 +437,7 @@ function EditTournamentModal({
 export default function TournamentView() {
   const { theme } = useTheme();
   const { t } = useT();
+  const { showSuccess } = useToast();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -439,6 +445,7 @@ export default function TournamentView() {
   const navTeamsFromState = (location.state as any)?.teams as [number, number][] | undefined;
   const navSavedSuccess = !!(location.state as any)?.savedSuccess;
   const [tournament, setTournament] = useState<Tournament | null>(null);
+  useDocumentTitle(tournament?.name ?? t.nav_tournaments);
   const navTeams = useMemo(() => {
     if (navTeamsFromState && navTeamsFromState.length > 0) return navTeamsFromState;
     if (tournament?.team_config) {
@@ -463,7 +470,6 @@ export default function TournamentView() {
   const [showAllGroups, setShowAllGroups] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(navSavedSuccess);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [paymentData, setPaymentData] = useState<TournamentPlayerInfo[]>([]);
   const [collapsedClubs, setCollapsedClubs] = useState<Set<string>>(new Set());
@@ -471,6 +477,7 @@ export default function TournamentView() {
   const [showAttendance, setShowAttendance] = useState(false);
   const [viewTab, setViewTab] = useState<"spiele" | "gruppen" | "bracket" | "rangliste" | "verwaltung">("spiele");
   const [retireTarget, setRetireTarget] = useState<{ player: Player; partnerNote: string } | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<Player | null>(null);
   const [recentlyCompleted, setRecentlyCompleted] = useState<Set<number>>(new Set());
   const [editingMatchIds, setEditingMatchIds] = useState<Set<number>>(new Set());
   const [showStartKoModal, setShowStartKoModal] = useState(false);
@@ -566,13 +573,14 @@ export default function TournamentView() {
     loadAll();
   }, [loadAll]);
 
-  // Auto-dismiss save-success toast and clear nav state so refresh doesn't re-trigger
+  // Show save-success toast when arriving from edit wizard; clear nav state so refresh doesn't re-trigger.
+  const savedSuccessShownRef = React.useRef(false);
   useEffect(() => {
-    if (!navSavedSuccess) return;
+    if (!navSavedSuccess || savedSuccessShownRef.current) return;
+    savedSuccessShownRef.current = true;
     window.history.replaceState({}, document.title);
-    const timer = setTimeout(() => setSaveSuccess(false), 3000);
-    return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    showSuccess(t.edit_tournament_saved);
+  }, [navSavedSuccess, showSuccess, t.edit_tournament_saved]);
 
   const playerName = (playerId: number | null): string => {
     if (playerId === null || playerId === undefined) return "-";
@@ -1424,14 +1432,14 @@ export default function TournamentView() {
   const handleCourtChange = async (matchId: number, court: number | null, bypassRestCheck = false) => {
     // Rest-time check: only when assigning (not clearing) and tournament has min_rest configured
     if (!bypassRestCheck && court !== null && tournament && tournament.min_rest_minutes > 0) {
-      let targetMatch: Match | undefined;
-      for (const [, ms] of matchesByRound) {
-        const m = ms.find((x) => x.id === matchId);
-        if (m) { targetMatch = m; break; }
-      }
+      const targetMatch = allMatches.find((m) => m.id === matchId);
       if (targetMatch) {
-        const now = Date.now();
-        const minRestMs = tournament.min_rest_minutes * 60 * 1000;
+        const restingMap = getRestingPlayers(
+          allMatches,
+          tournament.min_rest_minutes,
+          Date.now(),
+          matchId,
+        );
         const playerIds = [
           targetMatch.team1_p1,
           targetMatch.team1_p2,
@@ -1441,32 +1449,9 @@ export default function TournamentView() {
 
         const resting: { id: number; name: string; minutesLeft: number }[] = [];
         for (const pid of playerIds) {
-          let latestCompletedAt: string | null = null;
-          for (const [, ms] of matchesByRound) {
-            for (const m of ms) {
-              if (m.id === matchId) continue;
-              if (m.status !== "completed" || !m.completed_at) continue;
-              if (
-                m.team1_p1 === pid ||
-                m.team1_p2 === pid ||
-                m.team2_p1 === pid ||
-                m.team2_p2 === pid
-              ) {
-                if (!latestCompletedAt || m.completed_at > latestCompletedAt) {
-                  latestCompletedAt = m.completed_at;
-                }
-              }
-            }
-          }
-          if (latestCompletedAt) {
-            const elapsedMs = now - new Date(latestCompletedAt).getTime();
-            if (elapsedMs < minRestMs) {
-              resting.push({
-                id: pid,
-                name: playerName(pid),
-                minutesLeft: Math.max(1, Math.ceil((minRestMs - elapsedMs) / 60000)),
-              });
-            }
+          const s = restingMap.get(pid);
+          if (s) {
+            resting.push({ id: pid, name: playerName(pid), minutesLeft: s.minutesLeft });
           }
         }
 
@@ -1505,7 +1490,14 @@ export default function TournamentView() {
     loadAll();
   };
 
-  const handleRemovePlayer = async (playerId: number) => {
+  /** Opens the confirmation modal; actual removal happens in `confirmRemovePlayer`. */
+  const handleRemovePlayer = (playerId: number) => {
+    const p = players.find((p) => p.id === playerId);
+    if (!p) return;
+    setRemoveTarget(p);
+  };
+
+  const confirmRemovePlayer = async (playerId: number) => {
     await removePlayerFromTournament(tournamentId, playerId);
     loadAll();
   };
@@ -2093,13 +2085,6 @@ export default function TournamentView() {
         />
       )}
 
-      {/* Save-success toast (shown after returning from edit wizard) */}
-      {saveSuccess && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-none">
-          ✓ {t.edit_tournament_saved}
-        </div>
-      )}
-
       {/* Edit Tournament Modal */}
       {showEditModal && tournament && (
         <EditTournamentModal
@@ -2167,6 +2152,16 @@ export default function TournamentView() {
           theme={theme}
           onClose={() => setRetireTarget(null)}
           onConfirm={handlePlayerRetire}
+        />
+      )}
+
+      {/* Remove-Player Confirm Modal (draft status only) */}
+      {removeTarget && (
+        <RemovePlayerModal
+          target={removeTarget}
+          theme={theme}
+          onClose={() => setRemoveTarget(null)}
+          onConfirm={confirmRemovePlayer}
         />
       )}
 
@@ -2514,6 +2509,8 @@ export default function TournamentView() {
               futureRoundQueues={futureRoundQueues}
               playerName={playerName}
               hallConfig={tournament.hall_config ? parseHallConfig(tournament.hall_config) : undefined}
+              minRestMinutes={tournament.min_rest_minutes}
+              tournamentStatus={tournament.status}
               onDrop={(matchId, court) => handleCourtChange(matchId, court)}
               onMatchClick={(matchId) => {
                 const el = document.querySelector(`[data-match-id="${matchId}"]`);
@@ -2572,6 +2569,8 @@ export default function TournamentView() {
                           onReset={handleReopenMatch}
                           isActive={tournament.status === "active"}
                           theme={theme}
+                          allMatches={allMatches}
+                          minRestMinutes={tournament.min_rest_minutes}
                         />
                       ))}
 
@@ -2594,6 +2593,8 @@ export default function TournamentView() {
                           theme={theme}
                           hasOtherMatches={onCourt.length > 0}
                           editingMatchIds={editingMatchIds}
+                          allMatches={allMatches}
+                          minRestMinutes={tournament.min_rest_minutes}
                         />
                       )}
                     </>
@@ -2623,6 +2624,9 @@ export default function TournamentView() {
           playerName={playerName}
           pointsPerSet={isGroupKo && tournament.ko_points_per_set != null ? tournament.ko_points_per_set : tournament.points_per_set}
           cap={isGroupKo && tournament.ko_points_per_set != null ? tournament.ko_cap : tournament.cap}
+          allMatches={allMatches}
+          minRestMinutes={tournament.min_rest_minutes}
+          tournamentStatus={tournament.status}
         />
       )}
 
@@ -2639,6 +2643,9 @@ export default function TournamentView() {
                 playerName={playerName}
                 pointsPerSet={tournament.points_per_set}
                 cap={tournament.cap}
+                allMatches={allMatches}
+                minRestMinutes={tournament.min_rest_minutes}
+                tournamentStatus={tournament.status}
               />
             </>
           )}
@@ -2652,6 +2659,9 @@ export default function TournamentView() {
                 playerName={playerName}
                 pointsPerSet={tournament.points_per_set}
                 cap={tournament.cap}
+                allMatches={allMatches}
+                minRestMinutes={tournament.min_rest_minutes}
+                tournamentStatus={tournament.status}
               />
             </>
           )}
@@ -2711,6 +2721,8 @@ function CompletedMatchesSection({
   theme,
   hasOtherMatches,
   editingMatchIds,
+  allMatches,
+  minRestMinutes,
 }: {
   matches: Match[];
   setsByMatch: Map<number, GameSet[]>;
@@ -2729,6 +2741,8 @@ function CompletedMatchesSection({
   theme: any;
   hasOtherMatches: boolean;
   editingMatchIds: Set<number>;
+  allMatches: Match[];
+  minRestMinutes: number;
 }) {
   const { t } = useT();
   const [expanded, setExpanded] = useState(false);
@@ -2774,6 +2788,8 @@ function CompletedMatchesSection({
           onReset={onReset}
           isActive={isActive}
           theme={theme}
+          allMatches={allMatches}
+          minRestMinutes={minRestMinutes}
         />
       ))}
 
@@ -2855,6 +2871,8 @@ function CompletedMatchesSection({
               onReset={onReset}
               isActive={isActive}
               theme={theme}
+              allMatches={allMatches}
+              minRestMinutes={minRestMinutes}
             />
           ))
         );
@@ -2879,6 +2897,8 @@ function MatchCard({
   onReset,
   isActive,
   theme,
+  allMatches,
+  minRestMinutes,
 }: {
   match: Match;
   sets: GameSet[];
@@ -2904,6 +2924,8 @@ function MatchCard({
   onReset: (matchId: number) => void;
   isActive: boolean;
   theme: ThemeColors;
+  allMatches: Match[];
+  minRestMinutes: number;
 }) {
   const { t } = useT();
   const maxSets = setsToWin * 2 - 1;
@@ -2914,6 +2936,39 @@ function MatchCard({
   const team2Label = match.team2_p2
     ? `${playerName(match.team2_p1)} / ${playerName(match.team2_p2)}`
     : playerName(match.team2_p1);
+
+  // JSX renderer that inlines RestIndicator after each player name. Only renders
+  // clocks when the tournament is active AND has rest time configured AND the
+  // match itself isn't completed yet (a completed match has no scheduling value).
+  const showRestIcons =
+    isActive && minRestMinutes > 0 && match.status !== "completed";
+  const renderTeam = (p1: number, p2: number | null) => (
+    <>
+      <span>{playerName(p1)}</span>
+      {showRestIcons && (
+        <RestIndicator
+          playerId={p1}
+          matches={allMatches}
+          minRestMinutes={minRestMinutes}
+          excludeMatchId={match.id}
+        />
+      )}
+      {p2 != null && (
+        <>
+          <span className="mx-1 text-gray-400">/</span>
+          <span>{playerName(p2)}</span>
+          {showRestIcons && (
+            <RestIndicator
+              playerId={p2}
+              matches={allMatches}
+              minRestMinutes={minRestMinutes}
+              excludeMatchId={match.id}
+            />
+          )}
+        </>
+      )}
+    </>
+  );
 
   // Count sets won for display
   let team1SetsWon = 0;
@@ -2996,7 +3051,7 @@ function MatchCard({
                 match.winner_team === 1 ? "text-emerald-600" : theme.textPrimary
               }`}
             >
-              {team1Label}
+              {renderTeam(match.team1_p1, match.team1_p2)}
             </span>
             <span className="text-gray-300 mx-3 font-light">{t.common_vs}</span>
             <span
@@ -3004,7 +3059,7 @@ function MatchCard({
                 match.winner_team === 2 ? "text-emerald-600" : theme.textPrimary
               }`}
             >
-              {team2Label}
+              {renderTeam(match.team2_p1, match.team2_p2)}
             </span>
           </div>
         </div>

@@ -5,12 +5,14 @@ import type { Tournament, Player } from "../lib/types";
 import { STATUS_LABELS, MODE_LABELS, FORMAT_LABELS } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 
 export default function Home() {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
   const { t } = useT();
+  useDocumentTitle(t.nav_home);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [players, setPlayers] = useState<Player[]>([]);
 

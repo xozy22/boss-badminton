@@ -21,6 +21,8 @@ import { SCORING_MODES, getScoringModeId, type ScoringModeId } from "../lib/scor
 import { loadSettings } from "./Settings";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { useAsyncAction } from "../lib/useAsyncAction";
 import TeamPairingStep from "../components/tournament/TeamPairingStep";
 import SeedingStep from "../components/tournament/SeedingStep";
 import FormatInfoModal from "../components/tournament/FormatInfoModal";
@@ -40,6 +42,7 @@ export default function TournamentCreate() {
   const navigate = useNavigate();
   const { id: editId } = useParams<{ id: string }>();
   const isEditMode = !!editId;
+  useDocumentTitle(isEditMode ? t.edit_tournament_title : t.nav_tournaments);
   const [editLoaded, setEditLoaded] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(
@@ -295,7 +298,7 @@ export default function TournamentCreate() {
     selectedPlayerIds.has(p.id)
   ).length;
 
-  const handleCreate = async () => {
+  const [handleCreate, creating] = useAsyncAction(async () => {
     if (selectedPlayerIds.size < minPlayers) return;
     if (needsTeamPairing && poolPlayers.length >= 2) return; // Teams not complete
 
@@ -371,7 +374,7 @@ export default function TournamentCreate() {
 
     if (isEditMode) navState.savedSuccess = true;
     navigate(`/tournaments/${id}`, { state: Object.keys(navState).length > 0 ? navState : undefined });
-  };
+  });
 
   const moveSeed = (idx: number, direction: -1 | 1) => {
     const seededList = seedOrder.filter(
@@ -562,6 +565,7 @@ export default function TournamentCreate() {
                       type="text"
                       value={name}
                       onChange={(e) => { setName(e.target.value); setNameManuallyEdited(true); }}
+                      maxLength={200}
                       className={`flex-1 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                       placeholder={t.tournament_name_placeholder}
                     />
@@ -875,6 +879,7 @@ export default function TournamentCreate() {
                       onChange={(e) => setMinRestMinutes(e.target.value)}
                       className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-2 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                       min={0}
+                      max={120}
                       step="1"
                     />
                   </div>
@@ -917,6 +922,7 @@ export default function TournamentCreate() {
                         onChange={(e) => mode === "singles" ? setEntryFeeSingle(e.target.value) : setEntryFeeDouble(e.target.value)}
                         className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-lg px-3 py-2 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
                         min={0}
+                        max={10000}
                         step="0.5"
                       />
                     </div>
@@ -1211,16 +1217,20 @@ export default function TournamentCreate() {
             {/* Create button */}
             <button
               onClick={handleCreate}
-              disabled={selectedPlayerIds.size < minPlayers || (needsTeamPairing && poolPlayers.length >= 2)}
+              disabled={creating || selectedPlayerIds.size < minPlayers || (needsTeamPairing && poolPlayers.length >= 2)}
               className={`w-full ${theme.primaryBg} text-white px-5 py-3.5 rounded-2xl ${theme.primaryHoverBg} shadow-sm hover:shadow-lg transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed disabled:shadow-none font-semibold text-base`}
             >
-              {isEditMode ? `💾 ${t.tournament_save_changes}` : `🏆 ${t.tournament_create_button}`}
-              {selectedPlayerIds.size < minPlayers && (
+              {creating
+                ? `⏳ ${t.common_saving}`
+                : isEditMode
+                ? `💾 ${t.tournament_save_changes}`
+                : `🏆 ${t.tournament_create_button}`}
+              {!creating && selectedPlayerIds.size < minPlayers && (
                 <span className="text-sm font-normal ml-2 opacity-70">
                   {t.tournament_min_players.replace("{count}", String(minPlayers))}
                 </span>
               )}
-              {needsTeamPairing && poolPlayers.length >= 2 && (
+              {!creating && needsTeamPairing && poolPlayers.length >= 2 && (
                 <span className="text-sm font-normal ml-2 opacity-70">
                   ({t.tournament_teams_open.replace("{count}", String(poolPlayers.length))})
                 </span>

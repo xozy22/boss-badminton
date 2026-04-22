@@ -77,6 +77,7 @@
 - **Attendance Check**: Before the draw runs, a modal lists all registered players with checkboxes (all checked by default). Uncheck absent players — they are removed from the tournament before the draw, resulting in fewer byes and a fairer bracket
 - **Auto-Naming**: Tournament name auto-generated from date + mode + format, editable
 - **Save Confirmation**: Green toast notification confirms all changes (settings, players, teams, halls) were saved after editing a tournament draft
+- **Unified Toast Notifications**: A global toast context (`useToast`) replaces native browser alerts for save confirmations, import summaries, and error reporting across the app — non-blocking, stackable, auto-dismissing
 
 ### Player Management
 - **First Name + Last Name** as separate fields
@@ -92,6 +93,7 @@
 - **Sortable Columns**: Click headers to sort by first name or last name (ascending/descending)
 - **Gender Filter + Search** for player selection
 - **Injury/Retirement**: Styled modal with team impact warning; fixed teams exclude partner automatically, random doubles exclude only the injured player
+- **Remove Player Confirmation**: Deleting a player from the central player database now goes through a styled confirm modal (no more native `confirm()` popup) listing the player name; the list page stays responsive because the delete runs as an async action with spinner feedback
 
 ### Venues
 - **Halls with individual court counts**: Each venue has multiple halls, each hall its own courts
@@ -120,6 +122,7 @@
 - **Early Round Draw**: For Random Doubles and Round Robin (doubles/mixed), the next round can be drawn as soon as one match of the current round is completed — no need to wait for all courts to finish. New matches appear in the court queue under a "— Round N —" separator and are immediately assignable to free courts
 - **Court Timer**: Configurable warning (yellow) and critical (red) thresholds
 - **Minimum Rest Time**: Optional per-tournament setting (minutes) — when assigning a match to a court, a warning modal lists any player who hasn't rested long enough since their last completed match with the remaining minutes, giving the tournament director a clear info base with an "Assign anyway" bypass
+- **Resting Player Indicator**: While a player's rest interval is still running, a small clock icon (⏱) appears next to their name everywhere they show up during the tournament — match cards, court overview, TV mode, and KO bracket. Hover shows remaining minutes. The icon auto-disappears after one minute without a refresh and incurs zero cost when `min_rest_minutes = 0`.
 
 ### TV/Projector Mode
 - **Separate fullscreen window** optimized for landscape and distance readability
@@ -162,6 +165,11 @@
 - **Badminton Court SVG**: Subtle court background on court cards
 - Theme-aware print view adapts to selected color scheme
 
+### Usability
+- **Dynamic Document Titles**: Browser/window title reflects the current page (e.g. `BOSS - Tournament Name`, `BOSS - Players`, `BOSS - Settings`) so it is obvious which window is which when running multiple BOSS instances
+- **Loading States**: Long-running actions (tournament create, template import, Excel import, database reset) show inline spinners and disable their trigger buttons; no more double-clicks kicking off duplicate work
+- **Form Validation**: Number inputs (entry fee, rest time, court counts, timer thresholds) now enforce `required / min / max` bounds at the input level, surfacing the native browser validation UI before the action runs
+
 ### Settings
 - **Auto-Update**: Automatic check on app start (banner notification), manual check in Settings
 - **Language**: English / German selection
@@ -182,13 +190,14 @@
 - **GitHub Actions CI/CD** for cross-platform builds
 - **ExcelJS** for Excel import/export (replaced vulnerable xlsx/SheetJS)
 - **Restricted filesystem scope**: Only $APPDATA, $DOWNLOAD, $DESKTOP, $DOCUMENT accessible
+- **i18n Sanity Script**: `pnpm run check:i18n` verifies that every translation key declared in `types.ts` exists in both `de.ts` and `en.ts` and reports missing/extra/unused keys — part of the release checklist
 
 ## Tech Stack
 
 | Component | Technology |
 |---|---|
 | Desktop Framework | [Tauri 2](https://tauri.app/) (Rust) |
-| Frontend | React 18 + TypeScript |
+| Frontend | React 19 + TypeScript |
 | Styling | Tailwind CSS 4 |
 | Database | SQLite (tauri-plugin-sql) |
 | Build Tool | Vite |

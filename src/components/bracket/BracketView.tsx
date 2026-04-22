@@ -1,7 +1,8 @@
-import type { Match, Round, GameSet } from "../../lib/types";
+import type { Match, Round, GameSet, TournamentStatus } from "../../lib/types";
 import { isSetComplete } from "../../lib/scoring";
 import { useTheme } from "../../lib/ThemeContext";
 import { useT } from "../../lib/I18nContext";
+import RestIndicator from "../players/RestIndicator";
 
 interface BracketViewProps {
   rounds: Round[];
@@ -10,6 +11,10 @@ interface BracketViewProps {
   playerName: (id: number | null) => string;
   pointsPerSet: number;
   cap: number | null;
+  /** All tournament matches (flat). Enables the ⏱ rest indicator next to names. */
+  allMatches?: Match[];
+  minRestMinutes?: number;
+  tournamentStatus?: TournamentStatus;
 }
 
 // getRoundLabel is now inside the component to access translations
@@ -31,6 +36,9 @@ export default function BracketView({
   playerName,
   pointsPerSet,
   cap,
+  allMatches,
+  minRestMinutes = 0,
+  tournamentStatus,
 }: BracketViewProps) {
   const { theme } = useTheme();
   const { t } = useT();
@@ -239,6 +247,9 @@ export default function BracketView({
                     pointsPerSet={pointsPerSet}
                     cap={cap}
                     isFinal={isFinal}
+                    allMatches={allMatches}
+                    minRestMinutes={minRestMinutes}
+                    tournamentStatus={tournamentStatus}
                   />
                 </div>
               );
@@ -332,6 +343,9 @@ function BracketMatch({
   pointsPerSet,
   cap,
   isFinal,
+  allMatches,
+  minRestMinutes,
+  tournamentStatus,
 }: {
   match: Match;
   sets: GameSet[];
@@ -339,6 +353,9 @@ function BracketMatch({
   pointsPerSet: number;
   cap: number | null;
   isFinal: boolean;
+  allMatches?: Match[];
+  minRestMinutes: number;
+  tournamentStatus?: TournamentStatus;
 }) {
   const { theme } = useTheme();
 
@@ -348,6 +365,41 @@ function BracketMatch({
   const team2Label = match.team2_p2
     ? `${playerName(match.team2_p1)} / ${playerName(match.team2_p2)}`
     : playerName(match.team2_p1);
+
+  // JSX renderer with inline ⏱ rest indicator. Only active non-completed
+  // matches get the icon; placeholder slots already skip this path.
+  const showRestIcons =
+    tournamentStatus === "active" &&
+    minRestMinutes > 0 &&
+    match.status !== "completed" &&
+    !!allMatches;
+  const renderTeam = (p1: number, p2: number | null) => (
+    <>
+      <span>{playerName(p1)}</span>
+      {showRestIcons && (
+        <RestIndicator
+          playerId={p1}
+          matches={allMatches!}
+          minRestMinutes={minRestMinutes}
+          excludeMatchId={match.id}
+        />
+      )}
+      {p2 != null && (
+        <>
+          <span className="mx-1 text-gray-400">/</span>
+          <span>{playerName(p2)}</span>
+          {showRestIcons && (
+            <RestIndicator
+              playerId={p2}
+              matches={allMatches!}
+              minRestMinutes={minRestMinutes}
+              excludeMatchId={match.id}
+            />
+          )}
+        </>
+      )}
+    </>
+  );
 
   let t1Sets = 0, t2Sets = 0;
   for (const s of sets) {
@@ -375,7 +427,9 @@ function BracketMatch({
             : `${theme.textPrimary}`
         }`}
       >
-        <span className="truncate flex-1 mr-1">{team1Label}</span>
+        <span className="truncate flex-1 mr-1">
+          {showRestIcons ? renderTeam(match.team1_p1, match.team1_p2) : team1Label}
+        </span>
         {(t1Sets > 0 || t2Sets > 0) && (
           <span className="font-mono font-bold shrink-0 text-xs">{t1Sets}</span>
         )}
@@ -389,7 +443,9 @@ function BracketMatch({
             : `${theme.textPrimary}`
         }`}
       >
-        <span className="truncate flex-1 mr-1">{team2Label}</span>
+        <span className="truncate flex-1 mr-1">
+          {showRestIcons ? renderTeam(match.team2_p1, match.team2_p2) : team2Label}
+        </span>
         {(t1Sets > 0 || t2Sets > 0) && (
           <span className="font-mono font-bold shrink-0 text-xs">{t2Sets}</span>
         )}

@@ -6,6 +6,7 @@ import { calculateAge, playerDisplayName } from "../lib/types";
 import ExcelImport from "../components/players/ExcelImport";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 
 function ClubInput({ value, onChange, onKeyDown, className, placeholder, clubs }: {
   value: string;
@@ -56,6 +57,7 @@ type GenderFilter = "all" | "m" | "f";
 export default function Players() {
   const { theme } = useTheme();
   const { t } = useT();
+  useDocumentTitle(t.nav_players);
   const [players, setPlayers] = useState<Player[]>([]);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -121,8 +123,10 @@ export default function Players() {
     return filtered;
   }, [players, search, genderFilter, sortKey, sortDir]);
 
+  const canAddPlayer = firstName.trim().length > 0;
+
   const handleAdd = async () => {
-    if (!firstName.trim()) return;
+    if (!canAddPlayer) return;
     await createPlayer(firstName.trim(), lastName.trim(), gender, birthDate || null, club.trim() || null);
     setFirstName("");
     setLastName("");
@@ -307,6 +311,8 @@ export default function Players() {
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              required
+              maxLength={60}
               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
               placeholder={t.players_first_name_placeholder}
             />
@@ -320,6 +326,7 @@ export default function Players() {
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              maxLength={60}
               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
               placeholder={t.players_last_name_placeholder}
             />
@@ -347,6 +354,7 @@ export default function Players() {
               onChange={(e) => setBirthDate(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
               className={`w-40 ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
+              min="1900-01-01"
               max={new Date().toISOString().split("T")[0]}
             />
           </div>
@@ -365,7 +373,8 @@ export default function Players() {
           </div>
           <button
             onClick={handleAdd}
-            className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium`}
+            disabled={!canAddPlayer}
+            className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none`}
           >
             {t.common_add}
           </button>

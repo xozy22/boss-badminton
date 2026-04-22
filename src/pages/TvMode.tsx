@@ -19,6 +19,8 @@ import type {
 import { MODE_LABELS, FORMAT_LABELS, playerDisplayName } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
+import RestIndicator from "../components/players/RestIndicator";
 import { getCustomLogo } from "./Settings";
 
 interface Announcement {
@@ -45,6 +47,7 @@ export default function TvMode() {
   const tournamentId = Number(id);
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
+  useDocumentTitle(tournament ? `TV — ${tournament.name}` : "TV");
   const [players, setPlayers] = useState<Player[]>([]);
   const [rounds, setRounds] = useState<Round[]>([]);
   const [matchesByRound, setMatchesByRound] = useState<Map<number, Match[]>>(new Map());
@@ -188,6 +191,42 @@ export default function TvMode() {
     }
   }
 
+  // JSX team renderer with inline ⏱ rest indicator. Only active non-completed
+  // matches get icons so completed results stay clean.
+  const minRestMinutes = tournament?.min_rest_minutes ?? 0;
+  const showRestIcons =
+    tournament?.status === "active" && minRestMinutes > 0;
+  const renderTeam = (p1: number, p2: number | null, m: Match) => {
+    const wantIcons = showRestIcons && m.status !== "completed";
+    return (
+      <>
+        <span>{playerName(p1)}</span>
+        {wantIcons && (
+          <RestIndicator
+            playerId={p1}
+            matches={allMatches}
+            minRestMinutes={minRestMinutes}
+            excludeMatchId={m.id}
+          />
+        )}
+        {p2 != null && (
+          <>
+            <span className="mx-1 text-gray-500">/</span>
+            <span>{playerName(p2)}</span>
+            {wantIcons && (
+              <RestIndicator
+                playerId={p2}
+                matches={allMatches}
+                minRestMinutes={minRestMinutes}
+                excludeMatchId={m.id}
+              />
+            )}
+          </>
+        )}
+      </>
+    );
+  };
+
   // Court assignments (active matches on courts)
   const courtMatches = allMatches.filter((m) => m.court && m.status !== "completed");
 
@@ -285,7 +324,6 @@ export default function TvMode() {
                 );
               }
 
-              const { team1, team2 } = matchLabel(match);
               const sets = setsByMatch.get(match.id) || [];
               let t1Sets = 0, t2Sets = 0;
               for (const s of sets) {
@@ -314,11 +352,11 @@ export default function TvMode() {
                   {/* Teams */}
                   <div className="flex-1 flex flex-col justify-center">
                     <div className="text-lg font-bold text-white leading-tight truncate">
-                      {team1}
+                      {renderTeam(match.team1_p1, match.team1_p2, match)}
                     </div>
                     <div className="text-gray-500 text-xs my-0.5">{t.common_vs}</div>
                     <div className="text-lg font-bold text-white leading-tight truncate">
-                      {team2}
+                      {renderTeam(match.team2_p1, match.team2_p2, match)}
                     </div>
                   </div>
 
@@ -411,7 +449,6 @@ export default function TvMode() {
           ) : (
             <div className="space-y-2 overflow-y-auto flex-1">
               {waitingMatches.slice(0, 12).map((m, i) => {
-                const { team1, team2 } = matchLabel(m);
                 return (
                   <div
                     key={m.id}
@@ -427,9 +464,13 @@ export default function TvMode() {
                       </div>
                     )}
                     <div className="text-sm">
-                      <div className="font-semibold text-white">{team1}</div>
+                      <div className="font-semibold text-white">
+                        {renderTeam(m.team1_p1, m.team1_p2, m)}
+                      </div>
                       <div className="text-gray-500 text-xs my-0.5">{t.common_vs}</div>
-                      <div className="font-semibold text-white">{team2}</div>
+                      <div className="font-semibold text-white">
+                        {renderTeam(m.team2_p1, m.team2_p2, m)}
+                      </div>
                     </div>
                   </div>
                 );

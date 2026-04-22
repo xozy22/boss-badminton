@@ -2,6 +2,9 @@ import { useEffect, useState, useRef } from "react";
 import { wipeAllPlayers, wipeAllTournaments, wipeEntireDatabase, getAppSetting, setAppSetting, deleteAppSetting, isTauri } from "../lib/db";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
+import { useToast } from "../lib/ToastContext";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
+import { useAsyncAction } from "../lib/useAsyncAction";
 import type { Lang } from "../lib/I18nContext";
 import { THEMES, type ThemeId, FONT_SIZES, type FontSizeId, FONT_FAMILIES, type FontFamilyId } from "../lib/theme";
 import type { HallConfig } from "../lib/types";
@@ -86,13 +89,11 @@ function Section({
 export default function Settings() {
   const { theme } = useTheme();
   const { t } = useT();
+  const { showSuccess, showError } = useToast();
+  useDocumentTitle(t.settings_title);
   const [dbPath, setDbPath] = useState("");
   const [loading, setLoading] = useState(true);
   const [changing, setChanging] = useState(false);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget>(null);
   const [confirmText, setConfirmText] = useState("");
   const [settings, setSettings] = useState<AppSettings>(loadSettings);
@@ -131,7 +132,7 @@ export default function Settings() {
       const dir = await invoke<string>("get_db_dir");
       await invoke("open_folder", { path: dir });
     } catch (err) {
-      setMessage({ type: "error", text: `${err}` });
+      showError(`${err}`);
     }
   };
 
@@ -146,16 +147,12 @@ export default function Settings() {
       });
       if (!selected) return;
       setChanging(true);
-      setMessage(null);
       const { invoke } = await import("@tauri-apps/api/core");
       const newPath = await invoke<string>("change_db_dir", { newDir: selected });
       setDbPath(newPath);
-      setMessage({
-        type: "success",
-        text: t.settings_db_copied_message,
-      });
+      showSuccess(t.settings_db_copied_message);
     } catch (err) {
-      setMessage({ type: "error", text: `${err}` });
+      showError(`${err}`);
     } finally {
       setChanging(false);
     }
@@ -169,14 +166,11 @@ export default function Settings() {
       const { remove } = await import("@tauri-apps/plugin-fs");
       const dir = await appDataDir();
       await remove(dir + "db_config.json");
-      setMessage({
-        type: "success",
-        text: t.settings_db_reset_message,
-      });
+      showSuccess(t.settings_db_reset_message);
       const path = await invoke<string>("get_db_path");
       setDbPath(path);
     } catch (err) {
-      setMessage({ type: "error", text: `${err}` });
+      showError(`${err}`);
     }
   };
 
@@ -196,9 +190,9 @@ export default function Settings() {
       });
       if (!path) return;
       await invoke("backup_db", { targetPath: path });
-      setMessage({ type: "success", text: t.settings_backup_success });
+      showSuccess(t.settings_backup_success);
     } catch (err) {
-      setMessage({ type: "error", text: `${err}` });
+      showError(`${err}`);
     }
   };
 
@@ -222,39 +216,36 @@ export default function Settings() {
       );
       if (!confirmed) return;
       await invoke("restore_db", { sourcePath: selected });
-      setMessage({
-        type: "success",
-        text: t.settings_backup_restored,
-      });
+      showSuccess(t.settings_backup_restored);
     } catch (err) {
-      setMessage({ type: "error", text: `${err}` });
+      showError(`${err}`);
     }
   };
 
-  const handleWipeConfirm = async () => {
+  const [handleWipeConfirm, wiping] = useAsyncAction(async () => {
     if (!confirmTarget) return;
     try {
       if (confirmTarget === "players") {
         await wipeAllPlayers();
-        setMessage({ type: "success", text: t.settings_players_deleted });
+        showSuccess(t.settings_players_deleted);
       } else if (confirmTarget === "tournaments") {
         await wipeAllTournaments();
-        setMessage({ type: "success", text: t.settings_tournaments_deleted });
+        showSuccess(t.settings_tournaments_deleted);
       } else if (confirmTarget === "wipe") {
         // Feedback BEFORE the invoke: in Tauri terminiert der Prozess während wipeEntireDatabase(),
-        // eine setMessage-Zeile danach würde nie ausgeführt werden.
-        setMessage({ type: "success", text: isTauri() ? t.settings_wipe_restarting : t.settings_wipe_success });
+        // ein showSuccess danach würde nie ausgeführt werden.
+        showSuccess(isTauri() ? t.settings_wipe_restarting : t.settings_wipe_success);
         setConfirmTarget(null);
         setConfirmText("");
         await wipeEntireDatabase();
         return;
       }
     } catch (err) {
-      setMessage({ type: "error", text: `${err}` });
+      showError(`${err}`);
     }
     setConfirmTarget(null);
     setConfirmText("");
-  };
+  });
 
   const CONFIRM_WORD = confirmTarget === "players" ? t.settings_confirm_word_players : confirmTarget === "wipe" ? t.settings_confirm_word_wipe : t.settings_confirm_word_tournaments;
 
@@ -347,7 +338,10 @@ export default function Settings() {
                   {t.settings_add_hall}
                 </button>
                 <span className={`text-xs ${theme.textMuted}`}>
-                  {t.settings_total_courts_in_halls.replace("{courts}", String(settings.defaultHalls.reduce((s, h) => s + h.courts, 0))).replace("{halls}", String(settings.defaultHalls.length))}
+                  {t.settings_total_courts_in_halls
+                    .replace("{courts}", String(settings.defaultHalls.reduce((s, h) => s + h.courts, 0)))
+                    .replace("{halls}", String(settings.defaultHalls.length))
+                    .replace("{hallLabel}", settings.defaultHalls.length === 1 ? t.venues_hall_singular : t.venues_hall_plural)}
                 </span>
               </div>
             </div>
@@ -491,7 +485,7 @@ export default function Settings() {
                 <div className="text-xs text-gray-400">{t.settings_delete_all_players_hint}</div>
               </div>
               <button
-                onClick={() => { setConfirmTarget("players"); setConfirmText(""); setMessage(null); }}
+                onClick={() => { setConfirmTarget("players"); setConfirmText(""); }}
                 className={`${theme.cardBg} border border-rose-500/30 text-rose-500 px-3 py-1.5 rounded-lg hover:bg-rose-500/10 transition-all text-xs font-medium whitespace-nowrap ml-3`}
               >
                 {t.common_delete}
@@ -503,7 +497,7 @@ export default function Settings() {
                 <div className="text-xs text-gray-400">{t.settings_delete_all_tournaments_hint}</div>
               </div>
               <button
-                onClick={() => { setConfirmTarget("tournaments"); setConfirmText(""); setMessage(null); }}
+                onClick={() => { setConfirmTarget("tournaments"); setConfirmText(""); }}
                 className={`${theme.cardBg} border border-rose-500/30 text-rose-500 px-3 py-1.5 rounded-lg hover:bg-rose-500/10 transition-all text-xs font-medium whitespace-nowrap ml-3`}
               >
                 {t.common_delete}
@@ -515,7 +509,7 @@ export default function Settings() {
                 <div className="text-xs text-rose-400">{t.settings_wipe_database_hint}</div>
               </div>
               <button
-                onClick={() => { setConfirmTarget("wipe"); setConfirmText(""); setMessage(null); }}
+                onClick={() => { setConfirmTarget("wipe"); setConfirmText(""); }}
                 className="bg-rose-600 text-white px-3 py-1.5 rounded-lg hover:bg-rose-700 transition-all text-xs font-medium whitespace-nowrap ml-3"
               >
                 RESET
@@ -537,19 +531,6 @@ export default function Settings() {
           </div>
         </div>
       </Section>
-
-      {/* Status Message */}
-      {message && (
-        <div
-          className={`mt-2 mb-4 p-4 rounded-xl text-sm ${
-            message.type === "success"
-              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-              : "bg-rose-50 text-rose-700 border border-rose-200"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
 
       {/* Confirmation Modal */}
       {confirmTarget && (
@@ -588,10 +569,10 @@ export default function Settings() {
               </button>
               <button
                 onClick={handleWipeConfirm}
-                disabled={confirmText !== CONFIRM_WORD}
+                disabled={confirmText !== CONFIRM_WORD || wiping}
                 className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-all text-sm font-medium disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
-                {t.common_delete_permanently}
+                {wiping ? `⏳ ${t.common_loading}` : t.common_delete_permanently}
               </button>
             </div>
           </div>
@@ -842,6 +823,7 @@ function LogoCropper({
 function LogoUploader() {
   const { theme } = useTheme();
   const { t } = useT();
+  const { showError } = useToast();
   const [logo, setLogo] = useState<string | null>(() => getCustomLogo());
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -859,7 +841,7 @@ function LogoUploader() {
 
     // Max 10MB for source (will be cropped+compressed to ~256x256 PNG)
     if (file.size > 10 * 1024 * 1024) {
-      alert(t.settings_logo_too_large);
+      showError(t.settings_logo_too_large);
       return;
     }
 
@@ -876,7 +858,7 @@ function LogoUploader() {
   const handleCropSave = async (croppedDataUrl: string) => {
     // Limit cropped data URI to 500KB to prevent localStorage quota issues
     if (croppedDataUrl.length > 500_000) {
-      alert(t.settings_logo_cropped_too_large);
+      showError(t.settings_logo_cropped_too_large);
       return;
     }
     await saveLogoToDb(croppedDataUrl);

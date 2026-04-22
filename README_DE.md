@@ -77,6 +77,7 @@
 - **Anwesenheitscheck**: Vor der Auslosung zeigt ein Modal alle angemeldeten Spieler mit Checkboxen (alle standardmaessig aktiviert). Abwesende Spieler abwaehlen — sie werden vor der Auslosung aus dem Turnier entfernt, was weniger Freilose und eine fairere Auslosung ergibt
 - **Auto-Benennung**: Turniername automatisch generiert aus Datum + Modus + Format, editierbar
 - **Speichern-Bestaetigung**: Gruener Toast bestätigt dass alle Änderungen (Einstellungen, Spieler, Teams, Hallen) nach dem Bearbeiten eines Turnier-Drafts gespeichert wurden
+- **Einheitliche Toast-Benachrichtigungen**: Ein globaler Toast-Kontext (`useToast`) ersetzt native Browser-Alerts fuer Speicher-Bestaetigungen, Import-Zusammenfassungen und Fehlermeldungen in der gesamten App — nicht blockierend, stapelbar, selbst-schliessend
 
 ### Spielerverwaltung
 - **Vorname + Nachname** als separate Felder
@@ -92,6 +93,7 @@
 - **Sortierbare Spalten**: Klick auf Header sortiert nach Vor- oder Nachname (auf-/absteigend)
 - **Geschlechterfilter + Suche** bei der Spielerauswahl
 - **Verletzung/Aufgabe**: Gestylter Modal-Dialog mit Team-Auswirkungs-Warnung; feste Teams schliessen Partner automatisch aus, wechselnde Partner schliessen nur den verletzten Spieler aus
+- **Spieler-Entfernen-Bestaetigung**: Das Loeschen eines Spielers aus der zentralen Spielerverwaltung laeuft jetzt ueber einen gestylten Bestaetigungs-Modal (kein natives `confirm()`-Popup mehr) mit Anzeige des Spielernamens; die Liste bleibt reaktionsfaehig, da der Loeschvorgang als Async-Action mit Spinner-Feedback ausgefuehrt wird
 
 ### Sportstaetten
 - **Hallen mit individueller Feldanzahl**: Jede Sportstaette hat mehrere Hallen, jede Halle eigene Felder
@@ -120,6 +122,7 @@
 - **Vorzeitiges Losen**: Bei Wechselnden Partnern und Jeder-gegen-Jeden (Doppel/Mixed) kann die nächste Runde ausgelost werden, sobald ein Spiel der aktuellen Runde abgeschlossen ist — ohne auf alle Felder warten zu müssen. Die neuen Spiele erscheinen in der Queue unterhalb einer „— Runde N —" Trennlinie und können sofort freien Feldern zugewiesen werden
 - **Court-Timer**: Konfigurierbare Warnung (gelb) und Kritisch (rot) Schwellenwerte
 - **Mindest-Ruhezeit**: Optionale Einstellung pro Turnier (in Minuten) — beim Zuweisen eines Matches zeigt ein Warnmodal alle Spieler, die seit ihrem letzten beendeten Spiel noch nicht lange genug pausiert haben, inklusive verbleibender Minuten; der Turnierleiter entscheidet und kann mit "Trotzdem zuweisen" durchgehen
+- **Ruhezeit-Indikator am Spieler**: Solange die Pausezeit eines Spielers noch laeuft, erscheint ein kleines Uhrsymbol (⏱) neben seinem Namen ueberall wo er waehrend des Turniers auftaucht — MatchCards, Platzuebersicht, TV-Modus und KO-Bracket. Tooltip zeigt verbleibende Minuten. Das Symbol verschwindet automatisch nach einer Minute ohne Refresh und verursacht null Kosten wenn `min_rest_minutes = 0`.
 
 ### TV-/Beamer-Modus
 - **Separates Vollbild-Fenster** optimiert fuer Querformat und Lesbarkeit aus der Ferne
@@ -162,6 +165,11 @@
 - **Badminton Court SVG**: Dezentes Spielfeld-Hintergrundbild auf Feld-Karten
 - Theme-konforme Druckansicht passt sich dem gewaehlten Farbschema an
 
+### Bedienung
+- **Dynamische Fenstertitel**: Der Browser-/Fenstertitel spiegelt die aktuelle Seite wider (z.B. `BOSS - Turniername`, `BOSS - Spieler`, `BOSS - Einstellungen`) — so ist bei mehreren BOSS-Fenstern sofort ersichtlich, welches welches ist
+- **Ladezustaende**: Laenger dauernde Aktionen (Turnier erstellen, Vorlage importieren, Excel-Import, Datenbank-Reset) zeigen Inline-Spinner und deaktivieren ihre Trigger-Buttons; keine Doppelklicks loesen mehr doppelte Vorgaenge aus
+- **Formular-Validierung**: Zahlenfelder (Startgeld, Ruhezeit, Feldanzahl, Timer-Schwellenwerte) erzwingen jetzt `required / min / max` auf Input-Ebene und zeigen die native Browser-Validierung bevor die Aktion laeuft
+
 ### Einstellungen
 - **Auto-Update**: Automatische Pruefung beim App-Start (Banner-Benachrichtigung), manueller Check in Einstellungen
 - **Sprache**: Englisch / Deutsch Auswahl
@@ -182,13 +190,14 @@
 - **GitHub Actions CI/CD** fuer plattformuebergreifende Builds
 - **ExcelJS** fuer Excel-Import/Export (ersetzt verwundbares xlsx/SheetJS)
 - **Eingeschraenkter Dateisystem-Zugriff**: Nur $APPDATA, $DOWNLOAD, $DESKTOP, $DOCUMENT zugaenglich
+- **i18n-Pruefskript**: `pnpm run check:i18n` prueft dass jeder Uebersetzungsschluessel in `types.ts` in `de.ts` und `en.ts` existiert und meldet fehlende/ueberzaehlige/ungenutzte Keys — Teil der Release-Checkliste
 
 ## Tech Stack
 
 | Komponente | Technologie |
 |---|---|
 | Desktop-Framework | [Tauri 2](https://tauri.app/) (Rust) |
-| Frontend | React 18 + TypeScript |
+| Frontend | React 19 + TypeScript |
 | Styling | Tailwind CSS 4 |
 | Datenbank | SQLite (tauri-plugin-sql) |
 | Build-Tool | Vite |

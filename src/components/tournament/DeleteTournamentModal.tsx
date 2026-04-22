@@ -1,6 +1,7 @@
 import type { ThemeColors } from "../../lib/theme";
 import type { Tournament } from "../../lib/types";
 import { useT } from "../../lib/I18nContext";
+import { useAsyncAction } from "../../lib/useAsyncAction";
 
 interface DeleteTournamentModalProps {
   tournament: Tournament;
@@ -16,6 +17,7 @@ export default function DeleteTournamentModal({
   onConfirm,
 }: DeleteTournamentModalProps) {
   const { t } = useT();
+  const [doConfirm, deleting] = useAsyncAction(onConfirm);
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
       <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
@@ -35,15 +37,17 @@ export default function DeleteTournamentModal({
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className={`flex-1 ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
+            disabled={deleting}
+            className={`flex-1 ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium disabled:opacity-50`}
           >
             {t.common_cancel}
           </button>
           <button
-            onClick={onConfirm}
-            className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 shadow-sm transition-all text-sm font-medium"
+            onClick={doConfirm}
+            disabled={deleting}
+            className="flex-1 bg-rose-600 text-white px-4 py-2.5 rounded-xl hover:bg-rose-700 shadow-sm transition-all text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {t.common_delete_permanently}
+            {deleting ? `⏳ ${t.common_loading}` : t.common_delete_permanently}
           </button>
         </div>
       </div>

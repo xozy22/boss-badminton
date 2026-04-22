@@ -4,6 +4,7 @@ import type { Sportstaette, HallConfig } from "../lib/types";
 import { parseHallConfig, hallConfigTotalCourts } from "../lib/types";
 import { useTheme } from "../lib/ThemeContext";
 import { useT } from "../lib/I18nContext";
+import { useDocumentTitle } from "../lib/useDocumentTitle";
 import type { Translations } from "../lib/i18n/types";
 
 const DEFAULT_HALLS: HallConfig[] = [{ name: "Halle 1", courts: 2 }];
@@ -75,6 +76,7 @@ function HallEditor({
 export default function Sportstaetten() {
   const { theme } = useTheme();
   const { t } = useT();
+  useDocumentTitle(t.nav_venues);
   const [sportstaetten, setSportstaetten] = useState<Sportstaette[]>([]);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -106,8 +108,10 @@ export default function Sportstaetten() {
     });
   }, [sportstaetten, search]);
 
+  const canAddVenue = name.trim().length > 0;
+
   const handleAdd = async () => {
-    if (!name.trim()) return;
+    if (!canAddVenue) return;
     const totalCourts = hallConfigTotalCourts(halls);
     const hallsJson = JSON.stringify(halls);
     await createSportstaette(name.trim(), address.trim() || null, zip.trim() || null, city.trim() || null, totalCourts, hallsJson);
@@ -262,6 +266,8 @@ export default function Sportstaetten() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              required
+              maxLength={120}
               className={`w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`}
               placeholder={t.venues_name_placeholder}
             />
@@ -285,6 +291,9 @@ export default function Sportstaetten() {
             </label>
             <input
               type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
               value={zip}
               onChange={(e) => setZip(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
@@ -307,7 +316,8 @@ export default function Sportstaetten() {
           </div>
           <button
             onClick={handleAdd}
-            className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium shrink-0`}
+            disabled={!canAddVenue}
+            className={`${theme.primaryBg} text-white px-5 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm hover:shadow-md transition-all text-sm font-medium shrink-0 disabled:bg-gray-300 disabled:cursor-not-allowed disabled:shadow-none`}
           >
             {t.common_add}
           </button>
