@@ -79,6 +79,12 @@
 - **Save Confirmation**: Green toast notification confirms all changes (settings, players, teams, halls) were saved after editing a tournament draft
 - **Unified Toast Notifications**: A global toast context (`useToast`) replaces native browser alerts for save confirmations, import summaries, and error reporting across the app — non-blocking, stackable, auto-dismissing
 
+### KO &amp; Match-Flow Polish (v2.7.1)
+- **Spiel um Platz 3 (Bronze playoff)**: Per-tournament toggle (default ON for new KO tournaments). When the semi-finals complete, a bronze match is auto-created alongside the Final. Works for `Elimination`, `Group Stage + KO`, and `Double Elimination` (Bronze = LB-final loser vs. LB-semifinal loser there). Rendered as a dedicated 🥉 panel below the bracket and a separate round button in the Spiele tab. Scope can be flipped off in the wizard for events that skip 3rd place
+- **Seed badges in tournament view**: Players that received a seed in the wizard now show a compact `S1` / `S2` / … badge next to their name in the **Gruppen-Tab** (singles + doubles tables) and the **Verwaltungs-Tab**. Seed rank is now persisted per-tournament-player (was previously thrown away after the bracket draw), so the information survives the tournament lifecycle
+- **Player-on-court conflict guard**: When the next round is drawn early and a player is still active on another court, the affected match is hard-blocked from being assigned to a court. The waiting card shows a 🚫 marker, the dropdown disables conflicted courts, and a rose-themed modal lists which players are still on which court — no bypass (unlike the rest-time warning), since two simultaneous matches with the same player would never finish
+- **Bronze toggle pre-checked for new tournaments**: Fixed a regression where "Spiel um Platz 3 austragen" was unchecked by default after creating a new tournament — initial draft creation now sets the flag honestly so the wizard checkbox reflects the real default
+
 ### Live Publishing to WordPress (v2.7.0)
 - **Per-tournament opt-in**: Each tournament has its own "📡 Live aktivieren" toggle in the detail view — off by default. Multiple parallel tournaments can run live independently, each pushing under its own ID
 - **Connection setup once**: Endpoint URL + shared secret are stored in Settings → "Live-Veroeffentlichung (WordPress)". A "Test connection" button verifies the WP plugin responds

@@ -12,6 +12,7 @@ import {
 } from "../../lib/scoring";
 import { playerDisplayName } from "../../lib/types";
 import { useT } from "../../lib/I18nContext";
+import SeedBadge from "../players/SeedBadge";
 
 interface GruppenTabProps {
   tournament: Tournament;
@@ -22,6 +23,12 @@ interface GruppenTabProps {
     gSets: Map<number, GameSet[]>;
     pIds: Set<number>;
   };
+  /**
+   * Optional map<playerId, seedRank> for rendering Setzplatz badges next to
+   * seeded player names. Empty map / undefined = no badges (e.g. tournaments
+   * created without a seed list).
+   */
+  seedRankByPlayer?: Map<number, number>;
 }
 
 export default function GruppenTab({
@@ -29,6 +36,7 @@ export default function GruppenTab({
   players,
   theme,
   getGroupData,
+  seedRankByPlayer,
 }: GruppenTabProps) {
   const { t } = useT();
   const numGroups = tournament.num_groups || 2;
@@ -82,7 +90,11 @@ export default function GruppenTab({
                 >
                   <td className={`px-3 py-2 ${theme.textMuted} font-mono`}>{i + 1}</td>
                   <td className={`px-3 py-2 font-medium ${theme.textPrimary} truncate`}>
-                    {playerDisplayName(ts.player1)} / {playerDisplayName(ts.player2)}
+                    {playerDisplayName(ts.player1)}
+                    <SeedBadge rank={seedRankByPlayer?.get(ts.player1.id)} />
+                    {" / "}
+                    {playerDisplayName(ts.player2)}
+                    <SeedBadge rank={seedRankByPlayer?.get(ts.player2.id)} />
                     {i < qualifyCount && (
                       <span className="ml-1 text-[9px] text-emerald-500 font-bold">Q</span>
                     )}
@@ -139,6 +151,7 @@ export default function GruppenTab({
                 <td className={`px-3 py-2 ${theme.textMuted} font-mono`}>{i + 1}</td>
                 <td className={`px-3 py-2 font-medium ${theme.textPrimary} truncate`}>
                   {playerDisplayName(s.player)}
+                  <SeedBadge rank={seedRankByPlayer?.get(s.player.id)} />
                   {i < qualifyCount && (
                     <span className="ml-1 text-[9px] text-emerald-500 font-bold">Q</span>
                   )}

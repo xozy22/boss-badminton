@@ -14,9 +14,15 @@ import GruppenTab from "../components/tournament/GruppenTab";
 import VerwaltungTab from "../components/tournament/VerwaltungTab";
 import CourtOverview from "../components/courts/CourtOverview";
 import BracketView from "../components/bracket/BracketView";
+import BronzeMatchPanel from "../components/bracket/BronzeMatchPanel";
 import { CourtTimer } from "../components/courts/CourtTimer";
 import RestIndicator from "../components/players/RestIndicator";
 import { getRestingPlayers } from "../lib/restTime";
+import {
+  getRunningPlayerCourts,
+  getMatchConflicts,
+  type ConflictPlayer,
+} from "../lib/courtConflicts";
 import {
   getTournament,
   getTournamentPlayers,
@@ -494,6 +500,12 @@ export default function TournamentView() {
     matchId: number;
     court: number;
     players: { id: number; name: string; minutesLeft: number }[];
+  } | null>(null);
+  // Hard player-overlap block: opens when the user tries to assign a match
+  // whose players are still on another court. No bypass — only "close".
+  const [playerConflict, setPlayerConflict] = useState<{
+    matchId: number;
+    players: { id: number; name: string; court: number }[];
   } | null>(null);
   const recentlyCompletedRef = React.useRef(recentlyCompleted)
   recentlyCompletedRef.current = recentlyCompleted;
@@ -1321,6 +1333,42 @@ export default function TournamentView() {
         const winnersComplete = lastWinnersRound ? allRoundMatchesCompleted(lastWinnersRound.id) : false;
 
         if (winnersComplete && lastWinnersMatches.length === 1 && lastWinnersMatches[0].winner_team) {
+          // Bronze playoff (only if toggle enabled and an LB-semifinal exists):
+          // pair LB-final-loser with LB-semifinal-loser, played alongside the GF.
+          if (tournament.enable_third_place === 1) {
+            // LB-final-loser: from the just-completed lMatches (reuse from above scope)
+            let lbFinalLoser: { p1: number; p2: number | null } | null = null;
+            for (const m of lMatches) {
+              if (!m.winner_team) continue;
+              lbFinalLoser = m.winner_team === 1
+                ? { p1: m.team2_p1, p2: m.team2_p2 }
+                : { p1: m.team1_p1, p2: m.team1_p2 };
+              break;
+            }
+            // LB-semifinal-loser: from the previous LB round (if any)
+            const lbRounds = rounds.filter((r) => r.phase === "losers");
+            const lbSemiRound = lbRounds.length >= 2 ? lbRounds[lbRounds.length - 2] : null;
+            const lbSemiMatches = lbSemiRound ? matchesByRound.get(lbSemiRound.id) || [] : [];
+            let lbSemiLoser: { p1: number; p2: number | null } | null = null;
+            for (const m of lbSemiMatches) {
+              if (!m.winner_team) continue;
+              lbSemiLoser = m.winner_team === 1
+                ? { p1: m.team2_p1, p2: m.team2_p2 }
+                : { p1: m.team1_p1, p2: m.team1_p2 };
+              break;
+            }
+            if (lbFinalLoser && lbSemiLoser) {
+              const bronzeRoundId = await createRound(tournamentId, nextRoundNum, "third_place", null);
+              const court = autoAssign ? 1 : null;
+              await createMatch(
+                bronzeRoundId,
+                lbFinalLoser.p1, lbFinalLoser.p2,
+                lbSemiLoser.p1, lbSemiLoser.p2,
+                court,
+              );
+            }
+          }
+
           const wm = lastWinnersMatches[0];
           const winnersChampion = wm.winner_team === 1
             ? { p1: wm.team1_p1, p2: wm.team1_p2 }
@@ -1439,6 +1487,28 @@ export default function TournamentView() {
   };
 
   const handleCourtChange = async (matchId: number, court: number | null, bypassRestCheck = false) => {
+    // Player-overlap check — HARD block, no bypass. A player who is currently
+    // running on another court cannot be on a second court at the same time.
+    // Runs even when `bypassRestCheck=true` (the rest-warning "assign anyway"
+    // path must NOT also bypass this physical impossibility).
+    if (court !== null) {
+      const targetMatch = allMatches.find((m) => m.id === matchId);
+      if (targetMatch) {
+        const conflicts = getMatchConflicts(targetMatch, runningPlayerCourts);
+        if (conflicts.length > 0) {
+          setPlayerConflict({
+            matchId,
+            players: conflicts.map((c) => ({
+              id: c.playerId,
+              name: playerName(c.playerId),
+              court: c.court,
+            })),
+          });
+          return;
+        }
+      }
+    }
+
     // Rest-time check: only when assigning (not clearing) and tournament has min_rest configured
     if (!bypassRestCheck && court !== null && tournament && tournament.min_rest_minutes > 0) {
       const targetMatch = allMatches.find((m) => m.id === matchId);
@@ -1689,6 +1759,47 @@ export default function TournamentView() {
     return occupied;
   }, [matchesByRound]);
 
+  // Player-court conflict map. Built from allMatches so it spans every round
+  // currently in memory — important once early-drawn future rounds are also
+  // visible in the queue.
+  const runningPlayerCourts = useMemo(
+    () => getRunningPlayerCourts(allMatches),
+    [allMatches],
+  );
+
+  // Per-waiting-match list of player conflicts. Empty => match is safe to
+  // assign. Used by the queue render (visual marker) and the MatchCard
+  // dropdown (disable courts).
+  const conflictedMatches = useMemo(() => {
+    const map = new Map<number, ConflictPlayer[]>();
+    for (const m of allMatches) {
+      if (m.court !== null) continue;       // already assigned — skip
+      if (m.status === "completed") continue;
+      const conflicts = getMatchConflicts(m, runningPlayerCourts);
+      if (conflicts.length > 0) map.set(m.id, conflicts);
+    }
+    return map;
+  }, [allMatches, runningPlayerCourts]);
+
+  // Bronze playoff round (phase = "third_place") if it exists. Filtered out
+  // of the main bracket layout — rendered separately as <BronzeMatchPanel>.
+  const thirdPlaceRound = useMemo(
+    () => rounds.find((r) => r.phase === "third_place") ?? null,
+    [rounds],
+  );
+
+  // Map<playerId, seedRank> derived from the persisted seed_rank column.
+  // Consumed by GruppenTab + VerwaltungTab to render <SeedBadge>.
+  const seedRankByPlayer = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const pd of paymentData) {
+      if (pd.seed_rank != null && pd.seed_rank > 0) {
+        map.set(pd.player.id, pd.seed_rank);
+      }
+    }
+    return map;
+  }, [paymentData]);
+
   // Early draw: compute pending matches from rounds AFTER the currently viewed round.
   // Used to show next-round matches in the CourtOverview queue with a round label.
   const futureRoundQueues = React.useMemo(() => {
@@ -1716,8 +1827,12 @@ export default function TournamentView() {
     atLeastOneMatchCompleted(rounds[rounds.length - 1].id);
 
   // KO: Check if current KO round is complete and more rounds needed
+  // third_place rounds are excluded so the bronze playoff doesn't influence
+  // SF detection, "next round needed" logic, or bracket layout columns.
   const isElimination = tournament?.format === "elimination";
-  const koRoundsForBracket = isElimination ? rounds : rounds.filter((r) => r.phase === "ko");
+  const koRoundsForBracket = isElimination
+    ? rounds.filter((r) => r.phase !== "third_place")
+    : rounds.filter((r) => r.phase === "ko");
   const lastKoRound = koRoundsForBracket.length > 0 ? koRoundsForBracket[koRoundsForBracket.length - 1] : null;
   const lastKoMatches = lastKoRound ? matchesByRound.get(lastKoRound.id) || [] : [];
   const lastKoRoundComplete = lastKoRound ? allRoundMatchesCompleted(lastKoRound.id) : false;
@@ -1743,6 +1858,34 @@ export default function TournamentView() {
     const autoAssign = numCourts === 1;
     const nextRoundNum = rounds.length + 1;
     const phase = isElimination ? null : "ko";
+
+    // SF -> Final transition: if the just-completed KO round had exactly 2
+    // matches (i.e. the semi-finals) and the per-tournament toggle is
+    // enabled, create the bronze playoff alongside the Final.
+    const isSfToFinal = lastKoMatches.length === 2;
+    const wantsBronze = tournament.enable_third_place === 1 && isSfToFinal;
+    if (wantsBronze) {
+      const sfLosers: { p1: number; p2: number | null }[] = [];
+      for (const m of lastKoMatches) {
+        if (!m.winner_team) continue;
+        if (m.winner_team === 1) {
+          sfLosers.push({ p1: m.team2_p1, p2: m.team2_p2 });
+        } else {
+          sfLosers.push({ p1: m.team1_p1, p2: m.team1_p2 });
+        }
+      }
+      if (sfLosers.length === 2) {
+        const bronzeRoundId = await createRound(tournamentId, nextRoundNum, "third_place", null);
+        const court = autoAssign ? 1 : null;
+        await createMatch(
+          bronzeRoundId,
+          sfLosers[0].p1, sfLosers[0].p2,
+          sfLosers[1].p1, sfLosers[1].p2,
+          court,
+        );
+      }
+    }
+
     const roundId = await createRound(tournamentId, nextRoundNum, phase, null);
 
     // Pair winners: 1v2, 3v4, etc.
@@ -2335,6 +2478,41 @@ export default function TournamentView() {
         </div>
       )}
 
+      {/* Player-Conflict Modal — HARD block (no bypass) */}
+      {playerConflict && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className={`${theme.cardBg} rounded-2xl shadow-xl border ${theme.cardBorder} max-w-md w-full p-6`}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="text-2xl">🚫</div>
+              <div className="flex-1">
+                <h3 className={`text-lg font-bold ${theme.textPrimary}`}>{t.player_conflict_title}</h3>
+                <p className={`text-sm ${theme.textMuted} mt-1`}>{t.player_conflict_body}</p>
+              </div>
+            </div>
+            <ul className={`mb-5 space-y-1.5 pl-1`}>
+              {playerConflict.players.map((p) => (
+                <li key={p.id} className={`text-sm ${theme.textPrimary} flex items-start gap-2`}>
+                  <span className="text-rose-500">•</span>
+                  <span>
+                    {t.player_conflict_row
+                      .replace("{player}", p.name)
+                      .replace("{court}", String(p.court))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setPlayerConflict(null)}
+                className={`px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium transition-colors`}
+              >
+                {t.common_close}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Start KO Modal */}
       {showStartKoModal && tournament && (
         <StartKoModal
@@ -2605,10 +2783,13 @@ export default function TournamentView() {
                   )}
                 </>
               )}
-              {/* Normal rounds (non group_ko, non double_elimination) */}
+              {/* Normal rounds (non group_ko, non double_elimination).
+                  third_place rounds are excluded here and rendered as a
+                  dedicated bronze button below so they don't read as a
+                  generic "Runde N" alongside the Final. */}
               {!isGroupKo && !isDoubleElimination && (
                 <div className="flex gap-2 flex-wrap">
-              {rounds.map((r) => {
+              {rounds.filter((r) => r.phase !== "third_place").map((r) => {
                 const label = t.tournament_view_round_label.replace("{n}", String(r.round_number));
                 const colorClass = activeRound === r.id
                   ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
@@ -2629,6 +2810,25 @@ export default function TournamentView() {
               })}
                 </div>
               )}
+              {/* Dedicated bronze playoff button (any KO format) */}
+              {thirdPlaceRound && (
+                <div className="flex gap-2 flex-wrap items-center">
+                  <span className="text-xs font-bold text-orange-500 uppercase tracking-wide w-8" aria-hidden="true">🥉</span>
+                  <button
+                    onClick={() => { setActiveRound(thirdPlaceRound.id); setShowAllGroups(false); }}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                      activeRound === thirdPlaceRound.id
+                        ? "bg-orange-600 text-white shadow-md"
+                        : `${theme.cardBg} text-orange-600 hover:bg-orange-500/10 border border-orange-500/30 hover:border-orange-400`
+                    }`}
+                  >
+                    {t.bracket_third_place_short}
+                    {allRoundMatchesCompleted(thirdPlaceRound.id) && (
+                      <span className="ml-1.5">✓</span>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -2645,6 +2845,7 @@ export default function TournamentView() {
               hallConfig={tournament.hall_config ? parseHallConfig(tournament.hall_config) : undefined}
               minRestMinutes={tournament.min_rest_minutes}
               tournamentStatus={tournament.status}
+              conflictedMatches={conflictedMatches}
               onDrop={(matchId, court) => handleCourtChange(matchId, court)}
               onMatchClick={(matchId) => {
                 const match = allMatches.find((m) => m.id === matchId);
@@ -2715,6 +2916,7 @@ export default function TournamentView() {
                           cap={effectiveScoring.cap}
                           courts={tournament.courts || 1}
                           occupiedCourts={globalOccupiedCourts}
+                          conflictedMatches={conflictedMatches}
                           playerName={playerName}
                           onScoreChange={handleScoreChange}
                           onScoreBlur={handleScoreBlur}
@@ -2737,6 +2939,7 @@ export default function TournamentView() {
                           cap={effectiveScoring.cap}
                           courts={tournament.courts || 1}
                           occupiedCourts={globalOccupiedCourts}
+                          conflictedMatches={conflictedMatches}
                           playerName={playerName}
                           onScoreChange={handleScoreChange}
                           onScoreBlur={handleScoreBlur}
@@ -2766,22 +2969,38 @@ export default function TournamentView() {
           players={players}
           theme={theme}
           getGroupData={getGroupData}
+          seedRankByPlayer={seedRankByPlayer}
         />
       )}
 
       {/* Tab: Bracket */}
       {viewTab === "bracket" && koRoundsForBracket.length > 0 && (isElimination || (isGroupKo && tournament.current_phase === "ko")) && (
-        <BracketView
-          rounds={koRoundsForBracket}
-          matchesByRound={matchesByRound}
-          setsByMatch={setsByMatch}
-          playerName={playerName}
-          pointsPerSet={isGroupKo && tournament.ko_points_per_set != null ? tournament.ko_points_per_set : tournament.points_per_set}
-          cap={isGroupKo && tournament.ko_points_per_set != null ? tournament.ko_cap : tournament.cap}
-          allMatches={allMatches}
-          minRestMinutes={tournament.min_rest_minutes}
-          tournamentStatus={tournament.status}
-        />
+        <>
+          <BracketView
+            rounds={koRoundsForBracket}
+            matchesByRound={matchesByRound}
+            setsByMatch={setsByMatch}
+            playerName={playerName}
+            pointsPerSet={isGroupKo && tournament.ko_points_per_set != null ? tournament.ko_points_per_set : tournament.points_per_set}
+            cap={isGroupKo && tournament.ko_points_per_set != null ? tournament.ko_cap : tournament.cap}
+            allMatches={allMatches}
+            minRestMinutes={tournament.min_rest_minutes}
+            tournamentStatus={tournament.status}
+          />
+          {thirdPlaceRound && (
+            <BronzeMatchPanel
+              bronzeRound={thirdPlaceRound}
+              matches={matchesByRound.get(thirdPlaceRound.id) || []}
+              setsByMatch={setsByMatch}
+              playerName={playerName}
+              pointsPerSet={isGroupKo && tournament.ko_points_per_set != null ? tournament.ko_points_per_set : tournament.points_per_set}
+              cap={isGroupKo && tournament.ko_points_per_set != null ? tournament.ko_cap : tournament.cap}
+              allMatches={allMatches}
+              minRestMinutes={tournament.min_rest_minutes}
+              tournamentStatus={tournament.status}
+            />
+          )}
+        </>
       )}
 
       {/* Tab: Bracket (Double Elimination) */}
@@ -2818,6 +3037,19 @@ export default function TournamentView() {
                 tournamentStatus={tournament.status}
               />
             </>
+          )}
+          {thirdPlaceRound && (
+            <BronzeMatchPanel
+              bronzeRound={thirdPlaceRound}
+              matches={matchesByRound.get(thirdPlaceRound.id) || []}
+              setsByMatch={setsByMatch}
+              playerName={playerName}
+              pointsPerSet={tournament.points_per_set}
+              cap={tournament.cap}
+              allMatches={allMatches}
+              minRestMinutes={tournament.min_rest_minutes}
+              tournamentStatus={tournament.status}
+            />
           )}
         </div>
       )}
@@ -2865,6 +3097,7 @@ function CompletedMatchesSection({
   cap,
   courts,
   occupiedCourts,
+  conflictedMatches,
   playerName,
   onScoreChange,
   onScoreBlur,
@@ -2885,6 +3118,7 @@ function CompletedMatchesSection({
   cap: number | null;
   courts: number;
   occupiedCourts: Set<number>;
+  conflictedMatches?: Map<number, ConflictPlayer[]>;
   playerName: (id: number | null) => string;
   onScoreChange: (matchId: number, setNumber: number, team: 1 | 2, value: number) => void;
   onScoreBlur: (matchId: number, setNumber: number, team: 1 | 2) => void;
@@ -2934,6 +3168,7 @@ function CompletedMatchesSection({
           cap={cap}
           courts={courts}
           occupiedCourts={occupiedCourts}
+          conflictedMatches={conflictedMatches}
           playerName={playerName}
           onScoreChange={onScoreChange}
           onScoreBlur={onScoreBlur}
@@ -3017,6 +3252,7 @@ function CompletedMatchesSection({
               cap={cap}
               courts={courts}
               occupiedCourts={occupiedCourts}
+              conflictedMatches={conflictedMatches}
               playerName={playerName}
               onScoreChange={onScoreChange}
               onScoreBlur={onScoreBlur}
@@ -3043,6 +3279,7 @@ function MatchCard({
   cap,
   courts,
   occupiedCourts,
+  conflictedMatches,
   playerName,
   onScoreChange,
   onScoreBlur,
@@ -3061,6 +3298,7 @@ function MatchCard({
   cap: number | null;
   courts: number;
   occupiedCourts: Set<number>;
+  conflictedMatches?: Map<number, ConflictPlayer[]>;
   playerName: (id: number | null) => string;
   onScoreChange: (
     matchId: number,
@@ -3177,14 +3415,19 @@ function MatchCard({
                   title={t.court_choose_court}
                 >
                   <option value="">{t.tournament_view_court_question}</option>
-                  {Array.from({ length: courts }, (_, i) => i + 1).map((c) => {
-                    const busy = occupiedCourts.has(c) && match.court !== c;
-                    return (
-                      <option key={c} value={c} disabled={busy}>
-                        {t.common_field} {c}{busy ? ` (${t.common_occupied})` : ""}
-                      </option>
-                    );
-                  })}
+                  {(() => {
+                    const matchHasConflict = conflictedMatches?.has(match.id) ?? false;
+                    return Array.from({ length: courts }, (_, i) => i + 1).map((c) => {
+                      const busy = occupiedCourts.has(c) && match.court !== c;
+                      const blocked = matchHasConflict && match.court !== c;
+                      return (
+                        <option key={c} value={c} disabled={busy || blocked}>
+                          {t.common_field} {c}
+                          {busy ? ` (${t.common_occupied})` : blocked ? ` (${t.match_player_busy_short})` : ""}
+                        </option>
+                      );
+                    });
+                  })()}
                 </select>
               ) : match.court ? (
                 <span className="text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-lg">

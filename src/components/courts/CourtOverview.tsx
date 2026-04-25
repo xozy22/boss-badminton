@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { Match, HallConfig, Round, TournamentStatus } from "../../lib/types";
 import { getCourtHallLabel } from "../../lib/types";
+import type { ConflictPlayer } from "../../lib/courtConflicts";
 import { CourtTimer } from "./CourtTimer";
 import { useTheme } from "../../lib/ThemeContext";
 import { useT } from "../../lib/I18nContext";
@@ -18,9 +19,15 @@ interface Props {
   /** For the ⏱ rest indicator next to player names. */
   minRestMinutes?: number;
   tournamentStatus?: TournamentStatus;
+  /**
+   * Map of waiting-match-id → list of player conflicts. Cards in this map
+   * are rendered as blocked (no drag, no double-click) and show a "player
+   * busy" badge with a tooltip listing the conflicting players + courts.
+   */
+  conflictedMatches?: Map<number, ConflictPlayer[]>;
 }
 
-export default function CourtOverview({ courts, matches, activeRoundMatches, futureRoundQueues, playerName, onDrop, onMatchClick, hallConfig, minRestMinutes = 0, tournamentStatus }: Props) {
+export default function CourtOverview({ courts, matches, activeRoundMatches, futureRoundQueues, playerName, onDrop, onMatchClick, hallConfig, minRestMinutes = 0, tournamentStatus, conflictedMatches }: Props) {
   const { theme } = useTheme();
   const { t } = useT();
   // Finde fuer jedes Feld das aktive (nicht abgeschlossene) Match - aus ALLEN Runden
@@ -77,6 +84,11 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, fut
   };
 
   const handleDragStart = (e: React.DragEvent, matchId: number) => {
+    // Hard block: cards in conflictedMatches must not start a drag at all.
+    if (conflictedMatches?.has(matchId)) {
+      e.preventDefault();
+      return;
+    }
     e.dataTransfer.setData("matchId", String(matchId));
     e.dataTransfer.effectAllowed = "move";
   };
@@ -107,6 +119,14 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, fut
   }, [courts, courtAssignments]);
 
   const handleDoubleClick = (matchId: number) => {
+    // Hard block: forward to onDrop with a placeholder court so the
+    // TournamentView guard fires and opens the conflict modal. (We delegate
+    // to onDrop instead of silently swallowing because the user expects
+    // some feedback after a double-click — the modal explains why.)
+    if (conflictedMatches?.has(matchId)) {
+      if (onDrop) onDrop(matchId, freeCourts[0] ?? 1);
+      return;
+    }
     if (freeCourts.length === 1 && onDrop) {
       // Only one free court: assign directly
       onDrop(matchId, freeCourts[0]);
@@ -261,14 +281,31 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, fut
       {/* Unassigned match card — shared renderer */}
       {(() => {
         const renderUnassignedCard = (m: Match) => {
+          const conflicts = conflictedMatches?.get(m.id);
+          const isBlocked = !!conflicts && conflicts.length > 0;
+          // Tooltip: full list of conflicting players and their courts. Falls
+          // back to the standard drag-or-doubleclick hint when not blocked.
+          const blockedTitle = isBlocked
+            ? conflicts!
+                .map((c) =>
+                  t.player_conflict_row
+                    .replace("{player}", playerName(c.playerId))
+                    .replace("{court}", String(c.court)),
+                )
+                .join("\n")
+            : t.court_drag_or_double_click;
           return (
             <div
               key={m.id}
-              draggable
+              draggable={!isBlocked}
               onDragStart={(e) => handleDragStart(e, m.id)}
               onDoubleClick={() => handleDoubleClick(m.id)}
-              className={`${theme.cardBg} border ${theme.cardBorder} rounded-xl px-3 py-2 text-xs cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-md transition-all duration-200 select-none relative ${courtPickerMatchId === m.id ? "z-40" : ""}`}
-              title={t.court_drag_or_double_click}
+              className={`${theme.cardBg} border rounded-xl px-3 py-2 text-xs select-none relative transition-all duration-200 ${
+                isBlocked
+                  ? "border-rose-400 ring-1 ring-rose-300 opacity-70 cursor-not-allowed"
+                  : `${theme.cardBorder} cursor-grab active:cursor-grabbing hover:border-amber-300 hover:shadow-md`
+              } ${courtPickerMatchId === m.id ? "z-40" : ""}`}
+              title={blockedTitle}
             >
               <span className={`font-medium ${theme.textPrimary}`}>
                 {renderTeam(m.team1_p1, m.team1_p2, m)}
@@ -277,6 +314,12 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, fut
               <span className={`font-medium ${theme.textPrimary}`}>
                 {renderTeam(m.team2_p1, m.team2_p2, m)}
               </span>
+              {isBlocked && (
+                <div className="mt-1 flex items-center gap-1 text-[10px] font-medium text-rose-600">
+                  <span>🚫</span>
+                  <span>{t.match_blocked_short}</span>
+                </div>
+              )}
 
               {/* Court picker popup */}
               {courtPickerMatchId === m.id && (

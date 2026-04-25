@@ -67,7 +67,7 @@ export interface Sportstaette {
   created_at: string;
 }
 
-export type TournamentPhase = "group" | "ko" | "swiss" | "winners" | "losers" | "ready" | null;
+export type TournamentPhase = "group" | "ko" | "swiss" | "winners" | "losers" | "third_place" | "ready" | null;
 
 export interface Tournament {
   id: number;
@@ -90,6 +90,12 @@ export interface Tournament {
   hall_config: string | null;
   venue_id: number | null;
   min_rest_minutes: number;
+  /**
+   * 0 = no 3rd-place playoff. 1 = automatically create a "Spiel um Platz 3"
+   * match (semifinal losers in elimination/group_ko, LB-final-loser vs.
+   * LB-semifinal-loser in double_elimination). Persisted via migration v11.
+   */
+  enable_third_place: number;
   created_at: string;
   status: TournamentStatus;
 }
@@ -114,6 +120,12 @@ export interface TournamentPlayerInfo {
   payment_method: PaymentMethod | null;
   paid_date: string | null;
   retired: boolean;
+  /**
+   * Seed rank for this tournament: 1 = top seed, 2 = next, etc. NULL for
+   * unseeded players or tournaments without a seed list. Persisted in
+   * tournament_players.seed_rank since migration v10.
+   */
+  seed_rank: number | null;
 }
 
 export interface Round {

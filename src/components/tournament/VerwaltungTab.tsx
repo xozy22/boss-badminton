@@ -13,6 +13,7 @@ import {
 } from "../../lib/db";
 import { playerDisplayName } from "../../lib/types";
 import { useT } from "../../lib/I18nContext";
+import SeedBadge from "../players/SeedBadge";
 
 interface VerwaltungTabProps {
   tournament: Tournament;
@@ -280,6 +281,7 @@ export default function VerwaltungTab({
                         <tr key={pd.player.id} className={`border-b ${theme.cardBorder} last:border-0 group`}>
                           <td className={`px-3 py-2 pl-6 font-medium ${isRetired ? `${theme.textMuted} line-through` : theme.textPrimary}`}>
                             {playerDisplayName(pd.player)}
+                            <SeedBadge rank={pd.seed_rank} />
                             {isRetired && <span className="ml-1.5 text-[10px] text-rose-400 no-underline inline-block">{"\u{1F3E5}"}</span>}
                           </td>
                           <td className="px-2 py-2 text-center">

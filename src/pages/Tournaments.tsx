@@ -25,7 +25,9 @@ export default function Tournaments() {
       const now = new Date();
       const d = `${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}.${now.getFullYear()}`;
       const defaultName = `${d} - ${t.mode_doubles} - ${t.format_random_doubles}`;
-      const id = await createTournament(defaultName, "doubles", "random_doubles", 2, 21, 2, 0, 0, 0, 0);
+      // enableThirdPlace=true so the bronze-toggle is pre-checked once the
+      // user later switches the format to a KO variant in the wizard.
+      const id = await createTournament(defaultName, "doubles", "random_doubles", 2, 21, 2, 0, 0, 0, 0, null, 0, true);
       navigate(`/tournaments/${id}/edit`);
     } catch (err) {
       console.error("Error creating tournament:", err);
@@ -48,6 +50,11 @@ export default function Tournaments() {
     const entryFeeDouble = (tpl.entry_fee_double as number) || 0;
     const cap = (typeof tpl.cap === "number" ? tpl.cap : null);
     const minRestMinutes = (tpl.min_rest_minutes as number) || 0;
+    // Bronze toggle: read from template if present, otherwise default to ON
+    // for KO formats (matches the wizard's default-on behavior).
+    const enableThirdPlace = typeof tpl.enable_third_place === "number"
+      ? tpl.enable_third_place === 1
+      : (format === "elimination" || format === "group_ko" || format === "double_elimination");
 
     const id = await createTournament(
       name,
@@ -61,7 +68,8 @@ export default function Tournaments() {
       entryFeeSingle,
       entryFeeDouble,
       cap,
-      minRestMinutes
+      minRestMinutes,
+      enableThirdPlace
     );
 
     // --- Robust player import: auto-create missing, build id-map ---

@@ -108,7 +108,9 @@ export default function Home() {
             try {
               const now = new Date();
               const d = `${String(now.getDate()).padStart(2, "0")}.${String(now.getMonth() + 1).padStart(2, "0")}.${now.getFullYear()}`;
-              const id = await createTournament(`${d} - ${t.mode_doubles} - ${t.format_random_doubles}`, "doubles", "random_doubles", 2, 21, 2, 0, 0, 0, 0);
+              // enableThirdPlace=true so the bronze-toggle is pre-checked once the
+              // user later switches the format to a KO variant in the wizard.
+              const id = await createTournament(`${d} - ${t.mode_doubles} - ${t.format_random_doubles}`, "doubles", "random_doubles", 2, 21, 2, 0, 0, 0, 0, null, 0, true);
               navigate(`/tournaments/${id}/edit`);
             } catch (err) { console.error(err); setCreating(false); }
           }}

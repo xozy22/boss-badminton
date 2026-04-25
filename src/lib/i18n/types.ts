@@ -155,12 +155,27 @@ export interface Translations {
   tournament_min_rest_hint: string;
   tournament_min_rest_label: string;
   tournament_min_rest_unit: string;
+  // Bronze playoff (Spiel um Platz 3) toggle in TournamentCreate
+  tournament_enable_third_place: string;
+  tournament_enable_third_place_hint: string;
+  // Bronze match section labels rendered in BracketView / round selector
+  bracket_third_place: string;
+  bracket_third_place_short: string;
   rest_warning_title: string;
   rest_warning_body: string;
   rest_warning_player_row: string;
   rest_warning_confirm: string;
   rest_warning_cancel: string;
   tournament_player_resting_tooltip: string;
+  // Seed badge (Setzplatz) shown next to seeded players
+  seed_badge_short: string;
+  seed_badge_tooltip: string;
+  // Player-on-court conflict (hard block — no bypass)
+  player_conflict_title: string;
+  player_conflict_body: string;
+  player_conflict_row: string;
+  match_blocked_short: string;
+  match_player_busy_short: string;
   // Live publishing
   settings_live_publish_section: string;
   settings_live_publish_help: string;

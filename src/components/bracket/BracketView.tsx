@@ -336,7 +336,7 @@ export default function BracketView({
   );
 }
 
-function BracketMatch({
+export function BracketMatch({
   match,
   sets,
   playerName,

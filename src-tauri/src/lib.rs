@@ -380,6 +380,18 @@ pub fn run() {
             sql: "ALTER TABLE tournaments ADD COLUMN min_rest_minutes INTEGER NOT NULL DEFAULT 0;",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 10,
+            description: "add seed_rank to tournament_players",
+            sql: "ALTER TABLE tournament_players ADD COLUMN seed_rank INTEGER;",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 11,
+            description: "add enable_third_place to tournaments",
+            sql: "ALTER TABLE tournaments ADD COLUMN enable_third_place INTEGER NOT NULL DEFAULT 0;",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

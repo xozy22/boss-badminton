@@ -11,8 +11,10 @@ import {
   removePlayerFromTournament,
   getTournament,
   getTournamentPlayers,
+  getTournamentPlayersDetailed,
   getSportstaetten,
   updateTournamentPhase,
+  setTournamentSeeds,
 } from "../lib/db";
 import type { Player, TournamentMode, TournamentFormat, Sportstaette, HallConfig } from "../lib/types";
 import { parseHallConfig, hallConfigTotalCourts, playerDisplayName } from "../lib/types";
@@ -99,6 +101,9 @@ export default function TournamentCreate() {
   const [useSeeding, setUseSeeding] = useState(false);
   const [seedOrder, setSeedOrder] = useState<number[]>([]); // player IDs in seed order
   const [seededPlayerIds, setSeededPlayerIds] = useState<Set<number>>(new Set()); // opt-in per player
+  // Bronze playoff toggle (default ON for new tournaments). Only visible when
+  // format has KO matches: elimination, group_ko, double_elimination.
+  const [enableThirdPlace, setEnableThirdPlace] = useState(true);
 
   const [dragSeedIdx, setDragSeedIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
@@ -130,14 +135,15 @@ export default function TournamentCreate() {
           id, finalName, mode, format, setsToWin, pointsPerSet, courts,
           (format === "group_ko" || format === "swiss" || format === "monrad" || format === "waterfall") ? numGroups : 0,
           format === "group_ko" ? qualifyPerGroup : 0,
-          feeSingle, feeDouble, cap, rest
+          feeSingle, feeDouble, cap, rest,
+          enableThirdPlace && (format === "elimination" || format === "group_ko" || format === "double_elimination")
         );
       } catch (err) {
         console.error("Auto-save error:", err);
       }
     }, 1000);
     return () => clearTimeout(timer);
-  }, [isEditMode, editLoaded, editId, name, mode, format, setsToWin, pointsPerSet, cap, courts, numGroups, qualifyPerGroup, useEntryFee, entryFeeSingle, entryFeeDouble, useMinRest, minRestMinutes]);
+  }, [isEditMode, editLoaded, editId, name, mode, format, setsToWin, pointsPerSet, cap, courts, numGroups, qualifyPerGroup, useEntryFee, entryFeeSingle, entryFeeDouble, useMinRest, minRestMinutes, enableThirdPlace]);
 
   // Auto-save player selection when it changes
   useEffect(() => {
@@ -229,7 +235,30 @@ export default function TournamentCreate() {
         setUseMinRest(true);
         setMinRestMinutes(String(td.min_rest_minutes));
       }
+      setEnableThirdPlace(td.enable_third_place === 1);
       setSelectedPlayerIds(new Set(tp.map((p) => p.id)));
+
+      // Restore seeding state from persisted seed_rank (per migration v10)
+      try {
+        const detailed = await getTournamentPlayersDetailed(Number(editId));
+        const seeded = detailed
+          .filter((d) => d.seed_rank !== null)
+          .sort((a, b) => (a.seed_rank! - b.seed_rank!))
+          .map((d) => d.player.id);
+        if (seeded.length > 0) {
+          setUseSeeding(true);
+          setSeededPlayerIds(new Set(seeded));
+          setSeedOrder([
+            ...seeded,
+            ...detailed
+              .filter((d) => d.seed_rank === null)
+              .map((d) => d.player.id),
+          ]);
+        }
+      } catch (err) {
+        console.error("TournamentCreate: failed to restore seed_rank:", err);
+      }
+
       if (td.team_config) {
         try {
           const teams = JSON.parse(td.team_config) as [number, number][];
@@ -309,13 +338,16 @@ export default function TournamentCreate() {
 
     let id: number;
 
+    const ttp = enableThirdPlace && (format === "elimination" || format === "group_ko" || format === "double_elimination");
+
     if (isEditMode) {
       id = Number(editId);
       await updateTournament(
         id, finalName, mode, format, setsToWin, pointsPerSet, courts,
         (format === "group_ko" || format === "swiss" || format === "monrad" || format === "waterfall") ? numGroups : 0,
         format === "group_ko" ? qualifyPerGroup : 0,
-        feeSingle, feeDouble, cap, rest
+        feeSingle, feeDouble, cap, rest,
+        ttp
       );
       // Sync players: remove those no longer selected, add new ones
       const existingPlayers = await getTournamentPlayers(id);
@@ -335,7 +367,8 @@ export default function TournamentCreate() {
         finalName, mode, format, setsToWin, pointsPerSet, courts,
         (format === "group_ko" || format === "swiss" || format === "monrad" || format === "waterfall") ? numGroups : 0,
         format === "group_ko" ? qualifyPerGroup : 0,
-        feeSingle, feeDouble, cap, rest
+        feeSingle, feeDouble, cap, rest,
+        ttp
       );
       for (const pid of selectedPlayerIds) {
         await addPlayerToTournament(id, pid);
@@ -363,6 +396,20 @@ export default function TournamentCreate() {
       await updateTeamConfig(id, manualTeams);
     } else {
       await updateTeamConfig(id, null);
+    }
+
+    // Persist seed ranks (or clear if seeding disabled / unsupported)
+    if (useSeeding && (
+      format === "elimination" ||
+      format === "double_elimination" ||
+      (format === "group_ko" && mode === "singles")
+    )) {
+      const finalSeeds = seedOrder.filter(
+        (pid) => selectedPlayerIds.has(pid) && seededPlayerIds.has(pid)
+      );
+      await setTournamentSeeds(id, finalSeeds);
+    } else {
+      await setTournamentSeeds(id, []);
     }
 
     // Persist hall config + venue
@@ -853,6 +900,22 @@ export default function TournamentCreate() {
                 <div>
                   <span className={`text-sm font-medium ${theme.textPrimary}`}>🎯 {t.tournament_seeding_enable}</span>
                   <p className={`text-xs ${theme.textMuted}`}>{t.tournament_seeding_hint}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Third-place playoff toggle - any KO format */}
+            {(format === "elimination" || format === "group_ko" || format === "double_elimination") && (
+              <div className={`flex items-center gap-3 p-3 rounded-xl border ${theme.cardBorder} ${enableThirdPlace ? theme.selectedBg : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={enableThirdPlace}
+                  onChange={(e) => setEnableThirdPlace(e.target.checked)}
+                  className="rounded accent-emerald-600"
+                />
+                <div>
+                  <span className={`text-sm font-medium ${theme.textPrimary}`}>🥉 {t.tournament_enable_third_place}</span>
+                  <p className={`text-xs ${theme.textMuted}`}>{t.tournament_enable_third_place_hint}</p>
                 </div>
               </div>
             )}
