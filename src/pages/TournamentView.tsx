@@ -8,6 +8,7 @@ import DeleteTournamentModal from "../components/tournament/DeleteTournamentModa
 import RetirePlayerModal from "../components/tournament/RetirePlayerModal";
 import RemovePlayerModal from "../components/tournament/RemovePlayerModal";
 import AttendanceCheckModal from "../components/tournament/AttendanceCheckModal";
+import UnpublishModal from "../components/tournament/UnpublishModal";
 import RanglisteTab from "../components/tournament/RanglisteTab";
 import GruppenTab from "../components/tournament/GruppenTab";
 import VerwaltungTab from "../components/tournament/VerwaltungTab";
@@ -93,6 +94,14 @@ import type {
   TournamentPlayerInfo,
 } from "../lib/types";
 import { parseHallConfig, playerDisplayName } from "../lib/types";
+import type { LivePublishConfig } from "../lib/types";
+import {
+  LIVE_PUBLISH_SETTING_KEY,
+  pushDelete,
+  isTournamentLive,
+  setTournamentLive,
+} from "../lib/livePublish";
+import { getAppSetting } from "../lib/db";
 import { useT } from "../lib/I18nContext";
 import { useToast } from "../lib/ToastContext";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
@@ -437,7 +446,7 @@ function EditTournamentModal({
 export default function TournamentView() {
   const { theme } = useTheme();
   const { t } = useT();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -1608,6 +1617,27 @@ export default function TournamentView() {
     loadAll();
   };
 
+  const [showUnpublishConfirm, setShowUnpublishConfirm] = useState(false);
+  // Whether THIS tournament is currently opted into live publishing.
+  // Default off — only flips on when user clicks "Live aktivieren".
+  const [liveActive, setLiveActive] = useState(false);
+  const [liveBusy, setLiveBusy] = useState(false);
+  // Load opt-in state on mount + whenever the tournament id changes.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const on = await isTournamentLive(tournamentId);
+        if (!cancelled) setLiveActive(on);
+      } catch (err) {
+        console.error("isTournamentLive failed:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tournamentId]);
+
   const [showUndoRound, setShowUndoRound] = useState(false);
   const handleUndoLastRound = async () => {
     if (rounds.length === 0) return;
@@ -1818,6 +1848,71 @@ export default function TournamentView() {
   const handleArchive = async () => {
     await updateTournamentStatus(tournamentId, "archived");
     loadAll();
+  };
+
+  /**
+   * Opt this tournament into live publishing. Just registers intent in
+   * app_settings — the global LivePublisherHost picks it up on its next
+   * 30s discovery tick and starts pushing snapshots. Errors out with a
+   * helpful message if no connection is configured yet.
+   */
+  const handleEnableLive = async () => {
+    setLiveBusy(true);
+    try {
+      const raw = await getAppSetting(LIVE_PUBLISH_SETTING_KEY);
+      if (!raw) {
+        showError(t.tournament_live_publish_no_config);
+        return;
+      }
+      const config = JSON.parse(raw) as LivePublishConfig;
+      if (!config.endpoint || !config.secret) {
+        showError(t.tournament_live_publish_no_config);
+        return;
+      }
+      await setTournamentLive(tournamentId, true);
+      setLiveActive(true);
+      showSuccess(t.tournament_live_publish_enabled);
+    } catch (err) {
+      showError(String(err));
+    } finally {
+      setLiveBusy(false);
+    }
+  };
+
+  /**
+   * Stop publishing this tournament: remove it from the opt-in set AND
+   * send a delete-request so the WP page also drops the snapshot. Local
+   * data is untouched. The confirm step is owned by `<UnpublishModal />`.
+   */
+  const handleUnpublish = async () => {
+    try {
+      // Always drop from opt-in first — even if the WP delete fails, the
+      // user clearly wants this tournament off, and we don't want the
+      // publisher to keep pushing.
+      await setTournamentLive(tournamentId, false);
+      setLiveActive(false);
+
+      const raw = await getAppSetting(LIVE_PUBLISH_SETTING_KEY);
+      if (!raw) {
+        // No connection saved — nothing to delete remotely. Still counts
+        // as "off" locally, no error shown.
+        showSuccess(t.tournament_unpublish_done);
+        return;
+      }
+      const config = JSON.parse(raw) as LivePublishConfig;
+      if (!config.endpoint || !config.secret) {
+        showSuccess(t.tournament_unpublish_done);
+        return;
+      }
+      const result = await pushDelete(config, tournamentId);
+      if (result.ok) {
+        showSuccess(t.tournament_unpublish_done);
+      } else {
+        showError(t.tournament_unpublish_failed.replace("{error}", result.error));
+      }
+    } catch (err) {
+      showError(t.tournament_unpublish_failed.replace("{error}", String(err)));
+    }
   };
 
   const statusStyle =
@@ -2036,6 +2131,36 @@ export default function TournamentView() {
               🖨️ {t.tournament_view_print}
             </button>
           )}
+          {/* Per-tournament Live publishing toggle. Default off; clicking
+              "Live aktivieren" registers this tournament in the opt-in
+              set, after which LivePublisherHost starts pushing snapshots
+              within ~30s. Clicking again opens UnpublishModal which both
+              removes the opt-in and sends a WP delete request. */}
+          {liveActive ? (
+            <button
+              onClick={() => setShowUnpublishConfirm(true)}
+              title={t.tournament_live_publish_id_hint.replace("{id}", String(tournamentId))}
+              disabled={liveBusy}
+              className="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 px-4 py-2.5 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all text-sm font-medium disabled:opacity-50"
+            >
+              📡 {t.tournament_live_publish_active}
+              <span className="ml-2 px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-800/40 border border-emerald-200 dark:border-emerald-700/50 text-[11px] font-mono opacity-90">
+                ID: {tournamentId}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={handleEnableLive}
+              title={t.tournament_live_publish_id_hint.replace("{id}", String(tournamentId))}
+              disabled={liveBusy}
+              className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:border-emerald-300 hover:text-emerald-600 transition-all text-sm font-medium disabled:opacity-50`}
+            >
+              📡 {t.tournament_live_publish_enable}
+              <span className={`ml-2 px-1.5 py-0.5 rounded-md ${theme.inputBg} border ${theme.inputBorder} text-[11px] font-mono opacity-80`}>
+                ID: {tournamentId}
+              </span>
+            </button>
+          )}
           {tournament.status === "active" && (
             <button
               onClick={async () => {
@@ -2238,6 +2363,15 @@ export default function TournamentView() {
           </div>
         </div>
       )}
+
+      <UnpublishModal
+        open={showUnpublishConfirm}
+        tournamentName={tournament.name}
+        theme={theme}
+        onClose={() => setShowUnpublishConfirm(false)}
+        onConfirm={handleUnpublish}
+      />
+
 
       {showUndoRound && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
@@ -2513,8 +2647,21 @@ export default function TournamentView() {
               tournamentStatus={tournament.status}
               onDrop={(matchId, court) => handleCourtChange(matchId, court)}
               onMatchClick={(matchId) => {
-                const el = document.querySelector(`[data-match-id="${matchId}"]`);
-                if (el) {
+                const match = allMatches.find((m) => m.id === matchId);
+                if (!match) return;
+                // When the next round has already been drawn, the target match
+                // may live in a round tab that isn't currently rendered. Switch
+                // to that tab first so the DOM node exists when we try to scroll.
+                const renderedInCurrentTab = showAllGroups
+                  ? groupRounds.some((r) => r.id === match.round_id)
+                  : match.round_id === activeRound;
+                if (!renderedInCurrentTab) {
+                  setActiveRound(match.round_id);
+                  setShowAllGroups(false);
+                }
+                const scrollAndFocus = () => {
+                  const el = document.querySelector(`[data-match-id="${matchId}"]`);
+                  if (!el) return;
                   el.scrollIntoView({ behavior: "smooth", block: "center" });
                   el.classList.add("ring-2", "ring-amber-400");
                   setTimeout(() => el.classList.remove("ring-2", "ring-amber-400"), 2000);
@@ -2522,6 +2669,13 @@ export default function TournamentView() {
                     const input = el.querySelector('input[type="number"]:not(:disabled)') as HTMLInputElement | null;
                     if (input) input.focus();
                   }, 400);
+                };
+                if (renderedInCurrentTab) {
+                  scrollAndFocus();
+                } else {
+                  // Defer until React has committed the round switch and the
+                  // MatchCard for this id is mounted.
+                  setTimeout(scrollAndFocus, 100);
                 }
               }}
             />

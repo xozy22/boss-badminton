@@ -1,0 +1,212 @@
+/* BOSS Live Results — minimal, theme-neutral styles. */
+
+.boss-block {
+  margin: 1rem 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.boss-block .boss-loading,
+.boss-block .boss-empty {
+  color: #888;
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+.boss-h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.boss-h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  text-align: center;
+  color: #6b7280;
+}
+
+/* ---------- Tables ---------- */
+.boss-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0 1rem;
+}
+
+.boss-table th {
+  text-align: left;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #e5e7eb;
+  background: transparent;
+}
+
+.boss-table td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+
+.boss-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.boss-team {
+  font-weight: 500;
+}
+
+.boss-team.boss-winner {
+  font-weight: 700;
+}
+
+.boss-score {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.boss-row-active {
+  background: #fef9c3;
+}
+
+.boss-row-active:hover {
+  background: #fef08a !important;
+}
+
+.boss-row-completed {
+  color: #6b7280;
+}
+
+/* ---------- Status badges ---------- */
+.boss-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.boss-badge-live {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.boss-badge-live::before {
+  content: "● ";
+  color: #16a34a;
+  animation: boss-pulse 1.5s infinite;
+}
+
+.boss-badge-final {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+@keyframes boss-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.boss-time {
+  color: #9ca3af;
+  font-size: 0.85em;
+  margin-left: 0.4rem;
+}
+
+/* ---------- Tournament list ---------- */
+.boss-tournament-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.boss-tournament-list li {
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.boss-tournament-list li:last-child {
+  border-bottom: none;
+}
+
+.boss-tournament-link {
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: 0.4rem;
+}
+
+/* ---------- Bracket ---------- */
+.boss-bracket {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  padding: 0.5rem 0;
+}
+
+.boss-bracket-round {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 200px;
+}
+
+.boss-match-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  background: #fff;
+  font-size: 0.9rem;
+}
+
+.boss-match-card .boss-team {
+  padding: 0.2rem 0;
+}
+
+.boss-match-card .boss-score {
+  text-align: center;
+  color: #6b7280;
+  border-top: 1px dashed #e5e7eb;
+  border-bottom: 1px dashed #e5e7eb;
+  padding: 0.15rem 0;
+  margin: 0.15rem 0;
+}
+
+/* ---------- Dark-mode friendliness ----------
+   If the theme uses prefers-color-scheme dark, we adapt automatically. */
+@media (prefers-color-scheme: dark) {
+  .boss-table th,
+  .boss-table td {
+    border-color: #1f2937;
+  }
+  .boss-h3 {
+    border-color: #1f2937;
+  }
+  .boss-table tbody tr:hover {
+    background: #111827;
+  }
+  .boss-row-active {
+    background: #422006;
+    color: #fde68a;
+  }
+  .boss-row-active:hover {
+    background: #57280a !important;
+  }
+  .boss-match-card {
+    background: #111827;
+    border-color: #1f2937;
+    color: #e5e7eb;
+  }
+  .boss-badge-final {
+    background: #1f2937;
+    color: #d1d5db;
+  }
+}

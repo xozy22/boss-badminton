@@ -34,6 +34,14 @@
       ]
     },
     "updater:default",
-    "process:default"
+    "process:default",
+    "http:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://*/wp-json/boss/v1/*" },
+        { "url": "http://*/wp-json/boss/v1/*" }
+      ]
+    }
   ]
 }

@@ -361,7 +361,7 @@ export default function VerwaltungTab({
                                 <button
                                   onClick={() => handleRemovePlayer(pd.player.id)}
                                   title={t.management_remove_from_tournament}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-rose-400 hover:text-rose-600 ml-1"
+                                  className="text-xs text-rose-400 hover:text-rose-600 ml-1"
                                 >
                                   {"\u2715"}
                                 </button>
@@ -383,7 +383,7 @@ export default function VerwaltungTab({
                                     setRetireTarget({ player: p, partnerNote });
                                   }}
                                   title={t.management_retire_title}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-amber-500 hover:text-amber-700 ml-1"
+                                  className="text-xs text-amber-500 hover:text-amber-700 ml-1"
                                 >
                                   {"\u{1F3E5}"}
                                 </button>
@@ -392,7 +392,7 @@ export default function VerwaltungTab({
                                 <button
                                   onClick={() => onUnretire(pd.player.id)}
                                   title={t.retire_undo}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-emerald-500 hover:text-emerald-700 ml-1"
+                                  className="text-xs text-emerald-500 hover:text-emerald-700 ml-1"
                                 >
                                   ✅
                                 </button>

@@ -79,6 +79,16 @@
 - **Speichern-Bestaetigung**: Gruener Toast bestätigt dass alle Änderungen (Einstellungen, Spieler, Teams, Hallen) nach dem Bearbeiten eines Turnier-Drafts gespeichert wurden
 - **Einheitliche Toast-Benachrichtigungen**: Ein globaler Toast-Kontext (`useToast`) ersetzt native Browser-Alerts fuer Speicher-Bestaetigungen, Import-Zusammenfassungen und Fehlermeldungen in der gesamten App — nicht blockierend, stapelbar, selbst-schliessend
 
+### Live-Veroeffentlichung auf WordPress (v2.7.0)
+- **Pro Turnier ein-/ausschaltbar**: Jedes Turnier hat in der Detail-Ansicht einen eigenen "📡 Live aktivieren"-Schalter — standardmaessig aus. Mehrere parallele Turniere koennen unabhaengig live laufen, jedes mit eigener ID
+- **Verbindung einmal einrichten**: Endpunkt-URL + Shared Secret werden in den Einstellungen unter "Live-Veroeffentlichung (WordPress)" gespeichert. Ein "Verbindung testen"-Button prueft, ob das WP-Plugin antwortet
+- **Turnier-ID auf dem Button**: Der Live-Button zeigt die Turnier-ID (`ID: 42`) damit der WordPress-Shortcode (`[boss_matches id="42"]`) ohne Suchen zusammengebaut werden kann — der Tooltip zeigt sogar die fertige Shortcode-Vorlage
+- **Event-getriebener Push**: Snapshots werden innerhalb von ~1.5s nach jeder Zustandsaenderung (Score, Court-Zuweisung, Match-Ende, Auslosung) gesendet, plus 60s-Heartbeat als Liveness-Signal. Ein Signatur-Hash ueberspringt unnoetige Heartbeats wenn sich nichts geaendert hat
+- **Veroeffentlichung beenden**: Klick auf "📡 Live aktiv" → Bestaetigungs-Modal → Opt-In wird entfernt UND ein Delete-Request loescht den Snapshot auf der WP-Seite. Auch wenn der WP-Server offline ist wird das Opt-In lokal entfernt damit keine weiteren Pushes laufen
+- **Begleitendes WordPress-Plugin** (`/wordpress-plugin/boss-live-results/`): Single-File-PHP-Plugin mit REST-Endpunkt, Custom Post Type fuer Snapshot-Storage und 5 Shortcodes — `[boss_tournaments]` (Liste), `[boss_matches id]`, `[boss_standings id]`, `[boss_bracket id]`, `[boss_status id]`. Vanilla-JS-Frontend pollt alle 15s, keine React/jQuery-Abhaengigkeit
+- **DSGVO-bewusst**: Es werden nur Vorname, Nachname und Verein uebertragen. Geburtsdaten und Bezahlinfos werden vor dem Push entfernt — oeffentliche Seiten duerfen keine Mitglieder-PII zeigen
+- **Abgesichert**: Outbound-HTTP nur an `*/wp-json/boss/v1/*` (Tauri-Capability-Allowlist). Authentifizierung ueber `X-BOSS-Secret`-Header (zeitkonstantes `hash_equals` auf der WP-Seite)
+
 ### Spielerverwaltung
 - **Vorname + Nachname** als separate Felder
 - **Geburtsdatum** mit automatisch berechnetem Alter
@@ -269,6 +279,8 @@ src/
 │   ├── draw.ts        # Auslosungsalgorithmen (Round Robin, KO, Gruppen, Swiss, etc.)
 │   ├── highlights.ts  # Turnier-Highlights (knappstes Spiel, hoechster Sieg)
 │   ├── I18nContext.tsx # React Context fuer Internationalisierung
+│   ├── livePublish.ts  # Snapshot-Builder + Push fuer WordPress-Live-Veroeffentlichung
+│   ├── useLivePublisher.tsx # Globaler Publisher-Host (Multi-Turnier)
 │   ├── scoring.ts     # Punkteberechnung, Validierung, Auto-Fill
 │   ├── stats.ts       # Statistik-Berechnungen
 │   ├── theme.ts       # Theme-Definitionen (4 Farbschemas)
@@ -294,6 +306,13 @@ src-tauri/
 ├── capabilities/      # Tauri-Berechtigungskonfigurationen
 ├── Cargo.toml
 └── tauri.conf.json
+
+wordpress-plugin/
+└── boss-live-results/  # Begleitendes WP-Plugin fuer die Live-Veroeffentlichung
+    ├── boss-live-results.php  # REST-Endpunkt, CPT-Storage, 5 Shortcodes
+    ├── frontend.js            # Vanilla-JS-Poller (kein React/jQuery)
+    ├── style.css              # Theme-neutral, dark-mode-faehig
+    └── README.md              # Plugin-Setup + Shortcode-Referenz
 ```
 
 ## Lizenz

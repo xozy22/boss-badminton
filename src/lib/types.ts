@@ -157,6 +157,17 @@ export interface StandingEntry {
   pointsLost: number;
 }
 
+export interface LivePublishConfig {
+  // Connection details for the WordPress endpoint. Live publishing is
+  // enabled per-tournament (see `live_publish_tournament_ids` in
+  // app_settings) — this config only stores how to connect, not whether
+  // any tournament is currently being pushed.
+  endpoint: string;       // e.g. https://verein.de/wp-json/boss/v1/push
+  secret: string;         // shared secret used in X-BOSS-Secret header
+  lastPushAt?: string;    // ISO of last successful push (any tournament)
+  lastError?: string;     // last error message, cleared on next success
+}
+
 export interface TeamStandingEntry {
   teamKey: string; // "id1-id2" sorted
   player1: Player;

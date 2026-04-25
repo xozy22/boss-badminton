@@ -12,6 +12,7 @@ import Sportstaetten from "./pages/Sportstaetten";
 import Statistics from "./pages/Statistics";
 import { useTheme } from "./lib/ThemeContext";
 import { useT } from "./lib/I18nContext";
+import LivePublisherHost from "./lib/useLivePublisher";
 
 function UpdateBanner() {
   const { theme } = useTheme();
@@ -62,6 +63,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <UpdateBanner />
+      <LivePublisherHost />
       <Routes>
         {/* TV-Modus: Fullscreen ohne Sidebar */}
         <Route path="/tv/:id" element={<TvMode />} />
