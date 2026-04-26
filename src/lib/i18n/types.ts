@@ -161,6 +161,16 @@ export interface Translations {
   // Bronze match section labels rendered in BracketView / round selector
   bracket_third_place: string;
   bracket_third_place_short: string;
+  // Group progress bar + group badge in CourtOverview queue
+  group_progress_title: string;
+  group_progress_label: string;
+  group_progress_behind_tooltip: string;
+  // Per-group match list shown beneath the standings when drilled
+  // into a single group on the Gruppen tab
+  groups_matches_title: string;
+  groups_matches_count: string;
+  groups_match_in_progress: string;
+  groups_match_not_played: string;
   rest_warning_title: string;
   rest_warning_body: string;
   rest_warning_player_row: string;
@@ -463,6 +473,7 @@ export interface Translations {
   court_field: string;
   court_free_drag: string;
   court_waiting: string;
+  court_waiting_count: string;
   court_choose_court: string;
   court_drag_or_double_click: string;
   court_double_click_jump: string;
@@ -695,6 +706,10 @@ export interface Translations {
   tv_players_round: string;
   tv_please_go_to_court: string;
   tv_keyboard_hint: string;
+  tv_phase_group: string;
+  tv_phase_ko: string;
+  tv_phase_completed: string;
+  tv_groups_strip_header: string;
 
   // ===== Sportstaetten Hall summary =====
   hall_summary: string;

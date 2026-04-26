@@ -11,6 +11,7 @@ import AttendanceCheckModal from "../components/tournament/AttendanceCheckModal"
 import UnpublishModal from "../components/tournament/UnpublishModal";
 import RanglisteTab from "../components/tournament/RanglisteTab";
 import GruppenTab from "../components/tournament/GruppenTab";
+import GroupProgressBar from "../components/tournament/GroupProgressBar";
 import VerwaltungTab from "../components/tournament/VerwaltungTab";
 import CourtOverview from "../components/courts/CourtOverview";
 import BracketView from "../components/bracket/BracketView";
@@ -23,6 +24,11 @@ import {
   getMatchConflicts,
   type ConflictPlayer,
 } from "../lib/courtConflicts";
+import {
+  getGroupProgress,
+  getRemainingByGroup,
+  getRoundToGroupMap,
+} from "../lib/groupProgress";
 import {
   getTournament,
   getTournamentPlayers,
@@ -577,11 +583,12 @@ export default function TournamentView() {
           });
           setShowAllGroups(false);
         } else {
-          // Still in group phase: only default to "Alle Gruppen" on the very first load
-          // (when nothing is selected yet). Preserve existing round selection on reloads.
-          if (activeRoundRef.current === null) {
-            setShowAllGroups(true);
-          }
+          // Still in group phase: the unassigned-queue spans all groups
+          // anyway (smart-queue), so the per-round buttons are now purely
+          // a status display. Force the cross-group view permanently —
+          // no per-round drill-down during the group phase.
+          setShowAllGroups(true);
+          setActiveRound(null);
         }
       } else {
         setActiveRound((prev) => prev ?? r[0].id);
@@ -1788,6 +1795,33 @@ export default function TournamentView() {
     [rounds],
   );
 
+  // Group-phase progress + smart-queue prerequisites. Active only during
+  // the group phase of a `group_ko` tournament; everything else falls
+  // back to the existing default behavior.
+  const isGroupPhaseActive =
+    tournament?.format === "group_ko" &&
+    tournament?.current_phase === "group";
+
+  // Computed for the WHOLE group_ko format, not just the active group
+  // phase, so the bar can act as a history reference once KO has started
+  // (everything 100% / all ✓). The smart-queue maps below stay scoped
+  // to the active group phase — KO matches must not be reordered by
+  // group remaining counts.
+  const groupProgress = useMemo(
+    () => tournament?.format === "group_ko" ? getGroupProgress(rounds, matchesByRound) : [],
+    [tournament?.format, rounds, matchesByRound],
+  );
+
+  const remainingByGroup = useMemo(
+    () => isGroupPhaseActive ? getRemainingByGroup(rounds, matchesByRound) : undefined,
+    [isGroupPhaseActive, rounds, matchesByRound],
+  );
+
+  const roundToGroup = useMemo(
+    () => isGroupPhaseActive ? getRoundToGroupMap(rounds) : undefined,
+    [isGroupPhaseActive, rounds],
+  );
+
   // Map<playerId, seedRank> derived from the persisted seed_rank column.
   // Consumed by GruppenTab + VerwaltungTab to render <SeedBadge>.
   const seedRankByPlayer = useMemo(() => {
@@ -2668,55 +2702,18 @@ export default function TournamentView() {
       {/* Tab: Spiele */}
       {viewTab === "spiele" && (
         <div>
+          {/* Per-group progress with embedded round-status pills.
+              Visible whenever there are group rounds — during the
+              active group phase (live) AND afterwards (history). */}
+          {groupProgress.length > 0 && (
+            <GroupProgressBar progress={groupProgress} />
+          )}
+
           {rounds.length > 0 && (
             <div className="mb-4 space-y-2">
-              {/* "Alle Gruppen" + per-group rows for group_ko */}
-              {isGroupKo && groupRounds.length > 0 && (() => {
-                const numGroups = tournament.num_groups || 2;
-                return (
-                  <>
-                    <div className="flex gap-2 flex-wrap items-center">
-                      <button
-                        onClick={() => { setShowAllGroups(true); setActiveRound(null); }}
-                        className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                          showAllGroups
-                            ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
-                            : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`
-                        }`}
-                      >
-                        {t.tournament_view_all_groups}
-                      </button>
-                    </div>
-                    {Array.from({ length: numGroups }, (_, g) => g + 1).map((groupNum) => {
-                      const groupGroupRounds = rounds.filter(
-                        (rr) => rr.phase === "group" && rr.group_number === groupNum
-                      );
-                      if (groupGroupRounds.length === 0) return null;
-                      return (
-                        <div key={groupNum} className="flex gap-2 flex-wrap items-center">
-                          <span className={`text-xs font-bold ${theme.textMuted} uppercase tracking-wide w-8`}>G{groupNum}</span>
-                          {groupGroupRounds.map((r, idx) => {
-                            const label = groupGroupRounds.length > 1 ? `${idx + 1}` : `G${groupNum}`;
-                            const colorClass = activeRound === r.id
-                              ? `${theme.roundActiveBg} ${theme.roundActiveText} shadow-md`
-                              : `${theme.cardBg} ${theme.textSecondary} hover:opacity-80 border ${theme.cardBorder} ${theme.cardHoverBorder}`;
-                            return (
-                              <button
-                                key={r.id}
-                                onClick={() => { setActiveRound(r.id); setShowAllGroups(false); }}
-                                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${colorClass}`}
-                              >
-                                {label}
-                                {allRoundMatchesCompleted(r.id) && <span className="ml-1.5">✓</span>}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
-                  </>
-                );
-              })()}
+              {/* Per-group round status is now embedded inside the
+                  GroupProgressBar above (round pills next to the bar)
+                  — no separate read-only G1/G2/G3 rows here. */}
               {/* KO rounds */}
               {koRounds.length > 0 && (
                 <div className="flex gap-2 flex-wrap items-center">
@@ -2837,7 +2834,13 @@ export default function TournamentView() {
             <CourtOverview
               courts={Math.max(tournament.courts || 1, 1)}
               matches={allMatches}
-              activeRoundMatches={showAllGroups
+              // During an active group phase the unassigned-queue ALWAYS spans
+              // every group's pending matches — even when the user has clicked
+              // a single-round button — so the smart-queue can promote the
+              // lagging group's matches above the others. Without this, the
+              // queue would only ever show the round you're currently viewing
+              // and the smart-sort would have nothing to reorder.
+              activeRoundMatches={(isGroupPhaseActive || showAllGroups)
                 ? groupRounds.flatMap((r) => matchesByRound.get(r.id) || [])
                 : activeRound ? matchesByRound.get(activeRound) : undefined}
               futureRoundQueues={futureRoundQueues}
@@ -2846,6 +2849,8 @@ export default function TournamentView() {
               minRestMinutes={tournament.min_rest_minutes}
               tournamentStatus={tournament.status}
               conflictedMatches={conflictedMatches}
+              remainingByGroup={remainingByGroup}
+              roundToGroup={roundToGroup}
               onDrop={(matchId, court) => handleCourtChange(matchId, court)}
               onMatchClick={(matchId) => {
                 const match = allMatches.find((m) => m.id === matchId);
@@ -2952,6 +2957,7 @@ export default function TournamentView() {
                           editingMatchIds={editingMatchIds}
                           allMatches={allMatches}
                           minRestMinutes={tournament.min_rest_minutes}
+                          roundToGroup={roundToGroup}
                         />
                       )}
                     </>
@@ -2968,6 +2974,7 @@ export default function TournamentView() {
           tournament={tournament}
           players={players}
           theme={theme}
+          rounds={rounds}
           getGroupData={getGroupData}
           seedRankByPlayer={seedRankByPlayer}
         />
@@ -3110,6 +3117,7 @@ function CompletedMatchesSection({
   editingMatchIds,
   allMatches,
   minRestMinutes,
+  roundToGroup,
 }: {
   matches: Match[];
   setsByMatch: Map<number, GameSet[]>;
@@ -3131,9 +3139,20 @@ function CompletedMatchesSection({
   editingMatchIds: Set<number>;
   allMatches: Match[];
   minRestMinutes: number;
+  /**
+   * When provided (group_ko in active group phase), completed matches are
+   * segmented into per-group sections — same structuring approach as the
+   * unassigned queue. Falls back to a single flat section otherwise (KO,
+   * round_robin, etc.).
+   */
+  roundToGroup?: Map<number, number>;
 }) {
   const { t } = useT();
-  const [expanded, setExpanded] = useState(false);
+  // The toggle simply shows/hides the completed-match list. Default is
+  // collapsed so the page emphasises running/waiting matches by default —
+  // completed ones are reference/history. Editing matches stay visible
+  // either way (the user is mid-edit and would lose the input UI).
+  const [isOpen, setIsOpen] = useState(false);
 
   const teamLabel = (m: Match) => {
     const t1 = m.team1_p2
@@ -3148,10 +3167,10 @@ function CompletedMatchesSection({
   return (
     <div className={hasOtherMatches ? "mt-4" : ""}>
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => setIsOpen(!isOpen)}
         className={`text-xs font-bold ${theme.textMuted} uppercase tracking-wider mb-2 flex items-center gap-2 hover:opacity-80 transition-opacity`}
       >
-        <span className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}>
+        <span className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>
           ▾
         </span>
         {t.tournament_view_completed_matches.replace("{count}", String(matches.length))}
@@ -3182,89 +3201,114 @@ function CompletedMatchesSection({
         />
       ))}
 
-      {/* Non-editing matches */}
-      {(() => {
+      {/* Non-editing matches — only rendered when the section is open.
+          Editing matches above always show regardless of the toggle. */}
+      {isOpen && (() => {
         const nonEditing = matches.filter((m) => !editingMatchIds.has(m.id));
         if (nonEditing.length === 0) return null;
 
-        return !expanded ? (
-          /* Compact view: one line per match */
-          <div className={`${theme.cardBg} rounded-2xl border ${theme.cardBorder} overflow-hidden`}>
-            {nonEditing.map((m, i) => {
-              const { t1, t2 } = teamLabel(m);
-              const sets = setsByMatch.get(m.id) || [];
-              let s1 = 0, s2 = 0;
-              for (const s of sets) {
-                if (isSetComplete(s, pointsPerSet, cap)) {
-                  if (s.team1_score > s.team2_score) s1++;
-                  else s2++;
-                }
-              }
-              return (
-                <div
-                  key={m.id}
-                  className={`flex items-center justify-between px-4 py-2 text-sm ${
-                    i > 0 ? `border-t ${theme.cardBorder}` : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className={`font-medium truncate ${
-                      m.winner_team === 1 ? theme.activeBadgeText : theme.textSecondary
-                    }`}>
-                      {t1}
-                    </span>
-                    <span className={`${theme.textMuted} text-xs shrink-0`}>{t.common_vs}</span>
-                    <span className={`font-medium truncate ${
-                      m.winner_team === 2 ? theme.activeBadgeText : theme.textSecondary
-                    }`}>
-                      {t2}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-3">
-                    <span className={`font-mono font-bold text-sm ${theme.textPrimary}`}>
-                      {s1}:{s2}
-                    </span>
-                    <span className={`font-mono text-xs ${theme.textMuted}`}>
-                      ({sets.filter(s => s.team1_score > 0 || s.team2_score > 0).map(s => `${s.team1_score}:${s.team2_score}`).join(", ")})
-                    </span>
-                    {isActive && (
-                      <button
-                        onClick={() => onReset(m.id)}
-                        className="text-xs text-amber-500 hover:text-amber-700 transition-colors"
-                      >
-                        {t.tournament_view_edit_results}
-                      </button>
-                    )}
+        // Build per-group buckets when group context is available. Sorted
+        // ascending by group_number so the section order matches the
+        // standings table in GruppenTab. Returns null when there's nothing
+        // to group (KO matches, non-group_ko formats) — render path falls
+        // back to a single flat section.
+        const buildGroups = (): { group: number; matches: Match[] }[] | null => {
+          if (!roundToGroup) return null;
+          const byGroup = new Map<number, Match[]>();
+          for (const m of nonEditing) {
+            const g = roundToGroup.get(m.round_id);
+            if (g == null) continue;
+            const arr = byGroup.get(g) ?? [];
+            arr.push(m);
+            byGroup.set(g, arr);
+          }
+          if (byGroup.size === 0) return null;
+          return Array.from(byGroup.entries())
+            .map(([group, ms]) => ({ group, matches: ms }))
+            .sort((a, b) => a.group - b.group);
+        };
+
+        const groups = buildGroups();
+
+        // One compact one-line row per match — used inside both flat and
+        // grouped rendering paths.
+        const renderCompactRow = (m: Match, i: number, n: number) => {
+          const { t1, t2 } = teamLabel(m);
+          const sets = setsByMatch.get(m.id) || [];
+          let s1 = 0, s2 = 0;
+          for (const s of sets) {
+            if (isSetComplete(s, pointsPerSet, cap)) {
+              if (s.team1_score > s.team2_score) s1++;
+              else s2++;
+            }
+          }
+          return (
+            <div
+              key={m.id}
+              className={`flex items-center justify-between px-4 py-2 text-sm ${
+                i > 0 && i < n ? `border-t ${theme.cardBorder}` : ""
+              }`}
+            >
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className={`font-medium truncate ${
+                  m.winner_team === 1 ? theme.activeBadgeText : theme.textSecondary
+                }`}>
+                  {t1}
+                </span>
+                <span className={`${theme.textMuted} text-xs shrink-0`}>{t.common_vs}</span>
+                <span className={`font-medium truncate ${
+                  m.winner_team === 2 ? theme.activeBadgeText : theme.textSecondary
+                }`}>
+                  {t2}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 ml-3">
+                <span className={`font-mono font-bold text-sm ${theme.textPrimary}`}>
+                  {s1}:{s2}
+                </span>
+                <span className={`font-mono text-xs ${theme.textMuted}`}>
+                  ({sets.filter(s => s.team1_score > 0 || s.team2_score > 0).map(s => `${s.team1_score}:${s.team2_score}`).join(", ")})
+                </span>
+                {isActive && (
+                  <button
+                    onClick={() => onReset(m.id)}
+                    className="text-xs text-amber-500 hover:text-amber-700 transition-colors"
+                  >
+                    {t.tournament_view_edit_results}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        };
+
+        const groupHeader = (group: number, count: number) => (
+          <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide mb-1 mt-2 first:mt-0 text-violet-600`}>
+            <span>{t.group_progress_label.replace("{n}", String(group))}</span>
+            <span className={`font-mono font-normal ${theme.textMuted}`}>
+              {t.groups_matches_count.replace("{count}", String(count))}
+            </span>
+          </div>
+        );
+
+        if (groups) {
+          return (
+            <div className="space-y-2">
+              {groups.map(({ group, matches: gm }) => (
+                <div key={group}>
+                  {groupHeader(group, gm.length)}
+                  <div className={`${theme.cardBg} rounded-2xl border ${theme.cardBorder} overflow-hidden`}>
+                    {gm.map((m, i) => renderCompactRow(m, i, gm.length))}
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          );
+        }
+        return (
+          <div className={`${theme.cardBg} rounded-2xl border ${theme.cardBorder} overflow-hidden`}>
+            {nonEditing.map((m, i) => renderCompactRow(m, i, nonEditing.length))}
           </div>
-        ) : (
-          /* Expanded view: full MatchCards */
-          nonEditing.map((match) => (
-            <MatchCard
-              key={match.id}
-              match={match}
-              sets={setsByMatch.get(match.id) || []}
-              setsToWin={setsToWin}
-              pointsPerSet={pointsPerSet}
-              cap={cap}
-              courts={courts}
-              occupiedCourts={occupiedCourts}
-              conflictedMatches={conflictedMatches}
-              playerName={playerName}
-              onScoreChange={onScoreChange}
-              onScoreBlur={onScoreBlur}
-              onCourtChange={onCourtChange}
-              onAnnounce={onAnnounce}
-              onReset={onReset}
-              isActive={isActive}
-              theme={theme}
-              allMatches={allMatches}
-              minRestMinutes={minRestMinutes}
-            />
-          ))
         );
       })()}
     </div>

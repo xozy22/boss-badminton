@@ -50,10 +50,23 @@
     return { team1: t1 + t1b, team2: t2 + t2b };
   }
 
+  // Returns { wonSummary: "2:1", detail: "21:18, 18:21, 21:15", any: bool }.
+  // wonSummary counts how many sets each team won (one team strictly higher
+  // score in that set). Sets where neither team is ahead (e.g. 0:0 pending)
+  // don't contribute. detail lists every per-set score in chronological
+  // order. `any` is true when at least one set has any points entered.
   function setsScore(matchId, allSets) {
     const mine = allSets.filter((s) => s.match_id === matchId);
     mine.sort((a, b) => a.set_number - b.set_number);
-    return mine.map((s) => s.team1_score + ":" + s.team2_score).join(", ");
+    if (mine.length === 0) return { wonSummary: "", detail: "", any: false };
+    let s1 = 0, s2 = 0, any = false;
+    for (const s of mine) {
+      if (s.team1_score > s.team2_score) s1++;
+      else if (s.team2_score > s.team1_score) s2++;
+      if (s.team1_score > 0 || s.team2_score > 0) any = true;
+    }
+    const detail = mine.map((s) => s.team1_score + ":" + s.team2_score).join(", ");
+    return { wonSummary: s1 + ":" + s2, detail, any };
   }
 
   // ---------- renderers ------------------------------------------------------
@@ -78,6 +91,12 @@
     }
   }
 
+  // Renders ALL matches across ALL rounds, segmented one section per round.
+  // Each round is labeled with a human-friendly heading ("Group 1 — Round 2",
+  // "Final", "🥉 Third Place", "Winners — Round 1", …). Earlier versions of
+  // this plugin only showed the current round, hiding completed history; the
+  // new layout makes the whole tournament log visible without requiring a
+  // separate shortcode.
   function renderMatches(container, data) {
     clear(container);
     if (!data.matches || data.matches.length === 0) {
@@ -85,71 +104,176 @@
       return;
     }
 
-    // Find current round: highest round_number with at least one non-completed match,
-    // else the highest round overall.
-    const roundsById = {};
-    for (const r of data.rounds || []) roundsById[r.id] = r;
-    const matchesByRound = {};
+    const allRounds = data.rounds || [];
+    const matchesByRound = new Map();
     for (const m of data.matches) {
-      const rn = roundsById[m.round_id] ? roundsById[m.round_id].round_number : 0;
-      (matchesByRound[rn] = matchesByRound[rn] || []).push(m);
+      if (!matchesByRound.has(m.round_id)) matchesByRound.set(m.round_id, []);
+      matchesByRound.get(m.round_id).push(m);
     }
-    const roundNumbers = Object.keys(matchesByRound).map(Number).sort((a, b) => a - b);
-    let currentRound = roundNumbers[roundNumbers.length - 1] || 0;
-    for (let i = roundNumbers.length - 1; i >= 0; i--) {
-      const rn = roundNumbers[i];
-      if (matchesByRound[rn].some((m) => m.status !== "completed")) {
-        currentRound = rn;
-        break;
+
+    // Per-group round-index lookup: group rounds in our schema have global
+    // round_numbers (e.g. group 1 uses 1-3, group 2 uses 4-6). We re-index
+    // them locally so labels read "Group 2 — Round 1/2/3" rather than 4/5/6.
+    const groupRoundIdx = {};
+    const byGroup = {};
+    for (const r of allRounds) {
+      if (r.phase === "group" && r.group_number != null) {
+        if (!byGroup[r.group_number]) byGroup[r.group_number] = [];
+        byGroup[r.group_number].push(r);
       }
     }
+    Object.keys(byGroup).forEach((g) => {
+      const list = byGroup[g];
+      list.sort((a, b) => a.round_number - b.round_number);
+      list.forEach((r, i) => (groupRoundIdx[r.id] = i + 1));
+    });
 
-    const heading = el("h3", { class: "boss-h3", text: "Round " + currentRound });
-    container.appendChild(heading);
+    // KO-stage labels (Final / Semifinal / Quarterfinal / Round of 16) are
+    // computed from how many KO rounds remain after this one — same logic
+    // the desktop BracketView uses.
+    const format = data.tournament && data.tournament.format;
+    const elimRounds = format === "elimination"
+      ? allRounds.filter((r) => r.phase !== "third_place")
+      : allRounds.filter((r) => r.phase === "ko");
+    const winnersRounds = allRounds.filter((r) => r.phase === "winners");
+    const losersRounds = allRounds.filter((r) => r.phase === "losers");
 
-    const table = el("table", { class: "boss-table" });
-    const thead = el("thead");
-    const trh = el("tr");
-    ["Court", "Team 1", "Score", "Team 2", "Status"].forEach((h) =>
-      trh.appendChild(el("th", { text: h })),
-    );
-    thead.appendChild(trh);
-    table.appendChild(thead);
-
-    const tbody = el("tbody");
-    const list = matchesByRound[currentRound] || [];
-    list.sort((a, b) => (a.court || 99) - (b.court || 99));
-    for (const m of list) {
-      const tr = el("tr", { class: "boss-row-" + m.status });
-      const labels = teamLabel(m, data.players || {});
-      const score = setsScore(m.id, data.sets || []);
-      tr.appendChild(el("td", { text: m.court ? String(m.court) : "—" }));
-      tr.appendChild(
-        el("td", {
-          class: "boss-team" + (m.winner_team === 1 ? " boss-winner" : ""),
-          text: labels.team1,
-        }),
-      );
-      tr.appendChild(el("td", { class: "boss-score", text: score || "–" }));
-      tr.appendChild(
-        el("td", {
-          class: "boss-team" + (m.winner_team === 2 ? " boss-winner" : ""),
-          text: labels.team2,
-        }),
-      );
-      let statusLabel = m.status;
-      if (m.status === "active") statusLabel = "Live";
-      else if (m.status === "completed") statusLabel = "Done";
-      else if (m.status === "pending") statusLabel = "—";
-      tr.appendChild(el("td", { text: statusLabel }));
-      tbody.appendChild(tr);
+    function koStageLabel(r, koList) {
+      const idx = koList.findIndex((x) => x.id === r.id);
+      if (idx < 0) return "Round " + r.round_number;
+      const firstRound = koList[0];
+      const firstMatchCount = (matchesByRound.get(firstRound.id) || []).length || 1;
+      const expectedTotal = Math.ceil(Math.log2(firstMatchCount * 2));
+      const remaining = expectedTotal - idx;
+      if (remaining === 1) return "Final";
+      if (remaining === 2) return "Semifinal";
+      if (remaining === 3) return "Quarterfinal";
+      if (remaining === 4) return "Round of 16";
+      return "Round " + (idx + 1);
     }
-    table.appendChild(tbody);
-    container.appendChild(table);
+
+    function roundLabel(r) {
+      if (r.phase === "third_place") return "🥉 Third Place";
+      if (r.phase === "group" && r.group_number != null) {
+        return "Group " + r.group_number + " — Round " + (groupRoundIdx[r.id] || r.round_number);
+      }
+      if (r.phase === "ko") return koStageLabel(r, elimRounds);
+      if (r.phase === "winners") {
+        const i = winnersRounds.findIndex((x) => x.id === r.id);
+        return "Winners — Round " + (i + 1);
+      }
+      if (r.phase === "losers") {
+        const i = losersRounds.findIndex((x) => x.id === r.id);
+        return "Losers — Round " + (i + 1);
+      }
+      if (format === "elimination") return koStageLabel(r, elimRounds);
+      return "Round " + r.round_number;
+    }
+
+    function statusOrder(s) {
+      // active (live) first → most relevant for spectators
+      if (s === "active") return 0;
+      if (s === "pending") return 1;
+      if (s === "completed") return 2;
+      return 99;
+    }
+
+    // Render one section per round, using the round order as stored in
+    // data.rounds (which mirrors DB insertion order — chronological).
+    for (const r of allRounds) {
+      const list = matchesByRound.get(r.id) || [];
+      if (list.length === 0) continue;
+
+      container.appendChild(el("h3", { class: "boss-h3", text: roundLabel(r) }));
+
+      const table = el("table", { class: "boss-table boss-table-fixed" });
+      // Per-round tables share identical widths so team names line up
+      // vertically across rounds — same trick as the standings tables.
+      const colgroup = el("colgroup");
+      [7, 26, 9, 26, 20, 12].forEach((w) => {
+        const c = document.createElement("col");
+        c.style.width = w + "%";
+        colgroup.appendChild(c);
+      });
+      table.appendChild(colgroup);
+      const thead = el("thead");
+      const trh = el("tr");
+      ["Court", "Team 1", "Sets", "Team 2", "Detail", "Status"].forEach((h) =>
+        trh.appendChild(el("th", { text: h })),
+      );
+      thead.appendChild(trh);
+      table.appendChild(thead);
+
+      const tbody = el("tbody");
+      const sorted = list.slice().sort((a, b) => {
+        const sa = statusOrder(a.status);
+        const sb = statusOrder(b.status);
+        if (sa !== sb) return sa - sb;
+        const ca = a.court || 99;
+        const cb = b.court || 99;
+        if (ca !== cb) return ca - cb;
+        return a.id - b.id;
+      });
+
+      for (const m of sorted) {
+        const tr = el("tr", { class: "boss-row-" + m.status });
+        const labels = teamLabel(m, data.players || {});
+        const score = setsScore(m.id, data.sets || []);
+        tr.appendChild(el("td", { text: m.court ? String(m.court) : "—" }));
+        tr.appendChild(
+          el("td", {
+            class: "boss-team" + (m.winner_team === 1 ? " boss-winner" : ""),
+            text: labels.team1,
+          }),
+        );
+        // Sets won column ("2:0", "1:1", etc.) — bold for completed matches.
+        const setsCell = el("td", {
+          class: "boss-score" + (m.status === "completed" ? " boss-winner" : ""),
+          text: score.any ? score.wonSummary : "–",
+        });
+        tr.appendChild(setsCell);
+        tr.appendChild(
+          el("td", {
+            class: "boss-team" + (m.winner_team === 2 ? " boss-winner" : ""),
+            text: labels.team2,
+          }),
+        );
+        // Detail column ("21:18, 21:15") — per-set point breakdown.
+        tr.appendChild(
+          el("td", {
+            class: "boss-score boss-set-detail",
+            text: score.detail || "",
+          }),
+        );
+        let statusLabel = m.status;
+        if (m.status === "active") statusLabel = "Live";
+        else if (m.status === "completed") statusLabel = "Done";
+        else if (m.status === "pending") statusLabel = "—";
+        tr.appendChild(el("td", { text: statusLabel }));
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      container.appendChild(table);
+    }
   }
 
   function renderStandingsTable(rows, isTeam) {
-    const table = el("table", { class: "boss-table" });
+    const table = el("table", { class: "boss-table boss-table-fixed" });
+
+    // Explicit colgroup so all standings tables (one per group) align
+    // column-by-column regardless of the longest player/team name in
+    // each group. Widths sum to 100%.
+    const colgroup = el("colgroup");
+    const widths = isTeam
+      ? [6, 50, 8, 8, 14, 14]   // # | Team (longer for "X / Y") | W | L | Sets | Pts
+      : [6, 40, 9, 9, 18, 18];  // # | Player                   | W | L | Sets | Pts
+    widths.forEach((w) => {
+      const c = document.createElement("col");
+      c.style.width = w + "%";
+      colgroup.appendChild(c);
+    });
+    table.appendChild(colgroup);
+
     const thead = el("thead");
     const trh = el("tr");
     const cols = isTeam
@@ -239,7 +363,13 @@
         const t1Class = "boss-team" + (m.winner_team === 1 ? " boss-winner" : "");
         const t2Class = "boss-team" + (m.winner_team === 2 ? " boss-winner" : "");
         card.appendChild(el("div", { class: t1Class, text: labels.team1 }));
-        if (score) card.appendChild(el("div", { class: "boss-score", text: score }));
+        if (score.any) {
+          // Bracket cards stay compact: sets-won summary + detail on one line.
+          const text = score.detail
+            ? score.wonSummary + " (" + score.detail + ")"
+            : score.wonSummary;
+          card.appendChild(el("div", { class: "boss-score", text: text }));
+        }
         card.appendChild(el("div", { class: t2Class, text: labels.team2 }));
         col.appendChild(card);
       });

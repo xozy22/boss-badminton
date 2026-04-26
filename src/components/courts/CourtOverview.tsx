@@ -25,9 +25,20 @@ interface Props {
    * busy" badge with a tooltip listing the conflicting players + courts.
    */
   conflictedMatches?: Map<number, ConflictPlayer[]>;
+  /**
+   * Map<groupNumber, remainingMatches>. When provided together with
+   * `roundToGroup`, the unassigned queue is sorted descending by the
+   * remaining match count of each match's group — the heuristic that
+   * keeps groups in lockstep so they finish around the same time. When
+   * either prop is missing, fallback to the existing default order
+   * (round_number / id ascending).
+   */
+  remainingByGroup?: Map<number, number>;
+  /** Map<roundId, groupNumber> — pairs with `remainingByGroup` above. */
+  roundToGroup?: Map<number, number>;
 }
 
-export default function CourtOverview({ courts, matches, activeRoundMatches, futureRoundQueues, playerName, onDrop, onMatchClick, hallConfig, minRestMinutes = 0, tournamentStatus, conflictedMatches }: Props) {
+export default function CourtOverview({ courts, matches, activeRoundMatches, futureRoundQueues, playerName, onDrop, onMatchClick, hallConfig, minRestMinutes = 0, tournamentStatus, conflictedMatches, remainingByGroup, roundToGroup }: Props) {
   const { theme } = useTheme();
   const { t } = useT();
   // Finde fuer jedes Feld das aktive (nicht abgeschlossene) Match - aus ALLEN Runden
@@ -43,10 +54,49 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, fut
 
   // Spiele ohne Feldzuweisung - nur aus der aktiven Runde (falls angegeben), sonst alle
   const sourceForUnassigned = activeRoundMatches ?? matches;
-  const unassigned = useMemo(
-    () => sourceForUnassigned.filter((m) => !m.court && m.status !== "completed"),
-    [sourceForUnassigned]
-  );
+  const unassigned = useMemo(() => {
+    const filtered = sourceForUnassigned.filter(
+      (m) => !m.court && m.status !== "completed",
+    );
+    // Smart-queue: sort by remaining matches in this match's group (desc).
+    // Falls back to original order when no group context is provided
+    // (non-group_ko formats, KO phase, single-group setups). Used for the
+    // flat-render fallback below when there's no group structure to apply.
+    if (!remainingByGroup || !roundToGroup) return filtered;
+    return [...filtered].sort((a, b) => {
+      const ga = roundToGroup.get(a.round_id);
+      const gb = roundToGroup.get(b.round_id);
+      const ra = ga != null ? (remainingByGroup.get(ga) ?? 0) : 0;
+      const rb = gb != null ? (remainingByGroup.get(gb) ?? 0) : 0;
+      if (ra !== rb) return rb - ra;        // bigger backlog first
+      return a.id - b.id;                   // stable by id
+    });
+  }, [sourceForUnassigned, remainingByGroup, roundToGroup]);
+
+  // When group context is available (group_ko + active group phase), bucket
+  // the unassigned matches by group_number and order the buckets by
+  // "remaining matches in the group" descending — same smart-queue heuristic
+  // as above, just visually segmented so a long mixed queue stays scannable.
+  // Returns null when no group context exists; render falls back to flat.
+  const unassignedGroups = useMemo(() => {
+    if (!remainingByGroup || !roundToGroup) return null;
+    const byGroup = new Map<number, Match[]>();
+    for (const m of unassigned) {
+      const g = roundToGroup.get(m.round_id);
+      if (g == null) continue;             // skip non-group rounds defensively
+      const arr = byGroup.get(g) ?? [];
+      arr.push(m);
+      byGroup.set(g, arr);
+    }
+    return Array.from(byGroup.entries())
+      .map(([group, ms]) => ({
+        group,
+        matches: [...ms].sort((a, b) => a.id - b.id),
+        remaining: remainingByGroup.get(group) ?? 0,
+      }))
+      // Largest backlog first (smart-queue), tiebreak by group number for stability.
+      .sort((a, b) => (b.remaining - a.remaining) || (a.group - b.group));
+  }, [unassigned, remainingByGroup, roundToGroup]);
 
   // JSX renderer with inline ⏱ RestIndicator next to each resting player.
   // Active/non-completed matches only — the indicator is for scheduling clarity.
@@ -307,6 +357,9 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, fut
               } ${courtPickerMatchId === m.id ? "z-40" : ""}`}
               title={blockedTitle}
             >
+              {/* No per-card G{n} badge — the section header above the card
+                  carries the group label. Cards stay slim and consistent
+                  across grouped/flat render modes. */}
               <span className={`font-medium ${theme.textPrimary}`}>
                 {renderTeam(m.team1_p1, m.team1_p2, m)}
               </span>
@@ -372,15 +425,37 @@ export default function CourtOverview({ courts, matches, activeRoundMatches, fut
 
         return (
           <>
-            {/* Current-round unassigned queue */}
+            {/* Current-round unassigned queue. When group context is
+                available the queue is segmented into per-group sections,
+                ordered by remaining-matches descending so the lagging
+                group sits on top — same smart-queue priority as before,
+                just structured. */}
             {unassigned.length > 0 && (
               <div className="mt-3">
                 <div className="text-[11px] font-medium text-gray-400 uppercase tracking-wide mb-1.5">
                   {t.court_waiting.replace("{count}", String(unassigned.length))}
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                  {unassigned.map(renderUnassignedCard)}
-                </div>
+                {unassignedGroups && unassignedGroups.length > 0 ? (
+                  <div className="space-y-2">
+                    {unassignedGroups.map(({ group, matches: groupMatches }) => (
+                      <div key={group}>
+                        <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide mb-1 text-violet-600`}>
+                          <span>{t.group_progress_label.replace("{n}", String(group))}</span>
+                          <span className={`font-mono font-normal ${theme.textMuted}`}>
+                            {t.court_waiting_count.replace("{count}", String(groupMatches.length))}
+                          </span>
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                          {groupMatches.map(renderUnassignedCard)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex gap-2 flex-wrap">
+                    {unassigned.map(renderUnassignedCard)}
+                  </div>
+                )}
               </div>
             )}
 

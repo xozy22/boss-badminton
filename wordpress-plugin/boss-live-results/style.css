@@ -36,6 +36,21 @@
   margin: 0.5rem 0 1rem;
 }
 
+/* When a renderer provides an explicit <colgroup>, opt into fixed-layout
+   mode so every instance of that table type renders with identical
+   column widths — without this each per-group/per-round table auto-sizes
+   to its own content and the columns drift between tables. */
+.boss-table-fixed {
+  table-layout: fixed;
+}
+
+.boss-table-fixed td,
+.boss-table-fixed th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .boss-table th {
   text-align: left;
   font-size: 0.78rem;
@@ -69,6 +84,13 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9rem;
   white-space: nowrap;
+}
+
+/* Per-set point breakdown shown next to the sets-won summary —
+   smaller and muted so the eye lands on the summary first. */
+.boss-set-detail {
+  font-size: 0.78rem;
+  color: #6b7280;
 }
 
 .boss-row-active {
