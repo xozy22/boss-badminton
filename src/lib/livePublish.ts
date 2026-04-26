@@ -29,6 +29,19 @@ export const LIVE_PUBLISH_SETTING_KEY = "live_publish_config";
  * page.
  */
 export const LIVE_PUBLISH_TOURNAMENTS_KEY = "live_publish_tournament_ids";
+/**
+ * app_settings key holding a JSON array of tournament IDs that are
+ * currently *paused* — opt-in stays in effect, but pushing is suppressed
+ * until the user resumes. Lets a TD silence pushes during manual edits
+ * without losing the configured opt-in.
+ */
+export const LIVE_PUBLISH_PAUSED_KEY = "live_publish_paused_tournament_ids";
+/**
+ * app_settings key holding a rolling JSON array of recent push attempts
+ * (success + failure). Capped at LIVE_PUBLISH_LOG_MAX entries.
+ */
+export const LIVE_PUBLISH_LOG_KEY = "live_publish_log";
+export const LIVE_PUBLISH_LOG_MAX = 50;
 export const LIVE_PUBLISH_SCHEMA_VERSION = 1;
 
 // --- Per-tournament opt-in storage -----------------------------------------
@@ -79,6 +92,109 @@ export async function setTournamentLive(
   }
 }
 
+// --- Per-tournament pause storage -----------------------------------------
+
+/** Returns the set of tournament IDs the user has currently paused. */
+export async function getPausedTournamentIds(): Promise<number[]> {
+  try {
+    const raw = await getAppSetting(LIVE_PUBLISH_PAUSED_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((v) => (typeof v === "number" ? v : Number(v)))
+      .filter((n) => Number.isFinite(n) && n > 0);
+  } catch (err) {
+    console.error("getPausedTournamentIds: failed to load:", err);
+    return [];
+  }
+}
+
+async function writePausedTournamentIds(ids: number[]): Promise<void> {
+  const unique = Array.from(new Set(ids)).sort((a, b) => a - b);
+  await setAppSetting(LIVE_PUBLISH_PAUSED_KEY, JSON.stringify(unique));
+}
+
+export async function isTournamentPaused(tournamentId: number): Promise<boolean> {
+  const ids = await getPausedTournamentIds();
+  return ids.includes(tournamentId);
+}
+
+/**
+ * Adds or removes `tournamentId` from the paused set. Idempotent.
+ * Pausing only takes effect at the next discovery cycle (~30s) — the
+ * background publisher checks this list before every push too, so a
+ * pause kicks in within ~5s of toggling.
+ */
+export async function setTournamentPaused(
+  tournamentId: number,
+  paused: boolean,
+): Promise<void> {
+  const current = await getPausedTournamentIds();
+  const has = current.includes(tournamentId);
+  if (paused && !has) {
+    await writePausedTournamentIds([...current, tournamentId]);
+  } else if (!paused && has) {
+    await writePausedTournamentIds(current.filter((id) => id !== tournamentId));
+  }
+}
+
+// --- Rolling push log ------------------------------------------------------
+
+export interface PushLogEntry {
+  /** ISO timestamp the push attempt finished. */
+  ts: string;
+  tournamentId: number;
+  tournamentName: string;
+  ok: boolean;
+  /** HTTP status when the request reached the server. */
+  status?: number;
+  /** Error string when the request failed (network, timeout, etc.). */
+  error?: string;
+  /** Wall-clock duration of the request, ms. */
+  durationMs: number;
+  /** Origin of the push: regular event/heartbeat or the user-triggered
+   * "push now"/final-snapshot path. */
+  reason: "event" | "heartbeat" | "manual" | "final" | "delete";
+}
+
+/** Returns the most-recent entries first (length capped at LIVE_PUBLISH_LOG_MAX). */
+export async function getPushLog(): Promise<PushLogEntry[]> {
+  try {
+    const raw = await getAppSetting(LIVE_PUBLISH_LOG_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((e) => e && typeof e === "object" && typeof e.ts === "string");
+  } catch (err) {
+    console.error("getPushLog: failed to load:", err);
+    return [];
+  }
+}
+
+/**
+ * Append an entry to the head of the rolling log, truncating at
+ * LIVE_PUBLISH_LOG_MAX. Best-effort — never throws (log persistence
+ * failures must not abort the actual push).
+ */
+export async function appendPushLogEntry(entry: PushLogEntry): Promise<void> {
+  try {
+    const current = await getPushLog();
+    const next = [entry, ...current].slice(0, LIVE_PUBLISH_LOG_MAX);
+    await setAppSetting(LIVE_PUBLISH_LOG_KEY, JSON.stringify(next));
+  } catch (err) {
+    console.warn("appendPushLogEntry: failed to persist:", err);
+  }
+}
+
+export async function clearPushLog(): Promise<void> {
+  try {
+    await setAppSetting(LIVE_PUBLISH_LOG_KEY, JSON.stringify([]));
+  } catch (err) {
+    console.warn("clearPushLog: failed to persist:", err);
+  }
+}
+
 /** Lean player record — only the fields the public WP site needs. */
 export interface PublicPlayer {
   id: number;
@@ -118,6 +234,13 @@ export interface LiveSnapshot {
   standings: StandingEntry[] | TeamStandingEntry[];
   /** Per-group standings when the tournament is in/after a group phase. */
   groups?: { number: number; standings: StandingEntry[] }[];
+  /**
+   * `true` on the very last snapshot a tournament emits — sent once when
+   * the tournament transitions from `active` to `completed`/`archived`.
+   * The WP plugin can use this to mark the snapshot as final/immutable
+   * and stop expecting further updates.
+   */
+  final?: boolean;
 }
 
 export interface DeleteRequest {
@@ -180,6 +303,7 @@ export function buildSnapshot(
   matches: Match[],
   sets: GameSet[],
   appVersion: string,
+  options: { final?: boolean } = {},
 ): LiveSnapshot {
   // Group sets by match_id for the standings calculator.
   const setsByMatch = new Map<number, GameSet[]>();
@@ -237,6 +361,7 @@ export function buildSnapshot(
     sets,
     standings,
     ...(groups ? { groups } : {}),
+    ...(options.final ? { final: true } : {}),
   };
 }
 

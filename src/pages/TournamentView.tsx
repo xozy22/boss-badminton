@@ -112,7 +112,10 @@ import {
   pushDelete,
   isTournamentLive,
   setTournamentLive,
+  isTournamentPaused,
+  setTournamentPaused,
 } from "../lib/livePublish";
+import { triggerImmediatePush, usePushStatus } from "../lib/useLivePublisher";
 import { getAppSetting } from "../lib/db";
 import { useT } from "../lib/I18nContext";
 import { useToast } from "../lib/ToastContext";
@@ -1698,16 +1701,36 @@ export default function TournamentView() {
   // Whether THIS tournament is currently opted into live publishing.
   // Default off — only flips on when user clicks "Live aktivieren".
   const [liveActive, setLiveActive] = useState(false);
+  // Whether THIS tournament is currently paused (opt-in still in place,
+  // pushes suppressed). Mutually exclusive UI-wise with the inactive state.
+  const [livePaused, setLivePaused] = useState(false);
   const [liveBusy, setLiveBusy] = useState(false);
+  // Live push status (lastPushAt, lastError, backoff state) for the inline
+  // indicator next to the Live button. Updates in-place when the global
+  // publisher pushes / fails.
+  const livePushStatus = usePushStatus(tournamentId);
+  // Tick once per second so the inline "Push 12s ago" / "Fehler vor X Min"
+  // text refreshes without waiting for an actual push event.
+  const [liveStatusNow, setLiveStatusNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!liveActive) return;
+    const id = setInterval(() => setLiveStatusNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [liveActive]);
   // Load opt-in state on mount + whenever the tournament id changes.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const on = await isTournamentLive(tournamentId);
-        if (!cancelled) setLiveActive(on);
+        const [on, paused] = await Promise.all([
+          isTournamentLive(tournamentId),
+          isTournamentPaused(tournamentId),
+        ]);
+        if (cancelled) return;
+        setLiveActive(on);
+        setLivePaused(paused);
       } catch (err) {
-        console.error("isTournamentLive failed:", err);
+        console.error("isTournamentLive/Paused failed:", err);
       }
     })();
     return () => {
@@ -1716,30 +1739,154 @@ export default function TournamentView() {
   }, [tournamentId]);
 
   const [showUndoRound, setShowUndoRound] = useState(false);
-  const handleUndoLastRound = async () => {
-    if (rounds.length === 0) return;
-    const lastRound = rounds[rounds.length - 1];
-    const isLastRound = rounds.length === 1;
-    const koRoundsCount = rounds.filter((r) => r.phase === "ko").length;
-    // Undoing the sole KO round while group rounds still remain → go back to group phase
-    const isUndoingLastKoRound = !isLastRound &&
-      lastRound.phase === "ko" &&
-      tournament?.format === "group_ko" &&
-      koRoundsCount === 1;
 
-    await deleteRound(lastRound.id);
-    setShowUndoRound(false);
+  /**
+   * Memoized "what does the next undo step delete?" computation. Returns
+   * null when there's nothing to undo. The result is used both to disable
+   * the Undo button (no target → no click) and to drive the rich confirm
+   * modal (preview of what will be lost).
+   *
+   * Strategy:
+   *   1. Pick the round with the largest id — that's the most-recently
+   *      created one in DB-insertion order.
+   *   2. Bronze + Final pairing: when the head is a `third_place` round,
+   *      look for the Final/winners round with the same `round_number`
+   *      and bundle them. Same the other way around. Both get deleted in
+   *      one logical undo step.
+   *   3. Aggregate stats over the involved rounds so the modal can show
+   *      what data the user is about to lose.
+   *   4. Predict the post-undo phase transition (full reset / back-to-
+   *      group / no change) — see decision matrix in plan.
+   */
+  const undoTarget = useMemo(() => {
+    if (!tournament || rounds.length === 0) return null;
 
-    if (isLastRound) {
-      // Deleted the very last round: reset tournament fully to pre-start state
+    // Newest-first by insertion order. round.id is auto-increment so
+    // largest id == most-recently created round.
+    const byIdDesc = [...rounds].sort((a, b) => b.id - a.id);
+    const head = byIdDesc[0];
+
+    // Bronze + Final pairing — both share round_number, were created in
+    // the same SF→Final transition.
+    const pair: Round[] = [head];
+    if (head.phase === "third_place") {
+      const finalSibling = rounds.find(
+        (r) =>
+          r.id !== head.id &&
+          r.round_number === head.round_number &&
+          (r.phase === "ko" || r.phase === "winners" || r.phase == null),
+      );
+      if (finalSibling) pair.unshift(finalSibling);   // Final first, Bronze second
+    } else if (head.phase === "ko" || head.phase === "winners" || head.phase == null) {
+      const bronzeSibling = rounds.find(
+        (r) =>
+          r.id !== head.id &&
+          r.round_number === head.round_number &&
+          r.phase === "third_place",
+      );
+      if (bronzeSibling) pair.push(bronzeSibling);
+    }
+
+    // Stats across the involved rounds.
+    let matchCount = 0,
+      completedCount = 0,
+      activeOnCourtCount = 0,
+      setCount = 0;
+    for (const r of pair) {
+      const ms = matchesByRound.get(r.id) ?? [];
+      matchCount += ms.length;
+      for (const m of ms) {
+        if (m.status === "completed") completedCount++;
+        if (m.status === "active" || (m.court != null && m.status !== "completed")) {
+          activeOnCourtCount++;
+        }
+        setCount += (setsByMatch.get(m.id) ?? []).length;
+      }
+    }
+
+    // Round label. Keep it short and descriptive; bronze pairing appends
+    // the trophy marker so the user sees both deletions at once.
+    const primary = pair[0];
+    const labelForRound = (r: Round): string => {
+      if (r.phase === "third_place") return `🥉 ${t.bracket_third_place_short}`;
+      if (r.phase === "group" && r.group_number != null) {
+        // Local round-index within the group (handles non-contiguous round_numbers).
+        const groupRounds = rounds
+          .filter((rr) => rr.phase === "group" && rr.group_number === r.group_number)
+          .sort((a, b) => a.round_number - b.round_number);
+        const idx = groupRounds.findIndex((rr) => rr.id === r.id);
+        const label = t.tournament_view_round_label.replace("{n}", String(idx + 1));
+        return `${t.group_progress_label.replace("{n}", String(r.group_number))} · ${label}`;
+      }
+      if (r.phase === "winners") return `W · ${t.tournament_view_round_label.replace("{n}", String(r.round_number))}`;
+      if (r.phase === "losers")  return `L · ${t.tournament_view_round_label.replace("{n}", String(r.round_number))}`;
+      return t.tournament_view_round_label.replace("{n}", String(r.round_number));
+    };
+    let label = labelForRound(primary);
+    if (pair.length > 1 && pair.some((r) => r.phase === "third_place")) {
+      label += ` + 🥉 ${t.bracket_third_place_short}`;
+    }
+
+    // Phase transition prediction.
+    const remaining = rounds.filter((r) => !pair.some((p) => p.id === r.id));
+    const resetStatusToDraft = remaining.length === 0;
+    const remainingKo = remaining.filter(
+      (r) => r.phase === "ko" || r.phase === "winners" || r.phase === "losers",
+    );
+    const remainingGroup = remaining.filter((r) => r.phase === "group");
+    const isGroupKoBackToGroup =
+      tournament.format === "group_ko" &&
+      remainingKo.length === 0 &&
+      remainingGroup.length > 0 &&
+      pair.some((r) => r.phase === "ko" || r.phase === "third_place");
+
+    return {
+      rounds: pair,
+      label,
+      matchCount,
+      completedCount,
+      activeOnCourtCount,
+      setCount,
+      resetStatusToDraft,
+      isGroupKoBackToGroup,
+    };
+  }, [tournament, rounds, matchesByRound, setsByMatch, t]);
+
+  /**
+   * Execute the undo step previewed by the modal. Idempotent against
+   * stale clicks (re-reads `undoTarget` at call time; if it's null,
+   * silently no-ops). Cleanup order: delete rounds first (FK cascades to
+   * matches/sets), then apply phase transition, then reload + toast.
+   */
+  const performUndo = async () => {
+    const target = undoTarget;
+    if (!target) {
+      setShowUndoRound(false);
+      return;
+    }
+
+    // Delete by descending id so the youngest-inserted round goes first.
+    // Order doesn't matter for correctness (FK cascade handles dependents)
+    // but it keeps the DB state predictable during the operation.
+    for (const r of [...target.rounds].sort((a, b) => b.id - a.id)) {
+      await deleteRound(r.id);
+    }
+
+    if (target.resetStatusToDraft) {
       await updateTournamentStatus(tournamentId, "draft");
       await updateTournamentPhase(tournamentId, "ready");
-    } else if (isUndoingLastKoRound) {
-      // Still have group rounds: go back to group phase so "Start KO" reappears
+    } else if (target.isGroupKoBackToGroup) {
       await updateTournamentPhase(tournamentId, "group");
       await updateTournamentKoScoring(tournamentId, null, null, null);
     }
 
+    setShowUndoRound(false);
+    showSuccess(
+      t.tournament_view_undo_done
+        .replace("{label}", target.label)
+        .replace("{matches}", String(target.matchCount))
+        .replace("{sets}", String(target.setCount)),
+    );
     loadAll();
   };
 
@@ -2057,6 +2204,37 @@ export default function TournamentView() {
   };
 
   /**
+   * Pause / resume live publishing for this tournament. Pause keeps the
+   * opt-in in place so the user can quickly resume without re-enabling
+   * from scratch. The publisher's discovery loop (~30s) drops paused
+   * tournaments from its active set, so the next push happens on resume.
+   */
+  const handleTogglePause = async () => {
+    setLiveBusy(true);
+    try {
+      const next = !livePaused;
+      await setTournamentPaused(tournamentId, next);
+      setLivePaused(next);
+    } catch (err) {
+      showError(String(err));
+    } finally {
+      setLiveBusy(false);
+    }
+  };
+
+  /**
+   * Force an immediate push regardless of debounce / heartbeat / backoff.
+   * No-op when no Publisher is currently running (tournament not active+
+   * opted-in+unpaused, or discovery hasn't picked it up yet).
+   */
+  const handlePushNow = () => {
+    const triggered = triggerImmediatePush(tournamentId);
+    if (triggered) {
+      showSuccess(t.tournament_live_publish_pushed_now);
+    }
+  };
+
+  /**
    * Stop publishing this tournament: remove it from the opt-in set AND
    * send a delete-request so the WP page also drops the snapshot. Local
    * data is untouched. The confirm step is owned by `<UnpublishModal />`.
@@ -2065,9 +2243,12 @@ export default function TournamentView() {
     try {
       // Always drop from opt-in first — even if the WP delete fails, the
       // user clearly wants this tournament off, and we don't want the
-      // publisher to keep pushing.
+      // publisher to keep pushing. Clear paused state too so re-enabling
+      // later doesn't carry over a stale pause.
       await setTournamentLive(tournamentId, false);
+      await setTournamentPaused(tournamentId, false);
       setLiveActive(false);
+      setLivePaused(false);
 
       const raw = await getAppSetting(LIVE_PUBLISH_SETTING_KEY);
       if (!raw) {
@@ -2265,7 +2446,8 @@ export default function TournamentView() {
           {tournament.status === "active" && rounds.length > 0 && (
             <button
               onClick={() => setShowUndoRound(true)}
-              className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:border-amber-300 hover:text-amber-600 transition-all text-sm font-medium`}
+              disabled={!undoTarget}
+              className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:border-amber-300 hover:text-amber-600 transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               ↩️ {t.tournament_view_undo_round}
             </button>
@@ -2308,36 +2490,105 @@ export default function TournamentView() {
               🖨️ {t.tournament_view_print}
             </button>
           )}
-          {/* Per-tournament Live publishing toggle. Default off; clicking
-              "Live aktivieren" registers this tournament in the opt-in
-              set, after which LivePublisherHost starts pushing snapshots
-              within ~30s. Clicking again opens UnpublishModal which both
-              removes the opt-in and sends a WP delete request. */}
-          {liveActive ? (
-            <button
-              onClick={() => setShowUnpublishConfirm(true)}
-              title={t.tournament_live_publish_id_hint.replace("{id}", String(tournamentId))}
-              disabled={liveBusy}
-              className="bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 px-4 py-2.5 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all text-sm font-medium disabled:opacity-50"
-            >
-              📡 {t.tournament_live_publish_active}
-              <span className="ml-2 px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-800/40 border border-emerald-200 dark:border-emerald-700/50 text-[11px] font-mono opacity-90">
-                ID: {tournamentId}
-              </span>
-            </button>
-          ) : (
-            <button
-              onClick={handleEnableLive}
-              title={t.tournament_live_publish_id_hint.replace("{id}", String(tournamentId))}
-              disabled={liveBusy}
-              className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:border-emerald-300 hover:text-emerald-600 transition-all text-sm font-medium disabled:opacity-50`}
-            >
-              📡 {t.tournament_live_publish_enable}
-              <span className={`ml-2 px-1.5 py-0.5 rounded-md ${theme.inputBg} border ${theme.inputBorder} text-[11px] font-mono opacity-80`}>
-                ID: {tournamentId}
-              </span>
-            </button>
-          )}
+          {/* Per-tournament Live publishing controls. Three UI states:
+                - Inactive: "Live aktivieren" (disabled while tournament is a draft)
+                - Active:   "Live aktiv" + Pause + "Push jetzt" buttons + inline status
+                - Paused:   "Live pausiert" + Resume + Stop, no push activity
+              The active-state button stays clickable on drafts (rare reopen
+              scenario) so a stale opt-in can still be cleared. */}
+          {liveActive ? (() => {
+            // Compact button group: the main pill carries the label + ID;
+            // the two secondary actions (pause/resume and push-now) are
+            // attached as 32×32 icon squares to keep horizontal space tight.
+            // The status text wraps below on narrow viewports.
+            const statusText = (() => {
+              if (livePaused) return t.tournament_live_status_paused_hint;
+              const fmtRel = (iso: string | null): string | null => {
+                if (!iso) return null;
+                const diffSec = Math.max(0, Math.floor((liveStatusNow - new Date(iso).getTime()) / 1000));
+                if (diffSec < 60) return `${diffSec}s`;
+                const m = Math.floor(diffSec / 60);
+                if (m < 60) return `${m} min`;
+                const h = Math.floor(m / 60);
+                return `${h} h`;
+              };
+              if (livePushStatus?.backoffUntil && livePushStatus.backoffUntil > liveStatusNow) {
+                return t.tournament_live_status_backoff;
+              }
+              if (livePushStatus?.lastError) {
+                const rel = fmtRel(livePushStatus.lastPushAt);
+                return t.tournament_live_status_error_ago.replace("{time}", rel ?? "?");
+              }
+              if (livePushStatus?.lastPushAt) {
+                const rel = fmtRel(livePushStatus.lastPushAt);
+                return rel ? t.tournament_live_status_pushed_ago.replace("{time}", rel) : "";
+              }
+              return t.tournament_live_status_never_pushed;
+            })();
+            return (
+              <div className="inline-flex items-center gap-1 flex-wrap">
+                {/* Main pill — opens UnpublishModal on click */}
+                <button
+                  onClick={() => setShowUnpublishConfirm(true)}
+                  title={t.tournament_live_publish_id_hint.replace("{id}", String(tournamentId))}
+                  disabled={liveBusy}
+                  className={`${
+                    livePaused
+                      ? "bg-amber-50 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+                      : "bg-emerald-50 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
+                  } border px-4 py-2.5 rounded-xl transition-all text-sm font-medium disabled:opacity-50`}
+                >
+                  📡 {livePaused ? t.tournament_live_publish_paused_label : t.tournament_live_publish_active}
+                  <span className={`ml-2 px-1.5 py-0.5 rounded-md ${livePaused ? "bg-amber-100 dark:bg-amber-800/40 border-amber-200 dark:border-amber-700/50" : "bg-emerald-100 dark:bg-emerald-800/40 border-emerald-200 dark:border-emerald-700/50"} border text-[11px] font-mono opacity-90`}>
+                    ID: {tournamentId}
+                  </span>
+                </button>
+                {/* Compact icon controls — tooltips carry the action label */}
+                <button
+                  onClick={handleTogglePause}
+                  disabled={liveBusy}
+                  title={livePaused ? t.tournament_live_publish_resume : t.tournament_live_publish_pause}
+                  aria-label={livePaused ? t.tournament_live_publish_resume : t.tournament_live_publish_pause}
+                  className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} w-8 h-8 flex items-center justify-center rounded-lg hover:border-amber-300 hover:text-amber-600 transition-all text-sm disabled:opacity-50`}
+                >
+                  {livePaused ? "▶️" : "⏸️"}
+                </button>
+                {!livePaused && (
+                  <button
+                    onClick={handlePushNow}
+                    disabled={liveBusy}
+                    title={t.tournament_live_publish_push_now}
+                    aria-label={t.tournament_live_publish_push_now}
+                    className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} w-8 h-8 flex items-center justify-center rounded-lg hover:border-emerald-300 hover:text-emerald-600 transition-all text-sm disabled:opacity-50`}
+                  >
+                    🔄
+                  </button>
+                )}
+                {/* Status — small, muted, follows the buttons */}
+                <span className={`text-[10px] ${theme.textMuted} self-center ml-1.5 whitespace-nowrap`}>
+                  {statusText}
+                </span>
+              </div>
+            );
+          })() : (() => {
+            const isDraft = tournament.status === "draft";
+            const tooltip = isDraft
+              ? t.tournament_live_publish_disabled_draft
+              : t.tournament_live_publish_id_hint.replace("{id}", String(tournamentId));
+            return (
+              <button
+                onClick={handleEnableLive}
+                title={tooltip}
+                disabled={liveBusy || isDraft}
+                className={`${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:border-emerald-300 hover:text-emerald-600 transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                📡 {t.tournament_live_publish_enable}
+                <span className={`ml-2 px-1.5 py-0.5 rounded-md ${theme.inputBg} border ${theme.inputBorder} text-[11px] font-mono opacity-80`}>
+                  ID: {tournamentId}
+                </span>
+              </button>
+            );
+          })()}
           {tournament.status === "active" && (
             <button
               onClick={async () => {
@@ -2585,19 +2836,82 @@ export default function TournamentView() {
       />
 
 
-      {showUndoRound && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`${theme.cardBg} rounded-2xl shadow-2xl p-6 max-w-sm border ${theme.cardBorder} text-center`}>
-            <div className="text-4xl mb-3">↩️</div>
-            <h3 className={`font-bold text-lg ${theme.textPrimary} mb-2`}>{t.tournament_view_undo_round}</h3>
-            <p className={`text-sm ${theme.textSecondary} mb-5`}>{t.tournament_view_undo_round_confirm}</p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={() => setShowUndoRound(false)} className={`px-4 py-2 rounded-xl text-sm ${theme.textSecondary} border ${theme.cardBorder} hover:opacity-80`}>{t.common_cancel}</button>
-              <button onClick={handleUndoLastRound} className="bg-amber-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-amber-600">{t.tournament_view_undo_round}</button>
+      {/* Rich preview modal for the undo step. Shows exactly what will be
+          deleted (round label + match/completed/sets/active counts) plus
+          a hint about the resulting phase transition (back to group / back
+          to draft / no change). Confirm-button turns rose-red whenever
+          completed-result data is about to be lost, otherwise stays
+          amber as a softer signal. */}
+      {showUndoRound && undoTarget && (() => {
+        const tgt = undoTarget;
+        const dangerous = tgt.completedCount > 0 || tgt.activeOnCourtCount > 0;
+        const phaseHint = tgt.resetStatusToDraft
+          ? t.tournament_view_undo_phase_to_draft
+          : tgt.isGroupKoBackToGroup
+          ? t.tournament_view_undo_phase_to_group
+          : null;
+        return (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className={`${theme.cardBg} rounded-2xl shadow-2xl p-6 max-w-md w-full border ${theme.cardBorder}`}>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="text-3xl">↩️</div>
+                <h3 className={`font-bold text-lg ${theme.textPrimary}`}>
+                  {t.tournament_view_undo_round_title}
+                </h3>
+              </div>
+
+              <p className={`text-sm ${theme.textSecondary} mb-3`}>
+                {t.tournament_view_undo_target_label}
+              </p>
+
+              <div className={`rounded-xl border-2 ${dangerous ? "border-amber-300 bg-amber-50/50 dark:bg-amber-900/20" : `${theme.cardBorder} ${theme.cardBg}`} p-4 mb-4`}>
+                <div className={`font-semibold ${theme.textPrimary} mb-2`}>{tgt.label}</div>
+                <ul className={`text-sm space-y-1 ${theme.textSecondary}`}>
+                  <li>• {t.tournament_view_undo_match_count.replace("{n}", String(tgt.matchCount))}</li>
+                  {tgt.completedCount > 0 && (
+                    <li className="text-amber-700 dark:text-amber-300 font-medium">
+                      • {t.tournament_view_undo_completed_count.replace("{n}", String(tgt.completedCount))} ⚠
+                    </li>
+                  )}
+                  {tgt.setCount > 0 && (
+                    <li>• {t.tournament_view_undo_set_count.replace("{n}", String(tgt.setCount))}</li>
+                  )}
+                  {tgt.activeOnCourtCount > 0 && (
+                    <li className="text-amber-700 dark:text-amber-300 font-medium">
+                      • {t.tournament_view_undo_active_count.replace("{n}", String(tgt.activeOnCourtCount))} ⚠
+                    </li>
+                  )}
+                </ul>
+              </div>
+
+              {phaseHint && (
+                <p className={`text-xs ${theme.textMuted} mb-4 flex items-start gap-1.5`}>
+                  <span>ⓘ</span><span>{phaseHint}</span>
+                </p>
+              )}
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowUndoRound(false)}
+                  className={`px-4 py-2 rounded-xl text-sm ${theme.textSecondary} border ${theme.cardBorder} hover:opacity-80`}
+                >
+                  {t.common_cancel}
+                </button>
+                <button
+                  onClick={performUndo}
+                  className={`${
+                    dangerous
+                      ? "bg-rose-600 hover:bg-rose-700"
+                      : "bg-amber-500 hover:bg-amber-600"
+                  } text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors`}
+                >
+                  {t.tournament_view_undo_confirm}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Round Tabs - above everything */}
       {rounds.length === 0 && tournament.status === "draft" && (

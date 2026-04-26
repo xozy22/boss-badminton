@@ -11,6 +11,9 @@ import type { HallConfig, LivePublishConfig } from "../lib/types";
 import {
   LIVE_PUBLISH_SETTING_KEY,
   testConnection,
+  getPushLog,
+  clearPushLog,
+  type PushLogEntry,
 } from "../lib/livePublish";
 import { usePushStatuses } from "../lib/useLivePublisher";
 
@@ -1438,6 +1441,136 @@ function LivePublishSettings() {
         <div className={`text-xs ${theme.textMuted}`}>
           {t.settings_live_publish_last_push}: {new Date(config.lastPushAt).toLocaleString()}
         </div>
+      )}
+
+      {/* Rolling push log — last N attempts (success + failure). Helps
+          diagnose connection drops, intermittent errors, or spotting
+          when the last manual push really went through. */}
+      {configured && <PushLogPanel />}
+    </div>
+  );
+}
+
+/**
+ * Settings panel showing the rolling push log. Self-loading on mount and
+ * after a clear, refreshes every 5s so new entries surface without manual
+ * reload. Default-collapsed to ~10 entries to keep the Settings section
+ * compact; "Show all" expands to the full LIVE_PUBLISH_LOG_MAX entries.
+ */
+function PushLogPanel() {
+  const { theme } = useTheme();
+  const { t } = useT();
+  const [entries, setEntries] = useState<PushLogEntry[]>([]);
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const list = await getPushLog();
+        if (!cancelled) setEntries(list);
+      } catch (err) {
+        console.error("PushLogPanel: load failed:", err);
+      }
+    };
+    load();
+    const id = setInterval(load, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, []);
+
+  const handleClear = async () => {
+    await clearPushLog();
+    setEntries([]);
+  };
+
+  const reasonLabel = (r: PushLogEntry["reason"]): string => {
+    if (r === "manual") return t.settings_live_publish_log_reason_manual;
+    if (r === "final") return t.settings_live_publish_log_reason_final;
+    if (r === "heartbeat") return t.settings_live_publish_log_reason_heartbeat;
+    if (r === "delete") return t.tournament_unpublish_done;
+    return t.settings_live_publish_log_reason_event;
+  };
+
+  const visible = showAll ? entries : entries.slice(0, 10);
+
+  return (
+    <div className={`pt-3 border-t ${theme.cardBorder}`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className={`text-xs font-medium ${theme.textSecondary} uppercase tracking-wide`}>
+          {t.settings_live_publish_log_title}
+          {entries.length > 0 && (
+            <span className={`ml-2 font-normal ${theme.textMuted}`}>({entries.length})</span>
+          )}
+        </div>
+        {entries.length > 0 && (
+          <button
+            onClick={handleClear}
+            className={`text-[11px] ${theme.textMuted} hover:text-rose-500 transition-colors`}
+          >
+            {t.settings_live_publish_log_clear}
+          </button>
+        )}
+      </div>
+      {entries.length === 0 ? (
+        <div className={`text-xs ${theme.textMuted}`}>
+          {t.settings_live_publish_log_empty}
+        </div>
+      ) : (
+        <>
+          <div className={`${theme.cardBg} rounded-xl border ${theme.cardBorder} overflow-hidden`}>
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className={`border-b ${theme.cardBorder}`}>
+                  <th className={`px-2 py-1.5 text-left font-medium ${theme.textMuted} uppercase tracking-wide`}>Zeit</th>
+                  <th className={`px-2 py-1.5 text-left font-medium ${theme.textMuted} uppercase tracking-wide`}>Turnier</th>
+                  <th className={`px-2 py-1.5 text-left font-medium ${theme.textMuted} uppercase tracking-wide`}>Typ</th>
+                  <th className={`px-2 py-1.5 text-right font-medium ${theme.textMuted} uppercase tracking-wide`}>Status</th>
+                  <th className={`px-2 py-1.5 text-right font-medium ${theme.textMuted} uppercase tracking-wide`}>ms</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((e, i) => (
+                  <tr key={`${e.ts}-${i}`} className={`border-b ${theme.cardBorder} last:border-0`}>
+                    <td className={`px-2 py-1 font-mono ${theme.textSecondary}`}>
+                      {new Date(e.ts).toLocaleTimeString()}
+                    </td>
+                    <td className={`px-2 py-1 ${theme.textPrimary} truncate max-w-[180px]`} title={e.tournamentName}>
+                      {e.tournamentName}
+                    </td>
+                    <td className={`px-2 py-1 ${theme.textMuted}`}>
+                      {reasonLabel(e.reason)}
+                    </td>
+                    <td className={`px-2 py-1 text-right font-mono`}>
+                      {e.ok ? (
+                        <span className="text-emerald-600">✓ {e.status ?? ""}</span>
+                      ) : (
+                        <span className="text-rose-600" title={e.error}>
+                          ✗ {(e.error ?? "").slice(0, 30)}
+                        </span>
+                      )}
+                    </td>
+                    <td className={`px-2 py-1 text-right font-mono ${theme.textMuted}`}>
+                      {e.durationMs}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {entries.length > 10 && (
+            <button
+              onClick={() => setShowAll(!showAll)}
+              className={`mt-2 text-[11px] ${theme.textMuted} hover:opacity-80`}
+            >
+              {showAll
+                ? t.settings_live_publish_log_collapse
+                : `${t.settings_live_publish_log_show_all} (${entries.length})`}
+            </button>
+          )}
+        </>
       )}
     </div>
   );

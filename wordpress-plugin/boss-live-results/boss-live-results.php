@@ -2,7 +2,7 @@
 /**
  * Plugin Name: BOSS Live Results
  * Description: Receives live tournament snapshots from the BOSS desktop app and renders matches, standings, and brackets via shortcodes.
- * Version:     1.0.3
+ * Version:     1.0.4
  * Author:      BOSS
  * License:     MIT
  * Text Domain: boss-live-results
@@ -19,7 +19,7 @@ defined('ABSPATH') || exit;
 
 const BOSS_CPT             = 'boss_tournament';
 const BOSS_OPT_SECRET      = 'boss_live_secret';
-const BOSS_PLUGIN_VERSION  = '1.0.3';
+const BOSS_PLUGIN_VERSION  = '1.0.4';
 const BOSS_SCHEMA_VERSION  = 1;
 
 // ---------------------------------------------------------------------------
@@ -131,6 +131,13 @@ function boss_handle_push(WP_REST_Request $req) {
         'boss_pushed_at',
         sanitize_text_field((string) ($body['pushed_at'] ?? ''))
     );
+    // Mark the snapshot as final once the desktop app sends the closing
+    // push (status = completed/archived). Used as a hint by frontend.js
+    // and by `[boss_tournaments]` so completed tournaments show "Final"
+    // instead of "Live".
+    if (!empty($body['final'])) {
+        update_post_meta($post_id, 'boss_final', '1');
+    }
 
     return ['ok' => true, 'tournament_id' => $tid];
 }
@@ -162,6 +169,7 @@ function boss_handle_list() {
             'name'      => $p->post_title,
             'status'    => (string) get_post_meta($p->ID, 'boss_status', true),
             'pushed_at' => (string) get_post_meta($p->ID, 'boss_pushed_at', true),
+            'final'     => (bool) get_post_meta($p->ID, 'boss_final', true),
         ];
     }, $posts);
 }

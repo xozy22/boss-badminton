@@ -206,6 +206,29 @@ export interface Translations {
   tournament_live_publish_enabled: string;
   tournament_live_publish_no_config: string;
   tournament_live_publish_id_hint: string;
+  tournament_live_publish_disabled_draft: string;
+  // Pause / resume / push-now buttons next to the Live indicator
+  tournament_live_publish_pause: string;
+  tournament_live_publish_resume: string;
+  tournament_live_publish_paused_label: string;
+  tournament_live_publish_push_now: string;
+  tournament_live_publish_pushed_now: string;
+  // Inline push-status — "Push 12s ago" / "Error 2 min ago" / "Backoff …"
+  tournament_live_status_pushed_ago: string;
+  tournament_live_status_error_ago: string;
+  tournament_live_status_backoff: string;
+  tournament_live_status_never_pushed: string;
+  tournament_live_status_paused_hint: string;
+  // Push log section in Settings
+  settings_live_publish_log_title: string;
+  settings_live_publish_log_empty: string;
+  settings_live_publish_log_clear: string;
+  settings_live_publish_log_show_all: string;
+  settings_live_publish_log_collapse: string;
+  settings_live_publish_log_reason_event: string;
+  settings_live_publish_log_reason_heartbeat: string;
+  settings_live_publish_log_reason_manual: string;
+  settings_live_publish_log_reason_final: string;
   tournament_unpublish: string;
   tournament_unpublish_confirm: string;
   tournament_unpublish_done: string;
@@ -775,6 +798,17 @@ export interface Translations {
   // ===== Undo last round =====
   tournament_view_undo_round: string;
   tournament_view_undo_round_confirm: string;
+  // Rich undo modal — preview + counts + phase hints + outcome toast
+  tournament_view_undo_round_title: string;
+  tournament_view_undo_target_label: string;
+  tournament_view_undo_match_count: string;
+  tournament_view_undo_completed_count: string;
+  tournament_view_undo_set_count: string;
+  tournament_view_undo_active_count: string;
+  tournament_view_undo_phase_to_group: string;
+  tournament_view_undo_phase_to_draft: string;
+  tournament_view_undo_confirm: string;
+  tournament_view_undo_done: string;
 
   // ===== Reopen tournament =====
   tournament_view_reopen: string;

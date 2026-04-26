@@ -3,15 +3,22 @@
  *
  * Responsibilities:
  *  1. Read live_publish_config (connection params) from app_settings; reload
- *     every 30s so that endpoint/secret changes in Settings take effect
- *     without an app restart.
- *  2. Read live_publish_tournament_ids (per-tournament opt-in set) every 30s.
+ *     every 30s so endpoint/secret changes in Settings take effect without
+ *     an app restart.
+ *  2. Read live_publish_tournament_ids (per-tournament opt-in set) and
+ *     live_publish_paused_tournament_ids (per-tournament pause set) every 30s.
  *  3. Discover all tournaments with status="active" every 30s.
- *  4. The intersection of (active && opted-in) gets a <TournamentPublisher/>
- *     child that polls its own state every 5s and pushes a snapshot whenever
- *     the stable signature changes (debounced 1.5s) or every 60s as a
- *     heartbeat.
- *  5. Track success/error state in a shared Map for the Settings status line.
+ *  4. The intersection of (active && opted-in && !paused) gets a
+ *     <TournamentPublisher/> child that polls its own state every 5s and
+ *     pushes a snapshot whenever the stable signature changes (debounced
+ *     1.5s) or every 60s as a heartbeat.
+ *  5. Track success/error/backoff state in a shared Map for the Settings
+ *     status line + per-tournament inline indicator in TournamentView.
+ *  6. Auto-backoff on persistent failures: 3+ consecutive errors throttle
+ *     the next push attempt to 30s / 2min / 5min until a success resets it.
+ *  7. Emit a final snapshot (`final: true`) the moment a tournament
+ *     transitions from `active` to `completed`/`archived`, so the WP side
+ *     captures the closing state before the publisher tears itself down.
  *
  * Default off: an empty opt-in set means nothing is pushed, even when a
  * connection is configured. Users enable live publishing per tournament
@@ -20,6 +27,10 @@
  * Multi-tournament: each child has its own debounce slot keyed by tournament
  * id, so a flurry of score edits in tournament A never cancels a pending
  * push for tournament B.
+ *
+ * Imperative APIs exposed for TournamentView:
+ *   - triggerImmediatePush(id): force a push regardless of debounce/heartbeat
+ *   - usePushStatus(id):        subscribe to per-tournament status info
  */
 /* eslint-disable react-refresh/only-export-components */
 
@@ -39,24 +50,36 @@ import {
   pushSnapshot,
   snapshotSignature,
   getLiveTournamentIds,
+  getPausedTournamentIds,
+  appendPushLogEntry,
   LIVE_PUBLISH_SETTING_KEY,
+  type PushLogEntry,
 } from "./livePublish";
 import type { LivePublishConfig, Tournament } from "./types";
 
-// Injected by Vite from tauri.conf.json — see src/globals.d.ts.
 declare const __APP_VERSION__: string;
 
 const DISCOVERY_INTERVAL_MS = 30_000;
 const POLL_INTERVAL_MS = 5_000;
 const HEARTBEAT_INTERVAL_MS = 60_000;
 const DEBOUNCE_MS = 1_500;
+/** Failures-in-a-row above this threshold trigger backoff. */
+const BACKOFF_THRESHOLD = 3;
+/** Backoff steps applied past the threshold (ms). Last value sticks. */
+const BACKOFF_STEPS_MS = [30_000, 120_000, 300_000];
 
-/** Per-tournament push status, used by Settings to show "2 OK / 1 error". */
+type PushReason = PushLogEntry["reason"];
+
+/** Per-tournament push status, used by Settings + TournamentView. */
 export interface TournamentPushStatus {
   tournamentId: number;
   tournamentName: string;
   lastPushAt: string | null;
   lastError: string | null;
+  /** Wall-clock ms timestamp when the next push attempt is allowed,
+   * or null when no backoff is active. */
+  backoffUntil: number | null;
+  consecutiveFailures: number;
 }
 
 const pushStatuses = new Map<number, TournamentPushStatus>();
@@ -65,7 +88,7 @@ function notifyPushStatusListeners() {
   for (const fn of pushStatusListeners) fn();
 }
 
-/** External hook for Settings page to display per-tournament status. */
+/** External hook for Settings page (full list across all live tournaments). */
 export function usePushStatuses(): TournamentPushStatus[] {
   const [snapshot, setSnapshot] = useState<TournamentPushStatus[]>(() =>
     Array.from(pushStatuses.values()),
@@ -80,18 +103,41 @@ export function usePushStatuses(): TournamentPushStatus[] {
   return snapshot;
 }
 
-function recordPush(
+/** External hook for TournamentView — single tournament's status. */
+export function usePushStatus(tournamentId: number | null): TournamentPushStatus | null {
+  const [status, setStatus] = useState<TournamentPushStatus | null>(() =>
+    tournamentId == null ? null : pushStatuses.get(tournamentId) ?? null,
+  );
+  useEffect(() => {
+    if (tournamentId == null) {
+      setStatus(null);
+      return;
+    }
+    const refresh = () => setStatus(pushStatuses.get(tournamentId) ?? null);
+    refresh();
+    pushStatusListeners.add(refresh);
+    return () => {
+      pushStatusListeners.delete(refresh);
+    };
+  }, [tournamentId]);
+  return status;
+}
+
+function recordPushResult(
   tournamentId: number,
   tournamentName: string,
   ok: boolean,
-  error?: string,
+  opts: { error?: string; backoffUntil?: number | null; consecutiveFailures: number } = { consecutiveFailures: 0 },
 ) {
   const now = new Date().toISOString();
+  const prev = pushStatuses.get(tournamentId);
   const entry: TournamentPushStatus = {
     tournamentId,
     tournamentName,
-    lastPushAt: ok ? now : pushStatuses.get(tournamentId)?.lastPushAt ?? null,
-    lastError: ok ? null : error ?? "unknown",
+    lastPushAt: ok ? now : prev?.lastPushAt ?? null,
+    lastError: ok ? null : opts.error ?? "unknown",
+    backoffUntil: opts.backoffUntil ?? null,
+    consecutiveFailures: opts.consecutiveFailures,
   };
   pushStatuses.set(tournamentId, entry);
   notifyPushStatusListeners();
@@ -101,7 +147,29 @@ function clearPushStatus(tournamentId: number) {
   if (pushStatuses.delete(tournamentId)) notifyPushStatusListeners();
 }
 
-// --- Live config loader -----------------------------------------------------
+// --- Imperative push trigger API -----------------------------------------
+
+/**
+ * Per-tournament push function registered by each running Publisher.
+ * Used by triggerImmediatePush() to force a push from outside (e.g. the
+ * "Push jetzt" button in TournamentView).
+ */
+const immediatePushers = new Map<number, (reason: PushReason) => Promise<void>>();
+
+/**
+ * Force an immediate push for the given tournament. Returns true when a
+ * Publisher is currently running and was triggered, false otherwise (no
+ * Publisher = tournament not active+opted-in+unpaused right now). The
+ * actual push is fire-and-forget — caller doesn't await network round-trip.
+ */
+export function triggerImmediatePush(tournamentId: number): boolean {
+  const fn = immediatePushers.get(tournamentId);
+  if (!fn) return false;
+  void fn("manual");
+  return true;
+}
+
+// --- Live config loader ---------------------------------------------------
 
 function useLiveConfig(): LivePublishConfig | null {
   const [cfg, setCfg] = useState<LivePublishConfig | null>(null);
@@ -132,32 +200,31 @@ function useLiveConfig(): LivePublishConfig | null {
   return cfg;
 }
 
-// --- Active tournament discovery -------------------------------------------
+// --- Active tournament discovery -----------------------------------------
 
 /**
  * Returns the list of tournaments that should be currently pushed: status
- * is "active" AND the user has opted them in via TournamentView. Polls
- * both the tournaments table and the opt-in set every DISCOVERY_INTERVAL_MS.
+ * is "active" AND user has opted them in AND they are not currently paused.
  */
 function useActiveOptedInTournaments(connected: boolean): Tournament[] {
   const [list, setList] = useState<Tournament[]>([]);
   useEffect(() => {
-    // When connection is not configured, stop polling. Parent renders nothing.
     if (!connected) return;
     let cancelled = false;
     const tick = async () => {
       try {
-        const [all, optedIn] = await Promise.all([
+        const [all, optedIn, paused] = await Promise.all([
           getTournaments(),
           getLiveTournamentIds(),
+          getPausedTournamentIds(),
         ]);
         if (cancelled) return;
         const optedSet = new Set(optedIn);
+        const pausedSet = new Set(paused);
         const target = all.filter(
-          (t) => t.status === "active" && optedSet.has(t.id),
+          (t) => t.status === "active" && optedSet.has(t.id) && !pausedSet.has(t.id),
         );
         setList((prev) => {
-          // Avoid re-render if list didn't actually change.
           if (
             prev.length === target.length &&
             prev.every((t, i) => t.id === target[i].id)
@@ -180,7 +247,7 @@ function useActiveOptedInTournaments(connected: boolean): Tournament[] {
   return list;
 }
 
-// --- Per-tournament publisher ----------------------------------------------
+// --- Per-tournament publisher --------------------------------------------
 
 interface TournamentPublisherProps {
   tournamentId: number;
@@ -188,7 +255,6 @@ interface TournamentPublisherProps {
 }
 
 function TournamentPublisher({ tournamentId, config }: TournamentPublisherProps) {
-  // Bulk state for snapshot — refreshed every POLL_INTERVAL_MS.
   const dataRef = useRef<{
     tournament: Tournament;
     players: import("./types").Player[];
@@ -200,10 +266,30 @@ function TournamentPublisher({ tournamentId, config }: TournamentPublisherProps)
   const lastSig = useRef<string>("");
   const debounceTimer = useRef<number | null>(null);
   const tournamentName = useRef<string>("");
+  const consecutiveFailures = useRef(0);
+  /** Wall-clock ms timestamp before which push attempts are skipped. 0 = no backoff. */
+  const backoffUntil = useRef(0);
+  /** Set to true after the final-snapshot has been emitted so we don't push it again. */
+  const finalEmitted = useRef(false);
+  /** Tracked previous status to detect the active → completed/archived transition. */
+  const prevStatus = useRef<string | null>(null);
 
   // Push helper bound to this tournament — keeps push logic in one place.
-  const doPush = useRef(async (reason: "event" | "heartbeat") => {
+  const doPush = useRef(async (reason: PushReason) => {
     if (!dataRef.current) return;
+
+    // Backoff guard: skip event/heartbeat pushes during cooldown. Manual
+    // and final pushes always go through (the user explicitly asked, or
+    // it's the closing snapshot we don't want to lose).
+    if (
+      (reason === "event" || reason === "heartbeat") &&
+      backoffUntil.current > 0 &&
+      Date.now() < backoffUntil.current
+    ) {
+      return;
+    }
+
+    const isFinal = reason === "final";
     const snap = buildSnapshot(
       dataRef.current.tournament,
       dataRef.current.players,
@@ -211,16 +297,32 @@ function TournamentPublisher({ tournamentId, config }: TournamentPublisherProps)
       dataRef.current.matches,
       dataRef.current.sets,
       __APP_VERSION__,
+      { final: isFinal },
     );
+
+    // Heartbeat dedup — only skip when no state has changed since last push.
+    // Manual + final always run.
     const sig = snapshotSignature(snap);
-    // Skip heartbeats when nothing changed AND we already pushed at least once.
-    if (reason === "heartbeat" && sig === lastSig.current && lastSig.current !== "") {
+    if (
+      reason === "heartbeat" &&
+      sig === lastSig.current &&
+      lastSig.current !== ""
+    ) {
       return;
     }
     lastSig.current = sig;
+
+    const startedAt = Date.now();
     const result = await pushSnapshot(config, snap);
+    const durationMs = Date.now() - startedAt;
+
     if (result.ok) {
-      recordPush(tournamentId, tournamentName.current, true);
+      consecutiveFailures.current = 0;
+      backoffUntil.current = 0;
+      recordPushResult(tournamentId, tournamentName.current, true, {
+        consecutiveFailures: 0,
+        backoffUntil: null,
+      });
       // Mirror "last successful push" globally for the Settings header line.
       try {
         const updated: LivePublishConfig = {
@@ -229,22 +331,54 @@ function TournamentPublisher({ tournamentId, config }: TournamentPublisherProps)
           lastError: undefined,
         };
         await setAppSetting(LIVE_PUBLISH_SETTING_KEY, JSON.stringify(updated));
-      } catch {
-        /* non-fatal */
-      }
+      } catch { /* non-fatal */ }
+      if (isFinal) finalEmitted.current = true;
     } else {
-      recordPush(tournamentId, tournamentName.current, false, result.error);
+      consecutiveFailures.current++;
+      let nextBackoff = 0;
+      if (consecutiveFailures.current >= BACKOFF_THRESHOLD) {
+        const stepIdx = Math.min(
+          consecutiveFailures.current - BACKOFF_THRESHOLD,
+          BACKOFF_STEPS_MS.length - 1,
+        );
+        nextBackoff = Date.now() + BACKOFF_STEPS_MS[stepIdx];
+        backoffUntil.current = nextBackoff;
+      }
+      recordPushResult(tournamentId, tournamentName.current, false, {
+        error: result.error,
+        consecutiveFailures: consecutiveFailures.current,
+        backoffUntil: nextBackoff || null,
+      });
       try {
         const updated: LivePublishConfig = { ...config, lastError: result.error };
         await setAppSetting(LIVE_PUBLISH_SETTING_KEY, JSON.stringify(updated));
-      } catch {
-        /* non-fatal */
-      }
+      } catch { /* non-fatal */ }
     }
+
+    // Append to rolling push log (best-effort).
+    void appendPushLogEntry({
+      ts: new Date().toISOString(),
+      tournamentId,
+      tournamentName: tournamentName.current,
+      ok: result.ok,
+      status: result.ok ? result.status : undefined,
+      error: result.ok ? undefined : result.error,
+      durationMs,
+      reason,
+    });
   });
 
+  // Register/unregister the imperative push trigger keyed by tournamentId.
+  useEffect(() => {
+    immediatePushers.set(tournamentId, (reason: PushReason) => doPush.current(reason));
+    return () => {
+      immediatePushers.delete(tournamentId);
+    };
+  }, [tournamentId]);
+
   // Polling loop: reloads tournament state every 5s, kicks debounced push
-  // when the signature changed.
+  // when the signature changed. Also detects the active → completed/archived
+  // transition and emits a final snapshot before the publisher unmounts.
   useEffect(() => {
     let cancelled = false;
     const tick = async () => {
@@ -260,6 +394,19 @@ function TournamentPublisher({ tournamentId, config }: TournamentPublisherProps)
         dataRef.current = { tournament, players, rounds, matches, sets };
         tournamentName.current = tournament.name;
 
+        // Final-snapshot detection: status flipped from "active" to a
+        // terminal state. Discovery will unmount us within the next 30s,
+        // so we get one shot — emit final NOW, then let cleanup happen.
+        const wasActive = prevStatus.current === "active";
+        const nowTerminal =
+          tournament.status === "completed" || tournament.status === "archived";
+        if (wasActive && nowTerminal && !finalEmitted.current) {
+          await doPush.current("final");
+        }
+        prevStatus.current = tournament.status;
+
+        if (finalEmitted.current) return;   // no further pushes after final
+
         // Build snapshot just to compute signature — cheap (no network).
         const snap = buildSnapshot(
           tournament,
@@ -271,7 +418,6 @@ function TournamentPublisher({ tournamentId, config }: TournamentPublisherProps)
         );
         const sig = snapshotSignature(snap);
         if (sig !== lastSig.current) {
-          // Debounce: schedule push, replacing any pending one.
           if (debounceTimer.current !== null) {
             clearTimeout(debounceTimer.current);
           }
@@ -301,6 +447,7 @@ function TournamentPublisher({ tournamentId, config }: TournamentPublisherProps)
   // downstream restarts).
   useEffect(() => {
     const id = setInterval(() => {
+      if (finalEmitted.current) return;
       doPush.current("heartbeat");
     }, HEARTBEAT_INTERVAL_MS);
     return () => clearInterval(id);
@@ -309,7 +456,7 @@ function TournamentPublisher({ tournamentId, config }: TournamentPublisherProps)
   return null;
 }
 
-// --- Host component ---------------------------------------------------------
+// --- Host component ------------------------------------------------------
 
 /**
  * Mount once at app root. Coordinates discovery + per-tournament publishers.
@@ -317,12 +464,10 @@ function TournamentPublisher({ tournamentId, config }: TournamentPublisherProps)
  */
 export default function LivePublisherHost() {
   const config = useLiveConfig();
-  // "Connected" simply means: the user has saved a usable endpoint+secret.
-  // Whether anything actually pushes depends on the per-tournament opt-in.
   const connected = !!config?.endpoint && !!config?.secret;
   const active = useActiveOptedInTournaments(connected);
 
-  // Drop status entries for tournaments that are no longer active+opted-in.
+  // Drop status entries for tournaments that are no longer active+opted-in+unpaused.
   useEffect(() => {
     const activeIds = new Set(active.map((t) => t.id));
     for (const id of Array.from(pushStatuses.keys())) {

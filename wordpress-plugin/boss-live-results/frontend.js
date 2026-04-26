@@ -74,8 +74,12 @@
   function renderStatus(container, data) {
     clear(container);
     const status = (data.tournament && data.tournament.status) || "";
-    const isLive = status === "active";
-    const label = isLive ? "Live" : status === "completed" ? "Final" : status;
+    // `final` is a sticky marker the desktop app sets on the closing push —
+    // even if the tournament status flickers, "Final" wins once the close
+    // snapshot has been received.
+    const isFinal = data.final === true || status === "completed" || status === "archived";
+    const isLive = !isFinal && status === "active";
+    const label = isLive ? "Live" : isFinal ? "Final" : status;
     const badge = el("span", {
       class: "boss-badge boss-badge-" + (isLive ? "live" : "final"),
       text: label,
