@@ -44,8 +44,64 @@ async function getTauriDb() {
     tauriDb = await Database.load(`sqlite:${dbPath}`);
     // Enable foreign key enforcement (per-connection setting in SQLite)
     await tauriDb.execute("PRAGMA foreign_keys = ON");
+    // Defensive self-healing schema check — additive ALTER TABLE statements
+    // for every column that ALL CURRENT CODE PATHS expect on `tournaments`
+    // / `tournament_players`. Normally a no-op (migrations cover this), but
+    // protects against databases that arrived from a restored backup or an
+    // older app version where one of the migrations didn't run, leaving
+    // INSERT statements crashing with "table tournaments has no column
+    // named cap" / similar.
+    await ensureExpectedSchema(tauriDb);
   }
   return tauriDb;
+}
+
+/**
+ * Idempotent ALTER TABLE pass — adds any column that the JS code expects
+ * but is missing from the actual database. Each ALTER is wrapped in a
+ * try/catch so an isolated failure (e.g. column already added by a
+ * concurrent run, or a SQLite quirk) doesn't abort the rest.
+ */
+async function ensureExpectedSchema(db: any): Promise<void> {
+  const tournamentCols: { name: string }[] = await db.select("PRAGMA table_info(tournaments)");
+  const tournamentColSet = new Set(tournamentCols.map((c) => c.name));
+  const tournamentAdditions: Array<[string, string]> = [
+    ["cap", "ALTER TABLE tournaments ADD COLUMN cap INTEGER"],
+    ["ko_points_per_set", "ALTER TABLE tournaments ADD COLUMN ko_points_per_set INTEGER"],
+    ["ko_sets_to_win", "ALTER TABLE tournaments ADD COLUMN ko_sets_to_win INTEGER"],
+    ["ko_cap", "ALTER TABLE tournaments ADD COLUMN ko_cap INTEGER"],
+    ["venue_id", "ALTER TABLE tournaments ADD COLUMN venue_id INTEGER"],
+    ["min_rest_minutes", "ALTER TABLE tournaments ADD COLUMN min_rest_minutes INTEGER NOT NULL DEFAULT 0"],
+    ["enable_third_place", "ALTER TABLE tournaments ADD COLUMN enable_third_place INTEGER NOT NULL DEFAULT 0"],
+  ];
+  for (const [col, sql] of tournamentAdditions) {
+    if (tournamentColSet.has(col)) continue;
+    try {
+      await db.execute(sql);
+      console.warn(`ensureExpectedSchema: added missing column tournaments.${col}`);
+    } catch (err) {
+      console.warn(`ensureExpectedSchema: could not add tournaments.${col}:`, err);
+    }
+  }
+
+  const tpCols: { name: string }[] = await db.select("PRAGMA table_info(tournament_players)");
+  const tpColSet = new Set(tpCols.map((c) => c.name));
+  const tpAdditions: Array<[string, string]> = [
+    ["retired", "ALTER TABLE tournament_players ADD COLUMN retired INTEGER NOT NULL DEFAULT 0"],
+    ["payment_status", "ALTER TABLE tournament_players ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'unpaid'"],
+    ["payment_method", "ALTER TABLE tournament_players ADD COLUMN payment_method TEXT"],
+    ["paid_date", "ALTER TABLE tournament_players ADD COLUMN paid_date TEXT"],
+    ["seed_rank", "ALTER TABLE tournament_players ADD COLUMN seed_rank INTEGER"],
+  ];
+  for (const [col, sql] of tpAdditions) {
+    if (tpColSet.has(col)) continue;
+    try {
+      await db.execute(sql);
+      console.warn(`ensureExpectedSchema: added missing column tournament_players.${col}`);
+    } catch (err) {
+      console.warn(`ensureExpectedSchema: could not add tournament_players.${col}:`, err);
+    }
+  }
 }
 
 // =============================================

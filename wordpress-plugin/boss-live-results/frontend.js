@@ -190,7 +190,9 @@
       // Per-round tables share identical widths so team names line up
       // vertically across rounds — same trick as the standings tables.
       const colgroup = el("colgroup");
-      [7, 26, 9, 26, 20, 12].forEach((w) => {
+      // Court widened from 7% so the "COURT" header isn't truncated by the
+      // .boss-table-fixed ellipsis rule. Trade comes from Team 1/Team 2/Detail.
+      [10, 24, 9, 24, 19, 14].forEach((w) => {
         const c = document.createElement("col");
         c.style.width = w + "%";
         colgroup.appendChild(c);
