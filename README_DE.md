@@ -79,6 +79,17 @@
 - **Speichern-Bestaetigung**: Gruener Toast bestätigt dass alle Änderungen (Einstellungen, Spieler, Teams, Hallen) nach dem Bearbeiten eines Turnier-Drafts gespeichert wurden
 - **Einheitliche Toast-Benachrichtigungen**: Ein globaler Toast-Kontext (`useToast`) ersetzt native Browser-Alerts fuer Speicher-Bestaetigungen, Import-Zusammenfassungen und Fehlermeldungen in der gesamten App — nicht blockierend, stapelbar, selbst-schliessend
 
+### Score-Eingabe-Polish &amp; TournamentView-Refactor (v2.7.5)
+- **Score-Eingabe — Tippen von "12" landet nicht mehr auf "2"**: schnelle Tastendrücke konnten gelegentlich Ziffern verlieren, weil der controlled-input-Value durch einen Re-Render-Sturm überschrieben wurde. `handleScoreChange` aktualisiert jetzt optimistisch den lokalen Sets-State pro Keystroke und überspringt das `loadAll()` pro Tastendruck (läuft weiter beim Blur), sodass der Input-Wert das wiedergibt, was du gerade getippt hast — auch während asynchroner DB-Round-Trips
+- **Auto-Select beim Fokus nur bei echten Fokus-Events**: eine ref-basierte Prüfung verhindert, dass `e.target.select()` bei React-Re-Renders erneut feuert, die den Fokus während des Tippens wiederherstellen. Das gewohnte "Tab in ein Feld, sofort tippen zum Ueberschreiben"-Verhalten bleibt erhalten, ohne aktive Eingaben zu zerstoeren
+- **Winner-Detection nur noch bei Enter**: Tab durch ein Set loest weiterhin den Auto-Fill-Vorschlag aus (z.B. 12 im 21-Ext-30-Modus → Gegner wird auf 21 gesetzt; 25 → Gegner auf 23 mit der 2-Punkte-Vorsprung-Regel), aber das Match wird erst als `completed` markiert, wenn du **Enter** drueckst. Erlaubt dem TD, Auto-Fill-Vorschlaege ueber mehrere Saetze zu pruefen und zu korrigieren, bevor das Match offiziell abgeschlossen wird. Die komplette `autoFillOpponentScore`-Regel-Logik (alle fuenf Punktmodi + Caps + 2-Punkte-Vorsprung) bleibt 1:1 unveraendert — nur der "Bestaetigen"-Schritt ist jetzt explizit
+- **TournamentView-Refactor (Phase 1)**: die 3983 Zeilen lange monolithische Datei `src/pages/TournamentView.tsx` ist jetzt in einen Ordner aus kleineren Single-Purpose-Files aufgeteilt:
+  - `index.tsx` (Orchestrator, ~2900 Zeilen, -28 %)
+  - `components/MatchCard.tsx` + `CompletedMatchesSection.tsx`
+  - `components/modals/{StartKoModal, EditTournamentModal, RestWarningModal, PlayerConflictModal, ReopenConfirmModal, UndoRoundModal}.tsx`
+  - `lib/{effectiveScoring, undoTarget}.ts` (pure Helper)
+  - 11 neue Dateien, jede unter 400 Zeilen, jeweils eine klare Verantwortlichkeit. Kein Verhaltenswechsel — rein strukturell. Vite loest `pages/TournamentView/index.tsx` transparent als Route auf, kein Routing-Change noetig
+
 ### Live-Push-Steuerung &amp; intelligenteres Rueckgaengig (v2.7.4)
 - **Push-Steuerung pro Turnier**: Live-aktive Turniere bekommen jetzt drei kompakte Aktionen — die bestehende "Live aktiv" Pille plus zwei Icon-Buttons (32×32) ⏸️ Pause / 🔄 Jetzt pushen. Pause haelt das Opt-In aufrecht, unterdrueckt aber Pushes (Discovery-Filter respektiert die neue `live_publish_paused_tournament_ids` Liste in app_settings). Jetzt pushen feuert sofort einen Snapshot, ignoriert Debounce + Heartbeat-Dedup + Backoff
 - **Auto-Backoff bei Verbindungsfehlern**: nach 3 aufeinander folgenden Push-Fehlern stuft sich der Publisher automatisch zurueck (30s → 2min → 5min) und ueberspringt event/heartbeat-Pushes waehrend des Cooldowns. Manuelle und finale Pushes ignorieren den Backoff. Erfolgreicher Push setzt den Counter sofort zurueck

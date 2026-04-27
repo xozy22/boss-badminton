@@ -1,34 +1,31 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import PrintDialog from "../components/print/PrintDialog";
-import { useTheme } from "../lib/ThemeContext";
-import type { ThemeColors } from "../lib/theme";
-import TemplateExportModal from "../components/tournament/TemplateExportModal";
-import DeleteTournamentModal from "../components/tournament/DeleteTournamentModal";
-import RetirePlayerModal from "../components/tournament/RetirePlayerModal";
-import RemovePlayerModal from "../components/tournament/RemovePlayerModal";
-import AttendanceCheckModal from "../components/tournament/AttendanceCheckModal";
-import UnpublishModal from "../components/tournament/UnpublishModal";
-import RanglisteTab from "../components/tournament/RanglisteTab";
-import GruppenTab from "../components/tournament/GruppenTab";
-import GroupProgressBar from "../components/tournament/GroupProgressBar";
-import VerwaltungTab from "../components/tournament/VerwaltungTab";
-import CourtOverview from "../components/courts/CourtOverview";
-import BracketView from "../components/bracket/BracketView";
-import BronzeMatchPanel from "../components/bracket/BronzeMatchPanel";
-import { CourtTimer } from "../components/courts/CourtTimer";
-import RestIndicator from "../components/players/RestIndicator";
-import { getRestingPlayers } from "../lib/restTime";
+import PrintDialog from "../../components/print/PrintDialog";
+import { useTheme } from "../../lib/ThemeContext";
+import TemplateExportModal from "../../components/tournament/TemplateExportModal";
+import DeleteTournamentModal from "../../components/tournament/DeleteTournamentModal";
+import RetirePlayerModal from "../../components/tournament/RetirePlayerModal";
+import RemovePlayerModal from "../../components/tournament/RemovePlayerModal";
+import AttendanceCheckModal from "../../components/tournament/AttendanceCheckModal";
+import UnpublishModal from "../../components/tournament/UnpublishModal";
+import RanglisteTab from "../../components/tournament/RanglisteTab";
+import GruppenTab from "../../components/tournament/GruppenTab";
+import GroupProgressBar from "../../components/tournament/GroupProgressBar";
+import VerwaltungTab from "../../components/tournament/VerwaltungTab";
+import CourtOverview from "../../components/courts/CourtOverview";
+import BracketView from "../../components/bracket/BracketView";
+import BronzeMatchPanel from "../../components/bracket/BronzeMatchPanel";
+import { getRestingPlayers } from "../../lib/restTime";
 import {
   getRunningPlayerCourts,
   getMatchConflicts,
   type ConflictPlayer,
-} from "../lib/courtConflicts";
+} from "../../lib/courtConflicts";
 import {
   getGroupProgress,
   getRemainingByGroup,
   getRoundToGroupMap,
-} from "../lib/groupProgress";
+} from "../../lib/groupProgress";
 import {
   getTournament,
   getTournamentPlayers,
@@ -56,7 +53,7 @@ import {
   getTournamentPlayersDetailed,
   isTauri,
   updateTournamentKoScoring,
-} from "../lib/db";
+} from "../../lib/db";
 import {
   generateRoundRobinSingles,
   generateRoundRobinDoubles,
@@ -80,20 +77,15 @@ import {
   generateWaterfallRound,
   advanceWaterfall,
   shufflePlayers,
-} from "../lib/draw";
+} from "../../lib/draw";
 import {
   calculateStandings,
   calculateTeamStandings,
   determineMatchWinner,
-  isScoreValid,
   getMaxScore,
   autoFillOpponentScore,
   getScoringDescription,
-  isSetComplete,
-  SCORING_MODES,
-  getScoringModeId,
-  type ScoringModeId,
-} from "../lib/scoring";
+} from "../../lib/scoring";
 import type {
   Tournament,
   Player,
@@ -101,12 +93,10 @@ import type {
   Match,
   GameSet,
   StandingEntry,
-  TournamentMode,
-  TournamentFormat,
   TournamentPlayerInfo,
-} from "../lib/types";
-import { parseHallConfig, playerDisplayName } from "../lib/types";
-import type { LivePublishConfig } from "../lib/types";
+} from "../../lib/types";
+import { parseHallConfig, playerDisplayName } from "../../lib/types";
+import type { LivePublishConfig } from "../../lib/types";
 import {
   LIVE_PUBLISH_SETTING_KEY,
   pushDelete,
@@ -114,349 +104,23 @@ import {
   setTournamentLive,
   isTournamentPaused,
   setTournamentPaused,
-} from "../lib/livePublish";
-import { triggerImmediatePush, usePushStatus } from "../lib/useLivePublisher";
-import { getAppSetting } from "../lib/db";
-import { useT } from "../lib/I18nContext";
-import { useToast } from "../lib/ToastContext";
-import { useDocumentTitle } from "../lib/useDocumentTitle";
+} from "../../lib/livePublish";
+import { triggerImmediatePush, usePushStatus } from "../../lib/useLivePublisher";
+import { getAppSetting } from "../../lib/db";
+import { useT } from "../../lib/I18nContext";
+import { useToast } from "../../lib/ToastContext";
+import { useDocumentTitle } from "../../lib/useDocumentTitle";
+import MatchCard from "./components/MatchCard";
+import CompletedMatchesSection from "./components/CompletedMatchesSection";
+import StartKoModal from "./components/modals/StartKoModal";
+import EditTournamentModal from "./components/modals/EditTournamentModal";
+import RestWarningModal from "./components/modals/RestWarningModal";
+import PlayerConflictModal from "./components/modals/PlayerConflictModal";
+import ReopenConfirmModal from "./components/modals/ReopenConfirmModal";
+import UndoRoundModal from "./components/modals/UndoRoundModal";
+import { getEffectiveScoring } from "./lib/effectiveScoring";
+import { getUndoTarget } from "./lib/undoTarget";
 
-const VALID_FORMATS: Record<TournamentMode, TournamentFormat[]> = {
-  singles: ["round_robin", "elimination", "group_ko", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination"],
-  doubles: ["round_robin", "elimination", "random_doubles", "group_ko", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination"],
-  mixed: ["round_robin", "elimination", "random_doubles", "group_ko", "swiss", "monrad", "king_of_court", "waterfall", "double_elimination"],
-};
-
-/** Returns effective scoring for a given round phase. For group_ko format:
- *  - "group" phase → always tournament group settings
- *  - "ko" phase → ko_* settings if set, else group settings
- *  For all other formats, always returns the tournament settings. */
-function getEffectiveScoring(tournament: Tournament, phase: string | null) {
-  if (
-    tournament.format === "group_ko" &&
-    phase === "ko" &&
-    tournament.ko_points_per_set != null
-  ) {
-    return {
-      pointsPerSet: tournament.ko_points_per_set,
-      setsToWin: tournament.ko_sets_to_win ?? tournament.sets_to_win,
-      cap: tournament.ko_cap,
-    };
-  }
-  return {
-    pointsPerSet: tournament.points_per_set,
-    setsToWin: tournament.sets_to_win,
-    cap: tournament.cap,
-  };
-}
-
-function StartKoModal({
-  tournament,
-  theme,
-  onClose,
-  onConfirm,
-}: {
-  tournament: Tournament;
-  theme: ThemeColors;
-  onClose: () => void;
-  onConfirm: (koPointsPerSet: number | null, koSetsToWin: number | null, koCap: number | null) => void;
-}) {
-  const { t } = useT();
-  const [useDifferent, setUseDifferent] = useState(false);
-  const [scoringMode, setScoringMode] = useState<ScoringModeId>(
-    getScoringModeId(tournament.points_per_set, tournament.cap)
-  );
-  const [setsToWin, setSetsToWin] = useState<number>(tournament.sets_to_win);
-  const scoringPreset = SCORING_MODES.find((m) => m.id === scoringMode)!;
-
-  const inputClass = `w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`;
-  const labelClass = `block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`;
-
-  const groupScoringLabel = `${t[`scoring_mode_${getScoringModeId(tournament.points_per_set, tournament.cap)}` as keyof typeof t] as string} · ${tournament.sets_to_win === 1 ? t.best_of_1 : tournament.sets_to_win === 2 ? t.best_of_3 : t.best_of_5}`;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-md p-6 border ${theme.cardBorder}`}>
-        <div className="flex justify-between items-center mb-5">
-          <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
-            🏆 {t.ko_modal_title}
-          </h3>
-          <button
-            onClick={onClose}
-            className={`${theme.textMuted} text-xl leading-none w-8 h-8 flex items-center justify-center rounded-lg transition-colors`}
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Group phase scoring info */}
-        <div className={`rounded-xl p-3 mb-4 border ${theme.cardBorder} ${theme.cardBg} bg-opacity-50`}>
-          <div className={`text-xs font-medium ${theme.textMuted} uppercase tracking-wide mb-1`}>
-            {t.ko_modal_group_phase_scoring}
-          </div>
-          <div className={`text-sm font-medium ${theme.textPrimary}`}>
-            {groupScoringLabel}
-          </div>
-        </div>
-
-        {/* Toggle for different KO scoring */}
-        <label className="flex items-center gap-3 cursor-pointer mb-4">
-          <input
-            type="checkbox"
-            checked={useDifferent}
-            onChange={(e) => setUseDifferent(e.target.checked)}
-            className="w-4 h-4 rounded"
-          />
-          <span className={`text-sm ${theme.textSecondary}`}>{t.ko_modal_use_different}</span>
-        </label>
-
-        {/* KO scoring dropdowns */}
-        {useDifferent && (
-          <div className="space-y-4">
-            <div className={`text-xs font-medium ${theme.textMuted} uppercase tracking-wide`}>
-              {t.ko_modal_ko_scoring}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>{t.scoring_mode}</label>
-                <select
-                  value={scoringMode}
-                  onChange={(e) => setScoringMode(e.target.value as ScoringModeId)}
-                  className={inputClass}
-                >
-                  {SCORING_MODES.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {t[`scoring_mode_${m.id}` as keyof typeof t] as string}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>{t.scoring_sets_to_win}</label>
-                <select
-                  value={setsToWin}
-                  onChange={(e) => setSetsToWin(Number(e.target.value))}
-                  className={inputClass}
-                >
-                  <option value={1}>{t.best_of_1}</option>
-                  <option value={2}>{t.best_of_3}</option>
-                  <option value={3}>{t.best_of_5}</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex gap-3 mt-6">
-          <button
-            onClick={onClose}
-            className={`flex-1 ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
-          >
-            {t.common_cancel}
-          </button>
-          <button
-            onClick={() => onConfirm(
-              useDifferent ? scoringPreset.points_per_set : null,
-              useDifferent ? setsToWin : null,
-              useDifferent ? scoringPreset.cap : null
-            )}
-            className="flex-1 bg-violet-600 text-white px-4 py-2.5 rounded-xl hover:bg-violet-700 shadow-sm transition-all text-sm font-medium"
-          >
-            🏆 {t.ko_modal_start_button}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EditTournamentModal({
-  tournament,
-  theme,
-  onClose,
-  onSave,
-}: {
-  tournament: Tournament;
-  theme: ThemeColors;
-  onClose: () => void;
-  onSave: (data: {
-    name: string;
-    mode: TournamentMode;
-    format: TournamentFormat;
-    setsToWin: number;
-    pointsPerSet: number;
-    cap: number | null;
-    courts: number;
-    numGroups: number;
-    qualifyPerGroup: number;
-    entryFeeSingle: number;
-    entryFeeDouble: number;
-  }) => void;
-}) {
-  const { t } = useT();
-  const [name, setName] = useState(tournament.name);
-  const [mode, setMode] = useState<TournamentMode>(tournament.mode);
-  const [format, setFormat] = useState<TournamentFormat>(tournament.format);
-  const [scoringMode, setScoringMode] = useState<ScoringModeId>(
-    getScoringModeId(tournament.points_per_set, tournament.cap)
-  );
-  const scoringPreset = SCORING_MODES.find((m) => m.id === scoringMode)!;
-  const pointsPerSet = scoringPreset.points_per_set;
-  const cap = scoringPreset.cap;
-  const [setsToWin, setSetsToWin] = useState<number>(tournament.sets_to_win);
-  const [courts, setCourts] = useState(tournament.courts);
-  const [numGroups, setNumGroups] = useState(tournament.num_groups || 2);
-  const [qualifyPerGroup, setQualifyPerGroup] = useState(tournament.qualify_per_group || 2);
-  const [entryFeeSingle, setEntryFeeSingle] = useState(String(tournament.entry_fee_single || 0));
-  const [entryFeeDouble, setEntryFeeDouble] = useState(String(tournament.entry_fee_double || 0));
-
-  useEffect(() => {
-    if (!VALID_FORMATS[mode].includes(format)) {
-      setFormat(VALID_FORMATS[mode][0]);
-    }
-  }, [mode, format]);
-
-  const inputClass = `w-full ${theme.inputBg} ${theme.inputText} border ${theme.inputBorder} rounded-xl px-4 py-2.5 text-sm ${theme.focusBorder} focus:ring-2 ${theme.focusRing} outline-none transition-all`;
-  const labelClass = `block text-xs font-medium ${theme.textSecondary} mb-1 uppercase tracking-wide`;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className={`${theme.cardBg} rounded-2xl shadow-2xl w-full max-w-lg p-6 border ${theme.cardBorder}`}>
-        <div className="flex justify-between items-center mb-5">
-          <h3 className={`text-lg font-bold ${theme.textPrimary}`}>
-            ✏️ {t.edit_tournament_title}
-          </h3>
-          <button
-            onClick={onClose}
-            className={`${theme.textMuted} text-xl leading-none w-8 h-8 flex items-center justify-center rounded-lg transition-colors`}
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className={labelClass}>{t.tournament_name}</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>{t.tournament_mode}</label>
-              <select value={mode} onChange={(e) => setMode(e.target.value as TournamentMode)} className={inputClass}>
-                {Object.entries({ singles: t.mode_singles, doubles: t.mode_doubles, mixed: t.mode_mixed }).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelClass}>{t.tournament_format}</label>
-              <select value={format} onChange={(e) => setFormat(e.target.value as TournamentFormat)} className={inputClass}>
-                {VALID_FORMATS[mode].map((f) => {
-                  const fmtLabels: Record<string, string> = { round_robin: t.format_round_robin, elimination: t.format_elimination, random_doubles: t.format_random_doubles, group_ko: t.format_group_ko, swiss: t.format_swiss, double_elimination: t.format_double_elimination, monrad: t.format_monrad, king_of_court: t.format_king_of_court, waterfall: t.format_waterfall };
-                  return <option key={f} value={f}>{fmtLabels[f]}</option>;
-                })}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>{t.scoring_mode}</label>
-              <select value={scoringMode} onChange={(e) => setScoringMode(e.target.value as ScoringModeId)} className={inputClass}>
-                {SCORING_MODES.map((m) => (
-                  <option key={m.id} value={m.id}>{t[`scoring_mode_${m.id}` as keyof typeof t] as string}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelClass}>{t.scoring_sets_to_win}</label>
-              <select value={setsToWin} onChange={(e) => setSetsToWin(Number(e.target.value))} className={inputClass}>
-                <option value={1}>{t.best_of_1}</option>
-                <option value={2}>{t.best_of_3}</option>
-                <option value={3}>{t.best_of_5}</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>{t.edit_tournament_courts_label}</label>
-              <select value={courts} onChange={(e) => setCourts(Number(e.target.value))} className={inputClass}>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                  <option key={n} value={n}>{n} {n === 1 ? t.common_field : t.common_fields}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {format === "group_ko" && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>{t.edit_tournament_groups_count}</label>
-                <select value={numGroups} onChange={(e) => setNumGroups(Number(e.target.value))} className={inputClass}>
-                  {[2, 3, 4, 5, 6, 7, 8].map((n) => (
-                    <option key={n} value={n}>{t.groups_count.replace("{count}", String(n))}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>{t.tournament_ko_size}</label>
-                <select value={qualifyPerGroup} onChange={(e) => setQualifyPerGroup(Number(e.target.value))} className={inputClass}>
-                  {[4, 8, 16, 32].map((n) => (
-                    <option key={n} value={n}>{t.tournament_qualify_ko_count.replace("{count}", String(n))}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {(format === "swiss" || format === "monrad" || format === "waterfall") && (
-            <div>
-              <label className={labelClass}>{t.tournament_swiss_rounds}</label>
-              <select value={numGroups} onChange={(e) => setNumGroups(Number(e.target.value))} className={inputClass}>
-                {[3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                  <option key={n} value={n}>{n} {t.tournament_view_tab_matches.toLowerCase()}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>{t.edit_tournament_fee_single}</label>
-              <input type="number" value={entryFeeSingle} onChange={(e) => setEntryFeeSingle(e.target.value)} className={inputClass} min={0} step="0.5" />
-            </div>
-            <div>
-              <label className={labelClass}>{t.edit_tournament_fee_double}</label>
-              <input type="number" value={entryFeeDouble} onChange={(e) => setEntryFeeDouble(e.target.value)} className={inputClass} min={0} step="0.5" />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-3 mt-6">
-          <button
-            onClick={onClose}
-            className={`flex-1 ${theme.cardBg} border ${theme.cardBorder} ${theme.textSecondary} px-4 py-2.5 rounded-xl hover:opacity-80 transition-all text-sm font-medium`}
-          >
-            {t.common_cancel}
-          </button>
-          <button
-            onClick={() => onSave({ name, mode, format, setsToWin, pointsPerSet, cap, courts, numGroups, qualifyPerGroup, entryFeeSingle: Number(entryFeeSingle) || 0, entryFeeDouble: Number(entryFeeDouble) || 0 })}
-            className={`flex-1 ${theme.primaryBg} text-white px-4 py-2.5 rounded-xl ${theme.primaryHoverBg} shadow-sm transition-all text-sm font-medium`}
-          >
-            {t.common_save}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function TournamentView() {
   const { theme } = useTheme();
@@ -1413,11 +1077,43 @@ export default function TournamentView() {
     const clampedT1 = Math.min(Math.max(t1, 0), maxScore);
     const clampedT2 = Math.min(Math.max(t2, 0), maxScore);
 
+    // Optimistically update the local sets-by-match state so the controlled
+    // input value reflects the keystroke immediately, without round-tripping
+    // through DB write + full loadAll. This avoids a re-render storm on
+    // every keystroke and prevents controlled-value clobbering races during
+    // rapid typing (typing "12" quickly used to settle to "2" because two
+    // overlapping loadAll cycles could re-set the input value to the
+    // previous-keystroke read of the DB while the user kept typing).
+    setSetsByMatch((prev) => {
+      const next = new Map(prev);
+      const sets = [...(next.get(matchId) ?? [])];
+      const idx = sets.findIndex((s) => s.set_number === setNumber);
+      if (idx >= 0) {
+        sets[idx] = { ...sets[idx], team1_score: clampedT1, team2_score: clampedT2 };
+      } else {
+        sets.push({
+          id: 0,
+          match_id: matchId,
+          set_number: setNumber,
+          team1_score: clampedT1,
+          team2_score: clampedT2,
+        });
+      }
+      next.set(matchId, sets);
+      return next;
+    });
+
+    // Persist to DB in the background. handleScoreBlur fires the full
+    // loadAll() once the user leaves the field — that's when winner
+    // detection, auto-fill, and standings recompute happen anyway.
     await upsertSet(matchId, setNumber, clampedT1, clampedT2);
-    loadAll();
   };
 
-  // onBlur: Auto-Fill + Match-Entscheidung erst wenn Feld verlassen wird
+  // onBlur: Auto-Fill (auf Tab/Click). Winner-Detection ist hier
+  // bewusst NICHT mehr drin — das passiert nur noch auf explizites
+  // Enter via handleScoreCommit (siehe unten). So kann der TD durch
+  // mehrere Sets tabben und Auto-Fill-Vorschläge sehen / korrigieren,
+  // ohne dass das Match versehentlich abgeschlossen wird.
   const handleScoreBlur = async (
     matchId: number,
     setNumber: number,
@@ -1431,9 +1127,10 @@ export default function TournamentView() {
     let t1 = existing.team1_score;
     let t2 = existing.team2_score;
 
-    // Auto-Fill: Gegner-Score automatisch setzen
-    // Only auto-fill if the OTHER team's score is still 0 (truly fresh entry)
-    // This prevents overwriting when tabbing through already-filled fields
+    // Auto-Fill: Gegner-Score automatisch setzen.
+    // Logic UNVERÄNDERT — gleiche autoFillOpponentScore-Aufrufe und
+    // gleiche Bedingungen wie zuvor. Punktemodus-Vorschläge (21-Ext-30,
+    // 2-Punkte-Vorsprung, Caps etc.) funktionieren genau wie bisher.
     const enteredScore = team === 1 ? t1 : t2;
     const currentOther = team === 1 ? t2 : t1;
     if (enteredScore > 0 && currentOther === 0) {
@@ -1450,7 +1147,45 @@ export default function TournamentView() {
       }
     }
 
-    // Match-Entscheidung pruefen
+    loadAll();
+  };
+
+  // onKeyDown=Enter: Auto-Fill (gleicher Code wie in handleScoreBlur)
+  // gefolgt von Winner-Detection. Wird nur bei explizitem Enter
+  // gerufen — der unmittelbar folgende native Blur (durch goNext in
+  // MatchCard) feuert handleScoreBlur, das loadAll() macht. Kein
+  // eigenes loadAll hier um Doppel-Reloads zu vermeiden.
+  const handleScoreCommit = async (
+    matchId: number,
+    setNumber: number,
+    team: 1 | 2
+  ) => {
+    if (!tournament) return;
+    const currentSets = setsByMatch.get(matchId) || [];
+    const existing = currentSets.find((s) => s.set_number === setNumber);
+    if (!existing) return;
+
+    let t1 = existing.team1_score;
+    let t2 = existing.team2_score;
+
+    // Auto-Fill (idempotent — wenn Tab schon gefüllt hat, currentOther !== 0 → no-op)
+    const enteredScore = team === 1 ? t1 : t2;
+    const currentOther = team === 1 ? t2 : t1;
+    if (enteredScore > 0 && currentOther === 0) {
+      const autoScore = autoFillOpponentScore(
+        enteredScore,
+        effectiveScoring.pointsPerSet,
+        effectiveScoring.cap,
+        true
+      );
+      if (autoScore !== null) {
+        if (team === 1) t2 = autoScore;
+        else t1 = autoScore;
+        await upsertSet(matchId, setNumber, t1, t2);
+      }
+    }
+
+    // Winner-Detection — exakt der Block, der vorher in handleScoreBlur stand.
     const updatedSets = [...currentSets.filter((s) => s.set_number !== setNumber)];
     updatedSets.push({
       id: existing.id ?? 0,
@@ -1471,7 +1206,6 @@ export default function TournamentView() {
     if (winner) {
       await updateMatchResult(matchId, winner);
       const wasEditing = editingMatchIds.has(matchId);
-      // Remove from editing set
       setEditingMatchIds((prev) => {
         const next = new Set(prev);
         next.delete(matchId);
@@ -1492,8 +1226,9 @@ export default function TournamentView() {
       // Match was completed but scores were changed so no winner anymore — reset
       await updateMatchResult(matchId, null);
     }
-
-    loadAll();
+    // Kein loadAll: der durch goNext()-Fokuswechsel ausgelöste Blur
+    // ruft handleScoreBlur, das loadAll() macht. So passiert genau
+    // ein Reload pro Enter, nicht zwei.
   };
 
   const handleCourtChange = async (matchId: number, court: number | null, bypassRestCheck = false) => {
@@ -1758,99 +1493,10 @@ export default function TournamentView() {
    *   4. Predict the post-undo phase transition (full reset / back-to-
    *      group / no change) — see decision matrix in plan.
    */
-  const undoTarget = useMemo(() => {
-    if (!tournament || rounds.length === 0) return null;
-
-    // Newest-first by insertion order. round.id is auto-increment so
-    // largest id == most-recently created round.
-    const byIdDesc = [...rounds].sort((a, b) => b.id - a.id);
-    const head = byIdDesc[0];
-
-    // Bronze + Final pairing — both share round_number, were created in
-    // the same SF→Final transition.
-    const pair: Round[] = [head];
-    if (head.phase === "third_place") {
-      const finalSibling = rounds.find(
-        (r) =>
-          r.id !== head.id &&
-          r.round_number === head.round_number &&
-          (r.phase === "ko" || r.phase === "winners" || r.phase == null),
-      );
-      if (finalSibling) pair.unshift(finalSibling);   // Final first, Bronze second
-    } else if (head.phase === "ko" || head.phase === "winners" || head.phase == null) {
-      const bronzeSibling = rounds.find(
-        (r) =>
-          r.id !== head.id &&
-          r.round_number === head.round_number &&
-          r.phase === "third_place",
-      );
-      if (bronzeSibling) pair.push(bronzeSibling);
-    }
-
-    // Stats across the involved rounds.
-    let matchCount = 0,
-      completedCount = 0,
-      activeOnCourtCount = 0,
-      setCount = 0;
-    for (const r of pair) {
-      const ms = matchesByRound.get(r.id) ?? [];
-      matchCount += ms.length;
-      for (const m of ms) {
-        if (m.status === "completed") completedCount++;
-        if (m.status === "active" || (m.court != null && m.status !== "completed")) {
-          activeOnCourtCount++;
-        }
-        setCount += (setsByMatch.get(m.id) ?? []).length;
-      }
-    }
-
-    // Round label. Keep it short and descriptive; bronze pairing appends
-    // the trophy marker so the user sees both deletions at once.
-    const primary = pair[0];
-    const labelForRound = (r: Round): string => {
-      if (r.phase === "third_place") return `🥉 ${t.bracket_third_place_short}`;
-      if (r.phase === "group" && r.group_number != null) {
-        // Local round-index within the group (handles non-contiguous round_numbers).
-        const groupRounds = rounds
-          .filter((rr) => rr.phase === "group" && rr.group_number === r.group_number)
-          .sort((a, b) => a.round_number - b.round_number);
-        const idx = groupRounds.findIndex((rr) => rr.id === r.id);
-        const label = t.tournament_view_round_label.replace("{n}", String(idx + 1));
-        return `${t.group_progress_label.replace("{n}", String(r.group_number))} · ${label}`;
-      }
-      if (r.phase === "winners") return `W · ${t.tournament_view_round_label.replace("{n}", String(r.round_number))}`;
-      if (r.phase === "losers")  return `L · ${t.tournament_view_round_label.replace("{n}", String(r.round_number))}`;
-      return t.tournament_view_round_label.replace("{n}", String(r.round_number));
-    };
-    let label = labelForRound(primary);
-    if (pair.length > 1 && pair.some((r) => r.phase === "third_place")) {
-      label += ` + 🥉 ${t.bracket_third_place_short}`;
-    }
-
-    // Phase transition prediction.
-    const remaining = rounds.filter((r) => !pair.some((p) => p.id === r.id));
-    const resetStatusToDraft = remaining.length === 0;
-    const remainingKo = remaining.filter(
-      (r) => r.phase === "ko" || r.phase === "winners" || r.phase === "losers",
-    );
-    const remainingGroup = remaining.filter((r) => r.phase === "group");
-    const isGroupKoBackToGroup =
-      tournament.format === "group_ko" &&
-      remainingKo.length === 0 &&
-      remainingGroup.length > 0 &&
-      pair.some((r) => r.phase === "ko" || r.phase === "third_place");
-
-    return {
-      rounds: pair,
-      label,
-      matchCount,
-      completedCount,
-      activeOnCourtCount,
-      setCount,
-      resetStatusToDraft,
-      isGroupKoBackToGroup,
-    };
-  }, [tournament, rounds, matchesByRound, setsByMatch, t]);
+  const undoTarget = useMemo(
+    () => getUndoTarget(tournament, rounds, matchesByRound, setsByMatch, t),
+    [tournament, rounds, matchesByRound, setsByMatch, t],
+  );
 
   /**
    * Execute the undo step previewed by the modal. Idempotent against
@@ -2718,85 +2364,23 @@ export default function TournamentView() {
         />
       )}
 
-      {/* Rest Time Warning Modal */}
-      {restWarning && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`${theme.cardBg} rounded-2xl shadow-xl border ${theme.cardBorder} max-w-md w-full p-6`}>
-            <div className="flex items-start gap-3 mb-4">
-              <div className="text-2xl">⏱️</div>
-              <div className="flex-1">
-                <h3 className={`text-lg font-bold ${theme.textPrimary}`}>{t.rest_warning_title}</h3>
-                <p className={`text-sm ${theme.textMuted} mt-1`}>{t.rest_warning_body}</p>
-              </div>
-            </div>
-            <ul className={`mb-5 space-y-1.5 pl-1`}>
-              {restWarning.players.map((p) => (
-                <li key={p.id} className={`text-sm ${theme.textPrimary} flex items-start gap-2`}>
-                  <span className="text-amber-500">•</span>
-                  <span>
-                    {t.rest_warning_player_row
-                      .replace("{player}", p.name)
-                      .replace("{minutes}", String(p.minutesLeft))}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setRestWarning(null)}
-                className={`px-4 py-2 rounded-xl border ${theme.cardBorder} ${theme.textPrimary} text-sm font-medium hover:opacity-80 transition-opacity`}
-              >
-                {t.rest_warning_cancel}
-              </button>
-              <button
-                onClick={async () => {
-                  const w = restWarning;
-                  setRestWarning(null);
-                  await handleCourtChange(w.matchId, w.court, true);
-                }}
-                className={`px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium transition-colors`}
-              >
-                {t.rest_warning_confirm}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RestWarningModal
+        warning={restWarning}
+        theme={theme}
+        onCancel={() => setRestWarning(null)}
+        onConfirm={async () => {
+          const w = restWarning;
+          if (!w) return;
+          setRestWarning(null);
+          await handleCourtChange(w.matchId, w.court, true);
+        }}
+      />
 
-      {/* Player-Conflict Modal — HARD block (no bypass) */}
-      {playerConflict && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`${theme.cardBg} rounded-2xl shadow-xl border ${theme.cardBorder} max-w-md w-full p-6`}>
-            <div className="flex items-start gap-3 mb-4">
-              <div className="text-2xl">🚫</div>
-              <div className="flex-1">
-                <h3 className={`text-lg font-bold ${theme.textPrimary}`}>{t.player_conflict_title}</h3>
-                <p className={`text-sm ${theme.textMuted} mt-1`}>{t.player_conflict_body}</p>
-              </div>
-            </div>
-            <ul className={`mb-5 space-y-1.5 pl-1`}>
-              {playerConflict.players.map((p) => (
-                <li key={p.id} className={`text-sm ${theme.textPrimary} flex items-start gap-2`}>
-                  <span className="text-rose-500">•</span>
-                  <span>
-                    {t.player_conflict_row
-                      .replace("{player}", p.name)
-                      .replace("{court}", String(p.court))}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setPlayerConflict(null)}
-                className={`px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium transition-colors`}
-              >
-                {t.common_close}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PlayerConflictModal
+        conflict={playerConflict}
+        theme={theme}
+        onClose={() => setPlayerConflict(null)}
+      />
 
       {/* Start KO Modal */}
       {showStartKoModal && tournament && (
@@ -2813,19 +2397,12 @@ export default function TournamentView() {
         />
       )}
 
-      {showReopenConfirm && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className={`${theme.cardBg} rounded-2xl shadow-2xl p-6 max-w-sm border ${theme.cardBorder} text-center`}>
-            <div className="text-4xl mb-3">🔓</div>
-            <h3 className={`font-bold text-lg ${theme.textPrimary} mb-2`}>{t.tournament_view_reopen}</h3>
-            <p className={`text-sm ${theme.textSecondary} mb-5`}>{t.tournament_view_reopen_confirm}</p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={() => setShowReopenConfirm(false)} className={`px-4 py-2 rounded-xl text-sm ${theme.textSecondary} border ${theme.cardBorder} hover:opacity-80`}>{t.common_cancel}</button>
-              <button onClick={handleReopenTournament} className={`${theme.primaryBg} text-white px-4 py-2 rounded-xl text-sm font-medium ${theme.primaryHoverBg}`}>{t.tournament_view_reopen}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReopenConfirmModal
+        open={showReopenConfirm}
+        theme={theme}
+        onCancel={() => setShowReopenConfirm(false)}
+        onConfirm={handleReopenTournament}
+      />
 
       <UnpublishModal
         open={showUnpublishConfirm}
@@ -2836,82 +2413,13 @@ export default function TournamentView() {
       />
 
 
-      {/* Rich preview modal for the undo step. Shows exactly what will be
-          deleted (round label + match/completed/sets/active counts) plus
-          a hint about the resulting phase transition (back to group / back
-          to draft / no change). Confirm-button turns rose-red whenever
-          completed-result data is about to be lost, otherwise stays
-          amber as a softer signal. */}
-      {showUndoRound && undoTarget && (() => {
-        const tgt = undoTarget;
-        const dangerous = tgt.completedCount > 0 || tgt.activeOnCourtCount > 0;
-        const phaseHint = tgt.resetStatusToDraft
-          ? t.tournament_view_undo_phase_to_draft
-          : tgt.isGroupKoBackToGroup
-          ? t.tournament_view_undo_phase_to_group
-          : null;
-        return (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className={`${theme.cardBg} rounded-2xl shadow-2xl p-6 max-w-md w-full border ${theme.cardBorder}`}>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="text-3xl">↩️</div>
-                <h3 className={`font-bold text-lg ${theme.textPrimary}`}>
-                  {t.tournament_view_undo_round_title}
-                </h3>
-              </div>
-
-              <p className={`text-sm ${theme.textSecondary} mb-3`}>
-                {t.tournament_view_undo_target_label}
-              </p>
-
-              <div className={`rounded-xl border-2 ${dangerous ? "border-amber-300 bg-amber-50/50 dark:bg-amber-900/20" : `${theme.cardBorder} ${theme.cardBg}`} p-4 mb-4`}>
-                <div className={`font-semibold ${theme.textPrimary} mb-2`}>{tgt.label}</div>
-                <ul className={`text-sm space-y-1 ${theme.textSecondary}`}>
-                  <li>• {t.tournament_view_undo_match_count.replace("{n}", String(tgt.matchCount))}</li>
-                  {tgt.completedCount > 0 && (
-                    <li className="text-amber-700 dark:text-amber-300 font-medium">
-                      • {t.tournament_view_undo_completed_count.replace("{n}", String(tgt.completedCount))} ⚠
-                    </li>
-                  )}
-                  {tgt.setCount > 0 && (
-                    <li>• {t.tournament_view_undo_set_count.replace("{n}", String(tgt.setCount))}</li>
-                  )}
-                  {tgt.activeOnCourtCount > 0 && (
-                    <li className="text-amber-700 dark:text-amber-300 font-medium">
-                      • {t.tournament_view_undo_active_count.replace("{n}", String(tgt.activeOnCourtCount))} ⚠
-                    </li>
-                  )}
-                </ul>
-              </div>
-
-              {phaseHint && (
-                <p className={`text-xs ${theme.textMuted} mb-4 flex items-start gap-1.5`}>
-                  <span>ⓘ</span><span>{phaseHint}</span>
-                </p>
-              )}
-
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setShowUndoRound(false)}
-                  className={`px-4 py-2 rounded-xl text-sm ${theme.textSecondary} border ${theme.cardBorder} hover:opacity-80`}
-                >
-                  {t.common_cancel}
-                </button>
-                <button
-                  onClick={performUndo}
-                  className={`${
-                    dangerous
-                      ? "bg-rose-600 hover:bg-rose-700"
-                      : "bg-amber-500 hover:bg-amber-600"
-                  } text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors`}
-                >
-                  {t.tournament_view_undo_confirm}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      <UndoRoundModal
+        open={showUndoRound}
+        target={undoTarget}
+        theme={theme}
+        onCancel={() => setShowUndoRound(false)}
+        onConfirm={performUndo}
+      />
 
       {/* Round Tabs - above everything */}
       {rounds.length === 0 && tournament.status === "draft" && (
@@ -3239,6 +2747,7 @@ export default function TournamentView() {
                           playerName={playerName}
                           onScoreChange={handleScoreChange}
                           onScoreBlur={handleScoreBlur}
+                          onScoreCommit={handleScoreCommit}
                           onCourtChange={handleCourtChange}
                           onAnnounce={handleAnnounce}
                           onReset={handleReopenMatch}
@@ -3262,6 +2771,7 @@ export default function TournamentView() {
                           playerName={playerName}
                           onScoreChange={handleScoreChange}
                           onScoreBlur={handleScoreBlur}
+                          onScoreCommit={handleScoreCommit}
                           onCourtChange={handleCourtChange}
                           onAnnounce={handleAnnounce}
                           onReset={handleReopenMatch}
@@ -3406,578 +2916,6 @@ export default function TournamentView() {
           playerName={playerName}
         />
       )}
-    </div>
-  );
-}
-
-function CompletedMatchesSection({
-  matches,
-  setsByMatch,
-  setsToWin,
-  pointsPerSet,
-  cap,
-  courts,
-  occupiedCourts,
-  conflictedMatches,
-  playerName,
-  onScoreChange,
-  onScoreBlur,
-  onCourtChange,
-  onAnnounce,
-  onReset,
-  isActive,
-  theme,
-  hasOtherMatches,
-  editingMatchIds,
-  allMatches,
-  minRestMinutes,
-  roundToGroup,
-}: {
-  matches: Match[];
-  setsByMatch: Map<number, GameSet[]>;
-  setsToWin: number;
-  pointsPerSet: number;
-  cap: number | null;
-  courts: number;
-  occupiedCourts: Set<number>;
-  conflictedMatches?: Map<number, ConflictPlayer[]>;
-  playerName: (id: number | null) => string;
-  onScoreChange: (matchId: number, setNumber: number, team: 1 | 2, value: number) => void;
-  onScoreBlur: (matchId: number, setNumber: number, team: 1 | 2) => void;
-  onCourtChange: (matchId: number, court: number | null) => void;
-  onAnnounce: (court: number, team1: string, team2: string) => void;
-  onReset: (matchId: number) => void;
-  isActive: boolean;
-  theme: any;
-  hasOtherMatches: boolean;
-  editingMatchIds: Set<number>;
-  allMatches: Match[];
-  minRestMinutes: number;
-  /**
-   * When provided (group_ko in active group phase), completed matches are
-   * segmented into per-group sections — same structuring approach as the
-   * unassigned queue. Falls back to a single flat section otherwise (KO,
-   * round_robin, etc.).
-   */
-  roundToGroup?: Map<number, number>;
-}) {
-  const { t } = useT();
-  // The toggle simply shows/hides the completed-match list. Default is
-  // collapsed so the page emphasises running/waiting matches by default —
-  // completed ones are reference/history. Editing matches stay visible
-  // either way (the user is mid-edit and would lose the input UI).
-  const [isOpen, setIsOpen] = useState(false);
-
-  const teamLabel = (m: Match) => {
-    const t1 = m.team1_p2
-      ? `${playerName(m.team1_p1)} / ${playerName(m.team1_p2)}`
-      : playerName(m.team1_p1);
-    const t2 = m.team2_p2
-      ? `${playerName(m.team2_p1)} / ${playerName(m.team2_p2)}`
-      : playerName(m.team2_p1);
-    return { t1, t2 };
-  };
-
-  return (
-    <div className={hasOtherMatches ? "mt-4" : ""}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={`text-xs font-bold ${theme.textMuted} uppercase tracking-wider mb-2 flex items-center gap-2 hover:opacity-80 transition-opacity`}
-      >
-        <span className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}>
-          ▾
-        </span>
-        {t.tournament_view_completed_matches.replace("{count}", String(matches.length))}
-      </button>
-
-      {/* Editing matches: always show as full MatchCard */}
-      {matches.filter((m) => editingMatchIds.has(m.id)).map((match) => (
-        <MatchCard
-          key={match.id}
-          match={match}
-          sets={setsByMatch.get(match.id) || []}
-          setsToWin={setsToWin}
-          pointsPerSet={pointsPerSet}
-          cap={cap}
-          courts={courts}
-          occupiedCourts={occupiedCourts}
-          conflictedMatches={conflictedMatches}
-          playerName={playerName}
-          onScoreChange={onScoreChange}
-          onScoreBlur={onScoreBlur}
-          onCourtChange={onCourtChange}
-          onAnnounce={onAnnounce}
-          onReset={onReset}
-          isActive={isActive}
-          theme={theme}
-          allMatches={allMatches}
-          minRestMinutes={minRestMinutes}
-        />
-      ))}
-
-      {/* Non-editing matches — only rendered when the section is open.
-          Editing matches above always show regardless of the toggle. */}
-      {isOpen && (() => {
-        const nonEditing = matches.filter((m) => !editingMatchIds.has(m.id));
-        if (nonEditing.length === 0) return null;
-
-        // Build per-group buckets when group context is available. Sorted
-        // ascending by group_number so the section order matches the
-        // standings table in GruppenTab. Returns null when there's nothing
-        // to group (KO matches, non-group_ko formats) — render path falls
-        // back to a single flat section.
-        const buildGroups = (): { group: number; matches: Match[] }[] | null => {
-          if (!roundToGroup) return null;
-          const byGroup = new Map<number, Match[]>();
-          for (const m of nonEditing) {
-            const g = roundToGroup.get(m.round_id);
-            if (g == null) continue;
-            const arr = byGroup.get(g) ?? [];
-            arr.push(m);
-            byGroup.set(g, arr);
-          }
-          if (byGroup.size === 0) return null;
-          return Array.from(byGroup.entries())
-            .map(([group, ms]) => ({ group, matches: ms }))
-            .sort((a, b) => a.group - b.group);
-        };
-
-        const groups = buildGroups();
-
-        // One compact one-line row per match — used inside both flat and
-        // grouped rendering paths.
-        const renderCompactRow = (m: Match, i: number, n: number) => {
-          const { t1, t2 } = teamLabel(m);
-          const sets = setsByMatch.get(m.id) || [];
-          let s1 = 0, s2 = 0;
-          for (const s of sets) {
-            if (isSetComplete(s, pointsPerSet, cap)) {
-              if (s.team1_score > s.team2_score) s1++;
-              else s2++;
-            }
-          }
-          return (
-            <div
-              key={m.id}
-              className={`flex items-center justify-between px-4 py-2 text-sm ${
-                i > 0 && i < n ? `border-t ${theme.cardBorder}` : ""
-              }`}
-            >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <span className={`font-medium truncate ${
-                  m.winner_team === 1 ? theme.activeBadgeText : theme.textSecondary
-                }`}>
-                  {t1}
-                </span>
-                <span className={`${theme.textMuted} text-xs shrink-0`}>{t.common_vs}</span>
-                <span className={`font-medium truncate ${
-                  m.winner_team === 2 ? theme.activeBadgeText : theme.textSecondary
-                }`}>
-                  {t2}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0 ml-3">
-                <span className={`font-mono font-bold text-sm ${theme.textPrimary}`}>
-                  {s1}:{s2}
-                </span>
-                <span className={`font-mono text-xs ${theme.textMuted}`}>
-                  ({sets.filter(s => s.team1_score > 0 || s.team2_score > 0).map(s => `${s.team1_score}:${s.team2_score}`).join(", ")})
-                </span>
-                {isActive && (
-                  <button
-                    onClick={() => onReset(m.id)}
-                    className="text-xs text-amber-500 hover:text-amber-700 transition-colors"
-                  >
-                    {t.tournament_view_edit_results}
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        };
-
-        const groupHeader = (group: number, count: number) => (
-          <div className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide mb-1 mt-2 first:mt-0 text-violet-600`}>
-            <span>{t.group_progress_label.replace("{n}", String(group))}</span>
-            <span className={`font-mono font-normal ${theme.textMuted}`}>
-              {t.groups_matches_count.replace("{count}", String(count))}
-            </span>
-          </div>
-        );
-
-        if (groups) {
-          return (
-            <div className="space-y-2">
-              {groups.map(({ group, matches: gm }) => (
-                <div key={group}>
-                  {groupHeader(group, gm.length)}
-                  <div className={`${theme.cardBg} rounded-2xl border ${theme.cardBorder} overflow-hidden`}>
-                    {gm.map((m, i) => renderCompactRow(m, i, gm.length))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        }
-        return (
-          <div className={`${theme.cardBg} rounded-2xl border ${theme.cardBorder} overflow-hidden`}>
-            {nonEditing.map((m, i) => renderCompactRow(m, i, nonEditing.length))}
-          </div>
-        );
-      })()}
-    </div>
-  );
-}
-
-function MatchCard({
-  match,
-  sets,
-  setsToWin,
-  pointsPerSet,
-  cap,
-  courts,
-  occupiedCourts,
-  conflictedMatches,
-  playerName,
-  onScoreChange,
-  onScoreBlur,
-  onCourtChange,
-  onAnnounce,
-  onReset,
-  isActive,
-  theme,
-  allMatches,
-  minRestMinutes,
-}: {
-  match: Match;
-  sets: GameSet[];
-  setsToWin: number;
-  pointsPerSet: number;
-  cap: number | null;
-  courts: number;
-  occupiedCourts: Set<number>;
-  conflictedMatches?: Map<number, ConflictPlayer[]>;
-  playerName: (id: number | null) => string;
-  onScoreChange: (
-    matchId: number,
-    setNumber: number,
-    team: 1 | 2,
-    value: number
-  ) => void;
-  onScoreBlur: (
-    matchId: number,
-    setNumber: number,
-    team: 1 | 2
-  ) => void;
-  onCourtChange: (matchId: number, court: number | null) => void;
-  onAnnounce?: (court: number, team1: string, team2: string) => void;
-  onReset: (matchId: number) => void;
-  isActive: boolean;
-  theme: ThemeColors;
-  allMatches: Match[];
-  minRestMinutes: number;
-}) {
-  const { t } = useT();
-  const maxSets = setsToWin * 2 - 1;
-  const maxScore = getMaxScore(pointsPerSet, cap);
-  const team1Label = match.team1_p2
-    ? `${playerName(match.team1_p1)} / ${playerName(match.team1_p2)}`
-    : playerName(match.team1_p1);
-  const team2Label = match.team2_p2
-    ? `${playerName(match.team2_p1)} / ${playerName(match.team2_p2)}`
-    : playerName(match.team2_p1);
-
-  // JSX renderer that inlines RestIndicator after each player name. Only renders
-  // clocks when the tournament is active AND has rest time configured AND the
-  // match itself isn't completed yet (a completed match has no scheduling value).
-  const showRestIcons =
-    isActive && minRestMinutes > 0 && match.status !== "completed";
-  const renderTeam = (p1: number, p2: number | null) => (
-    <>
-      <span>{playerName(p1)}</span>
-      {showRestIcons && (
-        <RestIndicator
-          playerId={p1}
-          matches={allMatches}
-          minRestMinutes={minRestMinutes}
-          excludeMatchId={match.id}
-        />
-      )}
-      {p2 != null && (
-        <>
-          <span className="mx-1 text-gray-400">/</span>
-          <span>{playerName(p2)}</span>
-          {showRestIcons && (
-            <RestIndicator
-              playerId={p2}
-              matches={allMatches}
-              minRestMinutes={minRestMinutes}
-              excludeMatchId={match.id}
-            />
-          )}
-        </>
-      )}
-    </>
-  );
-
-  // Count sets won for display
-  let team1SetsWon = 0;
-  let team2SetsWon = 0;
-  for (const s of sets) {
-    if (isSetComplete(s, pointsPerSet, cap)) {
-      if (s.team1_score > s.team2_score) team1SetsWon++;
-      else team2SetsWon++;
-    }
-  }
-
-  const borderColor =
-    match.status === "completed"
-      ? theme.completedBorder
-      : team1SetsWon > 0 || team2SetsWon > 0
-      ? "border-l-amber-400"
-      : "border-l-gray-200";
-
-  const isDraggable = isActive && !match.court && match.status !== "completed" && courts > 1;
-  // notStarted: only if match was NEVER assigned to a court (no court_assigned_at history)
-  // Matches being edited (reopened) had a court before, so they should remain editable
-  const notStarted = courts > 1 && !match.court && !match.court_assigned_at;
-  const inputsDisabled = !isActive || match.status === "completed" || notStarted;
-
-  return (
-    <div
-      data-match-id={match.id}
-      draggable={isDraggable}
-      onDragStart={(e) => {
-        if (isDraggable) {
-          e.dataTransfer.setData("matchId", String(match.id));
-          e.dataTransfer.effectAllowed = "move";
-        }
-      }}
-      className={`${theme.cardBg} rounded-2xl shadow-sm border ${theme.cardBorder} border-l-4 ${borderColor} p-5 mb-3 transition-all duration-200 ${
-        match.status === "completed" ? "opacity-80" : ""
-      } ${isDraggable ? "cursor-grab active:cursor-grabbing hover:shadow-md" : ""}`}
-    >
-      {/* Teams + Court */}
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-3 text-sm">
-          {/* Court Badge + Timer */}
-          {courts > 1 && (
-            <>
-              {isActive && match.status !== "completed" ? (
-                <select
-                  value={match.court ?? ""}
-                  onChange={(e) =>
-                    onCourtChange(match.id, e.target.value ? Number(e.target.value) : null)
-                  }
-                  className="text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg px-2 py-1 outline-none cursor-pointer hover:bg-amber-100 transition-colors"
-                  title={t.court_choose_court}
-                >
-                  <option value="">{t.tournament_view_court_question}</option>
-                  {(() => {
-                    const matchHasConflict = conflictedMatches?.has(match.id) ?? false;
-                    return Array.from({ length: courts }, (_, i) => i + 1).map((c) => {
-                      const busy = occupiedCourts.has(c) && match.court !== c;
-                      const blocked = matchHasConflict && match.court !== c;
-                      return (
-                        <option key={c} value={c} disabled={busy || blocked}>
-                          {t.common_field} {c}
-                          {busy ? ` (${t.common_occupied})` : blocked ? ` (${t.match_player_busy_short})` : ""}
-                        </option>
-                      );
-                    });
-                  })()}
-                </select>
-              ) : match.court ? (
-                <span className="text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-lg">
-                  {t.common_field} {match.court}
-                </span>
-              ) : null}
-              {match.court && (
-                <CourtTimer
-                  assignedAt={match.court_assigned_at}
-                  completed={match.status === "completed"}
-                />
-              )}
-            </>
-          )}
-          <div>
-            <span
-              className={`font-semibold ${
-                match.winner_team === 1 ? "text-emerald-600" : theme.textPrimary
-              }`}
-            >
-              {renderTeam(match.team1_p1, match.team1_p2)}
-            </span>
-            <span className="text-gray-300 mx-3 font-light">{t.common_vs}</span>
-            <span
-              className={`font-semibold ${
-                match.winner_team === 2 ? "text-emerald-600" : theme.textPrimary
-              }`}
-            >
-              {renderTeam(match.team2_p1, match.team2_p2)}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {(team1SetsWon > 0 || team2SetsWon > 0) && (
-            <span className={`text-sm font-bold font-mono ${theme.cardBg} ${theme.textPrimary} border ${theme.cardBorder} px-2.5 py-1 rounded-lg`}>
-              {team1SetsWon}:{team2SetsWon}
-            </span>
-          )}
-          {match.status === "completed" && (
-            <span className={`text-xs font-medium ${theme.activeBadgeBg} ${theme.activeBadgeText} px-2.5 py-1 rounded-full`}>
-              {t.tournament_view_match_completed}
-            </span>
-          )}
-          {isActive && match.status === "completed" && (
-            <button
-              onClick={() => onReset(match.id)}
-              className="text-xs text-amber-500 hover:text-amber-700 font-medium transition-colors"
-              title={t.tournament_view_edit_results}
-            >
-              {t.tournament_view_edit_results}
-            </button>
-          )}
-          {/* Announce to TV */}
-          {isActive && match.court && match.status !== "completed" && onAnnounce && (
-            <button
-              onClick={() => onAnnounce(match.court!, team1Label, team2Label)}
-              className="text-xs text-gray-400 hover:text-amber-600 font-medium transition-colors"
-              title={t.tournament_view_announce_title}
-            >
-              📢
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Not started hint */}
-      {notStarted && (
-        <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-3 inline-block">
-          ⏳ {t.tournament_view_assign_court_first}
-        </div>
-      )}
-
-      {/* Sets */}
-      <div className="flex gap-5">
-        {Array.from({ length: maxSets }, (_, i) => i + 1).map((setNum) => {
-          const setData = sets.find((s) => s.set_number === setNum);
-          const score1 = setData?.team1_score ?? 0;
-          const score2 = setData?.team2_score ?? 0;
-
-          const validation =
-            score1 > 0 || score2 > 0
-              ? isScoreValid(score1, score2, pointsPerSet, cap)
-              : { valid: true };
-
-          const complete = setData
-            ? isSetComplete(setData, pointsPerSet, cap)
-            : false;
-
-          const handleScoreKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, setNum: number, team: 1 | 2) => {
-            if (e.key === "Enter" || (e.key === "Tab" && !e.shiftKey)) {
-              e.preventDefault();
-              // Trigger blur on current field first (for auto-fill)
-              (e.target as HTMLInputElement).blur();
-              // Find next input: team1→team2 same set, team2→team1 next set
-              const card = (e.target as HTMLElement).closest("[data-match-id]");
-              if (!card) return;
-              let nextTeam: 1 | 2;
-              let nextSet: number;
-              if (team === 1) {
-                nextTeam = 2; nextSet = setNum;
-              } else {
-                nextTeam = 1; nextSet = setNum + 1;
-              }
-              const next = card.querySelector(`[data-score="${nextSet}-${nextTeam}"]`) as HTMLInputElement | null;
-              if (next && !next.disabled) {
-                setTimeout(() => { next.focus(); next.select(); }, 50);
-              } else {
-                // No more fields in this match - jump to next match's first input
-                const allCards = document.querySelectorAll("[data-match-id]");
-                const cardArr = Array.from(allCards);
-                const idx = cardArr.indexOf(card);
-                if (idx >= 0 && idx < cardArr.length - 1) {
-                  const nextCard = cardArr[idx + 1];
-                  const firstInput = nextCard.querySelector('input[type="number"]:not(:disabled)') as HTMLInputElement | null;
-                  if (firstInput) setTimeout(() => { firstInput.focus(); firstInput.select(); }, 50);
-                }
-              }
-            }
-          };
-
-          return (
-            <div key={setNum} className="text-center">
-              <div className="text-[11px] font-medium text-gray-400 mb-1.5 uppercase tracking-wide">
-                {t.common_set} {setNum}
-                {complete && (
-                  <span className="text-emerald-500 ml-1">✓</span>
-                )}
-              </div>
-              <div className="flex gap-1.5 items-center">
-                <input
-                  type="number"
-                  min={0}
-                  max={maxScore}
-                  data-score={`${setNum}-1`}
-                  value={setData?.team1_score ?? ""}
-                  onChange={(e) =>
-                    onScoreChange(
-                      match.id,
-                      setNum,
-                      1,
-                      Number(e.target.value) || 0
-                    )
-                  }
-                  onBlur={() => onScoreBlur(match.id, setNum, 1)}
-                  onFocus={(e) => e.target.select()}
-                  onKeyDown={(e) => handleScoreKeyDown(e, setNum, 1)}
-                  disabled={inputsDisabled}
-                  className={`w-14 h-10 border-2 rounded-xl text-center text-base font-mono font-bold ${theme.inputBg} ${theme.inputText} disabled:opacity-60 outline-none transition-all ${
-                    !validation.valid
-                      ? "border-rose-300 bg-rose-50 text-rose-600"
-                      : complete && score1 > score2
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                      : `${theme.inputBorder} ${theme.focusBorder} focus:ring-2 ${theme.focusRing}`
-                  }`}
-                />
-                <span className="text-gray-300 font-bold">:</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={maxScore}
-                  data-score={`${setNum}-2`}
-                  value={setData?.team2_score ?? ""}
-                  onChange={(e) =>
-                    onScoreChange(
-                      match.id,
-                      setNum,
-                      2,
-                      Number(e.target.value) || 0
-                    )
-                  }
-                  onBlur={() => onScoreBlur(match.id, setNum, 2)}
-                  onFocus={(e) => e.target.select()}
-                  onKeyDown={(e) => handleScoreKeyDown(e, setNum, 2)}
-                  disabled={inputsDisabled}
-                  className={`w-14 h-10 border-2 rounded-xl text-center text-base font-mono font-bold ${theme.inputBg} ${theme.inputText} disabled:opacity-60 outline-none transition-all ${
-                    !validation.valid
-                      ? "border-rose-300 bg-rose-50 text-rose-600"
-                      : complete && score2 > score1
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                      : `${theme.inputBorder} ${theme.focusBorder} focus:ring-2 ${theme.focusRing}`
-                  }`}
-                />
-              </div>
-              {!validation.valid && (
-                <div className="text-[10px] text-rose-500 mt-1 max-w-[130px]">
-                  {validation.error}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }

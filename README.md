@@ -79,6 +79,17 @@
 - **Save Confirmation**: Green toast notification confirms all changes (settings, players, teams, halls) were saved after editing a tournament draft
 - **Unified Toast Notifications**: A global toast context (`useToast`) replaces native browser alerts for save confirmations, import summaries, and error reporting across the app — non-blocking, stackable, auto-dismissing
 
+### Score-Entry Polish &amp; TournamentView Refactor (v2.7.5)
+- **Score entry — typing "12" no longer settles to "2"**: rapid keystrokes used to occasionally lose digits because the controlled input value got clobbered by a re-render storm. `handleScoreChange` now optimistically updates the local sets-state per keystroke and skips the per-keystroke `loadAll()` (still runs on blur), so the input value reflects what you just typed even during async DB round-trips
+- **Auto-select-on-focus only on real focus events**: a ref-based guard prevents `e.target.select()` from re-firing during React re-renders that restore focus mid-typing. The new pattern preserves the convenient "Tab into a field, immediately type to overwrite" behavior without clobbering in-progress entries
+- **Winner-detection moved to Enter only**: pressing Tab through a set still triggers the auto-fill suggestion (e.g. type 12 in 21-Ext-30 mode → opponent fills to 21; type 25 → opponent fills to 23 with the 2-point lead rule), but the match is no longer marked `completed` until you press **Enter**. Lets the TD review and adjust auto-fill suggestions across multiple sets before committing the match. The full `autoFillOpponentScore` rule set (all five point modes + caps + 2-point lead) is preserved 1:1 — only the "confirm" step is now explicit
+- **TournamentView refactor (Phase 1)**: the 3983-line monolithic `src/pages/TournamentView.tsx` is split into a directory of smaller, single-purpose files:
+  - `index.tsx` (orchestrator, ~2900 lines, –28%)
+  - `components/MatchCard.tsx` + `CompletedMatchesSection.tsx`
+  - `components/modals/{StartKoModal, EditTournamentModal, RestWarningModal, PlayerConflictModal, ReopenConfirmModal, UndoRoundModal}.tsx`
+  - `lib/{effectiveScoring, undoTarget}.ts` (pure helpers)
+  - 11 new files, each under 400 lines, all single-responsibility. No behavior change — purely structural. Vite resolves `pages/TournamentView/index.tsx` transparently as the route, so no router changes needed
+
 ### Live-Push Controls &amp; Smarter Undo (v2.7.4)
 - **Push controls per tournament**: Live-aktive Turniere bekommen jetzt drei kompakte Aktionen — den vorhandenen "Live aktiv" Pill plus zwei Icon-Buttons (32×32) ⏸️ Pause / 🔄 Push jetzt. Pause hält das Opt-In aufrecht, unterdrückt aber Pushes (Discovery-Filter respektiert die neue `live_publish_paused_tournament_ids` Liste in app_settings). Push jetzt feuert sofort einen Snapshot, ignoriert Debounce + Heartbeat-Dedup + Backoff
 - **Auto-Backoff bei Verbindungsfehlern**: nach 3 aufeinander folgenden Push-Fehlern stuft sich der Publisher automatisch zurück (30s → 2min → 5min) und überspringt event/heartbeat-Pushes während des Cooldown. Manuelle und finale Pushes ignorieren den Backoff. Erfolgreicher Push setzt den Counter sofort zurück
